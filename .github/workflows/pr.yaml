@@ -1,0 +1,56 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      changes: ${{ toJSON(steps.changes.outputs) }}
+    steps:
+      - name: Detect changed files
+        id: changes
+        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+        with:
+          skip_initial_fetch: true
+          files_yaml: |
+            github_workflow:
+              - '.github/workflows/**'
+          json: true
+
+  github-workflow:
+    name: GitHub Workflow Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).github_workflow_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-github-workflow.yaml
+
+  status-check:
+    name: Pull Request Status Check
+    if: always()
+    needs:
+      - detect-changes
+      - oxfmt
+      - github-workflow
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check job results
+        env:
+          HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
+          HAS_CANCELLED: ${{ contains(needs.*.result, 'cancelled') }}
+        run: |
+          if [[ "$HAS_FAILURE" == "true" || "$HAS_CANCELLED" == "true" ]]; then
+            exit 1
+          fi
