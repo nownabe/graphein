@@ -49,13 +49,19 @@ export function TaskCard({
           />
         )}
         <div class="min-w-0 flex-1">
-          <h3 class={`font-medium ${isDone ? "line-through text-gray-400" : "text-gray-900"}`}>
-            {task.title}
-          </h3>
-          {task.description && (
-            <p class={`text-sm mt-1 line-clamp-2 ${isDone ? "text-gray-400" : "text-gray-600"}`}>
-              {task.description}
-            </p>
+          {task.description ? (
+            <details>
+              <summary class={`font-medium cursor-pointer ${isDone ? "line-through text-gray-400" : "text-gray-900"}`}>
+                {task.title}
+              </summary>
+              <p class={`text-sm mt-1 whitespace-pre-wrap ${isDone ? "text-gray-400" : "text-gray-600"}`}>
+                {task.description}
+              </p>
+            </details>
+          ) : (
+            <h3 class={`font-medium ${isDone ? "line-through text-gray-400" : "text-gray-900"}`}>
+              {task.title}
+            </h3>
           )}
           <div class="flex items-center gap-3 mt-2 text-xs text-gray-500">
             {deadlineStr && (

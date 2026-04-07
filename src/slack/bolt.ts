@@ -115,6 +115,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
         private_metadata: JSON.stringify({
           channelId,
           messageTs,
+          messageText,
           permalink: permalinkRes.permalink ?? "",
           createdById: creator.id,
           assigneeIds,
@@ -196,7 +197,7 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
   try {
     const task = await createTask({
       title,
-      description: undefined,
+      description: metadata.messageText || undefined,
       deadline: deadlineTimestamp ? new Date(deadlineTimestamp * 1000) : null,
       slackMessageTs: metadata.messageTs,
       slackChannelId: metadata.channelId,
