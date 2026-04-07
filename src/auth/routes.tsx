@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { setCookie, deleteCookie } from "hono/cookie";
+import { setCookie, deleteCookie, getCookie } from "hono/cookie";
 import { env } from "../env";
 import { createToken } from "./session";
 import { findOrCreateMember } from "../members/service";
@@ -8,7 +8,8 @@ import { LoginPage } from "../views/pages/login";
 const auth = new Hono();
 
 auth.get("/login", (c) => {
-  return c.html(<LoginPage />);
+  const locale = getCookie(c, "locale") === "en" ? "en" : "ja";
+  return c.html(<LoginPage locale={locale} />);
 });
 
 auth.get("/slack", (c) => {
