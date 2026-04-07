@@ -35,8 +35,8 @@ taskRoutes.get("/", async (c) => {
     myTasks = myTasks.filter((t) => t.status === "done");
   }
 
-  // htmx partial request — return just the task list
-  if (c.req.header("HX-Request")) {
+  // htmx partial request — return just the task list (but not for boosted navigation)
+  if (c.req.header("HX-Request") && !c.req.header("HX-Boosted")) {
     return c.html(
       <HomeTaskListPartial tasks={myTasks} locale={locale} />,
     );
