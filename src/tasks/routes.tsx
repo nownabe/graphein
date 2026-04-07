@@ -1,48 +1,34 @@
 import { Hono } from "hono";
 import { authMiddleware } from "../auth/middleware";
 import {
-  listTasksForMember,
+  listActiveTasksForMember,
+  listArchivedTasksForMember,
   getTask,
-  getTaskAssignees,
   isTaskOwner,
   updateTask,
 } from "./service";
-import { HomePage, HomePartial } from "../views/pages/home";
-import { TaskDetailPage } from "../views/pages/task-detail";
+import { HomePage } from "../views/pages/home";
+import { ArchivedPage } from "../views/pages/archived.tsx";
+import { TaskEditPage } from "../views/pages/task-detail.tsx";
+import { TaskCard } from "../views/components/task-card.tsx";
 
 const taskRoutes = new Hono();
 
 taskRoutes.use("*", authMiddleware);
 
-// Home - my tasks
+// Home - active tasks
 taskRoutes.get("/", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
-  const myTasks = await listTasksForMember(memberId);
-
-  if (c.req.header("HX-Request")) {
-    return c.html(<HomePartial tasks={myTasks} />);
-  }
+  const myTasks = await listActiveTasksForMember(memberId);
   return c.html(<HomePage tasks={myTasks} displayName={displayName} />);
 });
 
-// Task detail
-taskRoutes.get("/tasks/:id", async (c) => {
-  const taskId = c.req.param("id");
+// Archived tasks
+taskRoutes.get("/archived", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
-
-  const task = await getTask(taskId);
-  if (!task) return c.notFound();
-
-  const assignees = await getTaskAssignees(taskId);
-  const owner = await isTaskOwner(taskId, memberId);
-
+  const archivedTasks = await listArchivedTasksForMember(memberId);
   return c.html(
-    <TaskDetailPage
-      task={task}
-      assignees={assignees}
-      displayName={displayName}
-      isOwner={owner}
-    />,
+    <ArchivedPage tasks={archivedTasks} displayName={displayName} />,
   );
 });
 
@@ -54,23 +40,14 @@ taskRoutes.get("/tasks/:id/edit", async (c) => {
   const task = await getTask(taskId);
   if (!task) return c.notFound();
 
-  const assignees = await getTaskAssignees(taskId);
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.redirect(`/tasks/${taskId}`);
+  if (!owner) return c.redirect("/");
 
-  return c.html(
-    <TaskDetailPage
-      task={task}
-      assignees={assignees}
-      displayName={displayName}
-      isOwner={owner}
-      editing
-    />,
-  );
+  return c.html(<TaskEditPage task={task} displayName={displayName} />);
 });
 
 // Update task
-taskRoutes.put("/tasks/:id", async (c) => {
+taskRoutes.post("/tasks/:id", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
 
@@ -84,15 +61,10 @@ taskRoutes.put("/tasks/:id", async (c) => {
     deadline: body.deadline ? new Date(body.deadline as string) : null,
   });
 
-  const redirectUrl = `/tasks/${taskId}`;
-  if (c.req.header("HX-Request")) {
-    c.header("HX-Redirect", redirectUrl);
-    return c.body(null, 204);
-  }
-  return c.redirect(redirectUrl);
+  return c.redirect("/");
 });
 
-// Update task status
+// Update task status (htmx inline)
 taskRoutes.patch("/tasks/:id/status", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
@@ -102,14 +74,15 @@ taskRoutes.patch("/tasks/:id/status", async (c) => {
 
   const body = await c.req.parseBody();
   const status = body.status as "open" | "done" | "archived";
-  await updateTask(taskId, { status });
+  const task = await updateTask(taskId, { status });
 
-  const redirectUrl = `/tasks/${taskId}`;
-  if (c.req.header("HX-Request")) {
-    c.header("HX-Redirect", redirectUrl);
-    return c.body(null, 204);
+  // If archived, remove the card from the list
+  if (status === "archived") {
+    return c.body(null, 200);
   }
-  return c.redirect(redirectUrl);
+
+  // Return updated card
+  return c.html(<TaskCard task={task} showActions />);
 });
 
 export default taskRoutes;

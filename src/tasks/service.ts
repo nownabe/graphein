@@ -1,14 +1,23 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, ne, desc } from "drizzle-orm";
 import { db } from "../db/client";
 import { tasks, taskAssignees, members } from "../db/schema";
 
-export async function listTasksForMember(memberId: string) {
+export async function listActiveTasksForMember(memberId: string) {
   const assignments = await db.query.taskAssignees.findMany({
     where: eq(taskAssignees.memberId, memberId),
     with: { task: true },
     orderBy: desc(taskAssignees.assignedAt),
   });
-  return assignments.map((a) => a.task);
+  return assignments.map((a) => a.task).filter((t) => t.status !== "archived");
+}
+
+export async function listArchivedTasksForMember(memberId: string) {
+  const assignments = await db.query.taskAssignees.findMany({
+    where: eq(taskAssignees.memberId, memberId),
+    with: { task: true },
+    orderBy: desc(taskAssignees.assignedAt),
+  });
+  return assignments.map((a) => a.task).filter((t) => t.status === "archived");
 }
 
 export async function getTask(taskId: string) {
