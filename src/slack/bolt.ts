@@ -27,6 +27,30 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
   const messageTs = shortcut.message_ts;
   const triggerId = shortcut.trigger_id;
 
+  // Open loading modal immediately to avoid trigger_id expiration (3s limit)
+  let viewId: string | undefined;
+  try {
+    const loadingRes = await client.views.open({
+      trigger_id: triggerId,
+      view: {
+        type: "modal",
+        callback_id: "create_task_modal_loading",
+        title: { type: "plain_text", text: "タスク作成" },
+        close: { type: "plain_text", text: "キャンセル" },
+        blocks: [
+          {
+            type: "section",
+            text: { type: "mrkdwn", text: "タスクを準備中です..." },
+          },
+        ],
+      },
+    });
+    viewId = loadingRes.view?.id;
+  } catch (err) {
+    console.error("Error opening loading modal:", err);
+    return;
+  }
+
   try {
     // Get permalink
     const permalinkRes = await client.chat.getPermalink({
@@ -82,9 +106,9 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
       avatarUrl: creatorInfo.user?.profile?.image_72 ?? null,
     });
 
-    // Open confirmation modal
-    await client.views.open({
-      trigger_id: triggerId,
+    // Update modal with task details
+    await client.views.update({
+      view_id: viewId!,
       view: {
         type: "modal",
         callback_id: "create_task_modal",
@@ -134,14 +158,27 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
     });
   } catch (err) {
     console.error("Error in create_task shortcut:", err);
-    try {
-      await client.chat.postEphemeral({
-        channel: channelId,
-        user: shortcut.user.id,
-        text: "タスクの作成中にエラーが発生しました。もう一度お試しください。",
-      });
-    } catch (ephemeralErr) {
-      console.error("Failed to send ephemeral error message:", ephemeralErr);
+    // Update modal to show error instead of using ephemeral (avoids not_in_channel)
+    if (viewId) {
+      try {
+        await client.views.update({
+          view_id: viewId,
+          view: {
+            type: "modal",
+            callback_id: "create_task_modal_error",
+            title: { type: "plain_text", text: "タスク作成" },
+            close: { type: "plain_text", text: "閉じる" },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: "タスクの作成中にエラーが発生しました。もう一度お試しください。" },
+              },
+            ],
+          },
+        });
+      } catch (updateErr) {
+        console.error("Failed to update modal with error:", updateErr);
+      }
     }
   }
 });
