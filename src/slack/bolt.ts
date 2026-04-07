@@ -1,0 +1,171 @@
+import { App } from "@slack/bolt";
+import { env } from "../env";
+import { HonoReceiver } from "./receiver";
+import { resolveMentions } from "./helpers";
+import { findOrCreateMember } from "../members/service";
+import { createTask } from "../tasks/service";
+import { generateTaskDetails } from "../llm/gemini";
+
+export const receiver = env.SLACK_SOCKET_MODE ? undefined : new HonoReceiver();
+
+export const boltApp = new App({
+  token: env.SLACK_BOT_TOKEN,
+  signingSecret: env.SLACK_SIGNING_SECRET,
+  ...(env.SLACK_SOCKET_MODE
+    ? { socketMode: true, appToken: env.SLACK_APP_TOKEN }
+    : { receiver: receiver! }),
+});
+
+// Message shortcut: create_task
+boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
+  await ack();
+
+  if (shortcut.type !== "message_action") return;
+
+  const messageText = shortcut.message.text ?? "";
+  const channelId = shortcut.channel.id;
+  const messageTs = shortcut.message_ts;
+  const triggerId = shortcut.trigger_id;
+
+  try {
+    // Get permalink
+    const permalinkRes = await client.chat.getPermalink({
+      channel: channelId,
+      message_ts: messageTs,
+    });
+
+    // Resolve mentions to members
+    const mentions = await resolveMentions(client, messageText);
+    const assigneeIds: string[] = [];
+
+    for (const mention of mentions) {
+      const member = await findOrCreateMember({
+        slackUserId: mention.slackUserId,
+        email: mention.email,
+        displayName: mention.displayName,
+        avatarUrl: null,
+      });
+      assigneeIds.push(member.id);
+    }
+
+    // If no mentions, assign to the user who triggered the shortcut
+    if (assigneeIds.length === 0) {
+      const triggeredBy = await client.users.info({
+        user: shortcut.user.id,
+      });
+      if (triggeredBy.user?.profile?.email) {
+        const member = await findOrCreateMember({
+          slackUserId: shortcut.user.id,
+          email: triggeredBy.user.profile.email,
+          displayName:
+            triggeredBy.user.profile.display_name ||
+            triggeredBy.user.profile.real_name ||
+            shortcut.user.id,
+          avatarUrl: triggeredBy.user.profile.image_72 ?? null,
+        });
+        assigneeIds.push(member.id);
+      }
+    }
+
+    // Generate title and deadline with Gemini
+    const details = await generateTaskDetails(messageText);
+
+    // Creator is the person who triggered the shortcut
+    const creatorInfo = await client.users.info({ user: shortcut.user.id });
+    const creator = await findOrCreateMember({
+      slackUserId: shortcut.user.id,
+      email: creatorInfo.user?.profile?.email ?? "",
+      displayName:
+        creatorInfo.user?.profile?.display_name ||
+        creatorInfo.user?.profile?.real_name ||
+        shortcut.user.id,
+      avatarUrl: creatorInfo.user?.profile?.image_72 ?? null,
+    });
+
+    // Open confirmation modal
+    await client.views.open({
+      trigger_id: triggerId,
+      view: {
+        type: "modal",
+        callback_id: "create_task_modal",
+        private_metadata: JSON.stringify({
+          channelId,
+          messageTs,
+          permalink: permalinkRes.permalink ?? "",
+          createdById: creator.id,
+          assigneeIds,
+        }),
+        title: { type: "plain_text", text: "タスク作成" },
+        submit: { type: "plain_text", text: "作成" },
+        close: { type: "plain_text", text: "キャンセル" },
+        blocks: [
+          {
+            type: "input",
+            block_id: "title_block",
+            label: { type: "plain_text", text: "タイトル" },
+            element: {
+              type: "plain_text_input",
+              action_id: "title",
+              initial_value: details.title,
+            },
+          },
+          {
+            type: "input",
+            block_id: "deadline_block",
+            optional: true,
+            label: { type: "plain_text", text: "期限" },
+            element: {
+              type: "datepicker",
+              action_id: "deadline",
+              ...(details.deadline
+                ? { initial_date: details.deadline }
+                : {}),
+            },
+          },
+          {
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: `*元のメッセージ:*\n>${messageText.replace(/\n/g, "\n>")}`,
+            },
+          },
+        ],
+      },
+    });
+  } catch (err) {
+    console.error("Error in create_task shortcut:", err);
+  }
+});
+
+// Modal submission: create_task_modal
+boltApp.view("create_task_modal", async ({ ack, view, client }) => {
+  await ack();
+
+  const metadata = JSON.parse(view.private_metadata);
+  const title =
+    view.state.values.title_block.title.value ?? "Untitled task";
+  const deadlineStr =
+    view.state.values.deadline_block.deadline.selected_date;
+
+  const task = await createTask({
+    title,
+    description: undefined,
+    deadline: deadlineStr ? new Date(deadlineStr) : null,
+    slackMessageTs: metadata.messageTs,
+    slackChannelId: metadata.channelId,
+    slackPermalink: metadata.permalink,
+    createdById: metadata.createdById,
+    assigneeIds: metadata.assigneeIds,
+  });
+
+  // Post confirmation message
+  try {
+    await client.chat.postMessage({
+      channel: metadata.channelId,
+      thread_ts: metadata.messageTs,
+      text: `タスクを作成しました: *${task.title}*\n${env.BASE_URL}/tasks/${task.id}`,
+    });
+  } catch {
+    // Non-critical: confirmation message failed
+  }
+});
