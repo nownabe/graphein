@@ -19,6 +19,7 @@ import { findMemberBySlackUserId } from "../members/service";
 import { HomePage, HomeTaskListPartial } from "../views/pages/home";
 import { ArchivedPage } from "../views/pages/archived.tsx";
 import { TaskEditPage } from "../views/pages/task-detail.tsx";
+import { TaskStatusPage } from "../views/pages/task-status.tsx";
 import { TaskCard } from "../views/components/task-card.tsx";
 
 const taskRoutes = new Hono();
@@ -43,16 +44,12 @@ taskRoutes.get("/", async (c) => {
     myTasks = myTasks.filter((t) => t.done);
   }
 
-  // Check ownership and fetch assignee status for owned tasks
+  // Check ownership for each task
   const tasksWithOwnership = await Promise.all(
-    myTasks.map(async (t) => {
-      const owner = await isTaskOwner(t.id, memberId);
-      return {
-        ...t,
-        isOwner: owner,
-        assignees: owner ? await listTaskAssigneesWithStatus(t.id) : [],
-      };
-    }),
+    myTasks.map(async (t) => ({
+      ...t,
+      isOwner: await isTaskOwner(t.id, memberId),
+    })),
   );
 
   // htmx partial request — return just the task list (but not for boosted navigation)
@@ -78,18 +75,38 @@ taskRoutes.get("/archived", async (c) => {
   const locale = getLocale(c);
   const archivedTasks = await listArchivedTasksForMember(memberId);
   const tasksWithOwnership = await Promise.all(
-    archivedTasks.map(async (t) => {
-      const owner = await isTaskOwner(t.id, memberId);
-      return {
-        ...t,
-        isOwner: owner,
-        assignees: owner ? await listTaskAssigneesWithStatus(t.id) : [],
-      };
-    }),
+    archivedTasks.map(async (t) => ({
+      ...t,
+      isOwner: await isTaskOwner(t.id, memberId),
+    })),
   );
   return c.html(
     <ArchivedPage
       tasks={tasksWithOwnership}
+      displayName={displayName}
+      locale={locale}
+    />,
+  );
+});
+
+// Task status — assignee completion (owner only)
+taskRoutes.get("/tasks/:id/status", async (c) => {
+  const taskId = c.req.param("id");
+  const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const locale = getLocale(c);
+
+  const task = await getTask(taskId);
+  if (!task) return c.notFound();
+
+  const owner = await isTaskOwner(taskId, memberId);
+  if (!owner) return c.redirect("/");
+
+  const assignees = await listTaskAssigneesWithStatus(taskId);
+
+  return c.html(
+    <TaskStatusPage
+      task={task}
+      assignees={assignees}
       displayName={displayName}
       locale={locale}
     />,
@@ -151,9 +168,8 @@ taskRoutes.patch("/tasks/:id/done", async (c) => {
   if (!task) return c.notFound();
 
   const owner = await isTaskOwner(taskId, memberId);
-  const assignees = owner ? await listTaskAssigneesWithStatus(taskId) : [];
   return c.html(
-    <TaskCard task={task} done={task.done} isOwner={owner} assignees={assignees} showActions locale={locale} />,
+    <TaskCard task={task} done={task.done} isOwner={owner} showActions locale={locale} />,
   );
 });
 

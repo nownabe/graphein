@@ -9,6 +9,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "page.myTasks": "マイタスク",
     "page.archived": "アーカイブ済み",
     "page.editTask": "タスクを編集",
+    "page.taskStatus": "完了状態",
     "page.login": "ログイン",
 
     // Status labels
@@ -20,6 +21,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "button.done": "完了",
     "button.reopen": "戻す",
     "button.edit": "編集",
+    "button.status": "状態",
     "button.archive": "アーカイブ",
     "button.save": "保存",
     "button.cancel": "キャンセル",
@@ -28,6 +30,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "button.done.title": "完了にする",
     "button.reopen.title": "未完了に戻す",
     "button.edit.title": "編集",
+    "button.status.title": "完了状態を確認",
     "button.archive.title": "アーカイブ",
 
     // Form labels
@@ -37,6 +40,9 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Task card
     "task.deadline": "期限",
+
+    // Task status page
+    "taskStatus.progress": "進捗",
 
     // Links
     "link.archived": "アーカイブ済み →",
@@ -79,6 +85,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "page.myTasks": "My Tasks",
     "page.archived": "Archived",
     "page.editTask": "Edit Task",
+    "page.taskStatus": "Completion Status",
     "page.login": "Login",
 
     // Status labels
@@ -90,6 +97,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "button.done": "Done",
     "button.reopen": "Reopen",
     "button.edit": "Edit",
+    "button.status": "Status",
     "button.archive": "Archive",
     "button.save": "Save",
     "button.cancel": "Cancel",
@@ -98,6 +106,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "button.done.title": "Mark as done",
     "button.reopen.title": "Reopen task",
     "button.edit.title": "Edit",
+    "button.status.title": "View completion status",
     "button.archive.title": "Archive",
 
     // Form labels
@@ -107,6 +116,9 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Task card
     "task.deadline": "Deadline",
+
+    // Task status page
+    "taskStatus.progress": "Progress",
 
     // Links
     "link.archived": "Archived →",
