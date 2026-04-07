@@ -6,10 +6,15 @@ import {
   listArchivedTasksForMember,
   getTask,
   isTaskOwner,
+  isTaskAssignee,
   updateTask,
   toggleAssigneeDone,
   archiveTask,
+  listTaskOwners,
+  addTaskOwner,
+  removeTaskOwner,
 } from "./service";
+import { findMemberBySlackUserId } from "../members/service";
 import { HomePage, HomeTaskListPartial } from "../views/pages/home";
 import { ArchivedPage } from "../views/pages/archived.tsx";
 import { TaskEditPage } from "../views/pages/task-detail.tsx";
@@ -37,16 +42,24 @@ taskRoutes.get("/", async (c) => {
     myTasks = myTasks.filter((t) => t.done);
   }
 
+  // Check ownership for each task to determine if archive button should show
+  const tasksWithOwnership = await Promise.all(
+    myTasks.map(async (t) => ({
+      ...t,
+      isOwner: await isTaskOwner(t.id, memberId),
+    })),
+  );
+
   // htmx partial request — return just the task list (but not for boosted navigation)
   if (c.req.header("HX-Request") && !c.req.header("HX-Boosted")) {
     return c.html(
-      <HomeTaskListPartial tasks={myTasks} locale={locale} />,
+      <HomeTaskListPartial tasks={tasksWithOwnership} locale={locale} />,
     );
   }
 
   return c.html(
     <HomePage
-      tasks={myTasks}
+      tasks={tasksWithOwnership}
       displayName={displayName}
       locale={locale}
       activeFilter={filter}
@@ -59,16 +72,22 @@ taskRoutes.get("/archived", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const locale = getLocale(c);
   const archivedTasks = await listArchivedTasksForMember(memberId);
+  const tasksWithOwnership = await Promise.all(
+    archivedTasks.map(async (t) => ({
+      ...t,
+      isOwner: await isTaskOwner(t.id, memberId),
+    })),
+  );
   return c.html(
     <ArchivedPage
-      tasks={archivedTasks}
+      tasks={tasksWithOwnership}
       displayName={displayName}
       locale={locale}
     />,
   );
 });
 
-// Task edit form
+// Task edit form (owner only)
 taskRoutes.get("/tasks/:id/edit", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
@@ -80,12 +99,19 @@ taskRoutes.get("/tasks/:id/edit", async (c) => {
   const owner = await isTaskOwner(taskId, memberId);
   if (!owner) return c.redirect("/");
 
+  const owners = await listTaskOwners(taskId);
+
   return c.html(
-    <TaskEditPage task={task} displayName={displayName} locale={locale} />,
+    <TaskEditPage
+      task={task}
+      owners={owners}
+      displayName={displayName}
+      locale={locale}
+    />,
   );
 });
 
-// Update task
+// Update task (owner only)
 taskRoutes.post("/tasks/:id", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
@@ -103,22 +129,25 @@ taskRoutes.post("/tasks/:id", async (c) => {
   return c.redirect("/");
 });
 
-// Toggle assignee done status (htmx inline)
+// Toggle assignee done status (assignee only)
 taskRoutes.patch("/tasks/:id/done", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
   const locale = getLocale(c);
 
-  const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.text("Forbidden", 403);
+  const assignee = await isTaskAssignee(taskId, memberId);
+  if (!assignee) return c.text("Forbidden", 403);
 
   const task = await toggleAssigneeDone(taskId, memberId);
   if (!task) return c.notFound();
 
-  return c.html(<TaskCard task={task} done={task.done} showActions locale={locale} />);
+  const owner = await isTaskOwner(taskId, memberId);
+  return c.html(
+    <TaskCard task={task} done={task.done} isOwner={owner} showActions locale={locale} />,
+  );
 });
 
-// Archive task (htmx inline)
+// Archive task (owner only)
 taskRoutes.patch("/tasks/:id/archive", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
@@ -130,6 +159,78 @@ taskRoutes.patch("/tasks/:id/archive", async (c) => {
 
   // Remove the card from the list
   return c.body(null, 200);
+});
+
+// Add task owner (owner only)
+taskRoutes.post("/tasks/:id/owners", async (c) => {
+  const taskId = c.req.param("id");
+  const { sub: memberId } = c.get("jwtPayload");
+  const locale = getLocale(c);
+
+  const owner = await isTaskOwner(taskId, memberId);
+  if (!owner) return c.text("Forbidden", 403);
+
+  const body = await c.req.parseBody();
+  const slackUserId = (body.slack_user_id as string)?.trim();
+  if (!slackUserId) return c.text("Bad Request", 400);
+
+  const member = await findMemberBySlackUserId(slackUserId);
+  if (!member) return c.text("Member not found", 404);
+
+  await addTaskOwner(taskId, member.id);
+
+  const task = await getTask(taskId);
+  if (!task) return c.notFound();
+  const owners = await listTaskOwners(taskId);
+
+  return c.html(
+    <TaskEditPage
+      task={task}
+      owners={owners}
+      displayName={c.get("jwtPayload").name}
+      locale={locale}
+    />,
+  );
+});
+
+// Remove task owner (owner only)
+taskRoutes.delete("/tasks/:id/owners/:memberId", async (c) => {
+  const taskId = c.req.param("id");
+  const targetMemberId = c.req.param("memberId");
+  const { sub: memberId } = c.get("jwtPayload");
+  const locale = getLocale(c);
+
+  const owner = await isTaskOwner(taskId, memberId);
+  if (!owner) return c.text("Forbidden", 403);
+
+  const result = await removeTaskOwner(taskId, targetMemberId);
+  if (result.error === "cannot_remove_last_owner") {
+    // Re-render the page with the current owners (no change)
+    const task = await getTask(taskId);
+    if (!task) return c.notFound();
+    const owners = await listTaskOwners(taskId);
+    return c.html(
+      <TaskEditPage
+        task={task}
+        owners={owners}
+        displayName={c.get("jwtPayload").name}
+        locale={locale}
+      />,
+    );
+  }
+
+  const task = await getTask(taskId);
+  if (!task) return c.notFound();
+  const owners = await listTaskOwners(taskId);
+
+  return c.html(
+    <TaskEditPage
+      task={task}
+      owners={owners}
+      displayName={c.get("jwtPayload").name}
+      locale={locale}
+    />,
+  );
 });
 
 export default taskRoutes;

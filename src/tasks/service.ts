@@ -1,6 +1,6 @@
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "../db/client";
-import { tasks, taskAssignees, members } from "../db/schema";
+import { tasks, taskAssignees, taskOwners } from "../db/schema";
 
 export async function listActiveTasksForMember(memberId: string) {
   const assignments = await db.query.taskAssignees.findMany({
@@ -39,11 +39,55 @@ export async function getTaskAssignees(taskId: string) {
 }
 
 export async function isTaskOwner(taskId: string, memberId: string) {
+  const ownership = await db.query.taskOwners.findFirst({
+    where: and(
+      eq(taskOwners.taskId, taskId),
+      eq(taskOwners.memberId, memberId),
+    ),
+  });
+  return !!ownership;
+}
+
+export async function isTaskAssignee(taskId: string, memberId: string) {
   const assignment = await db.query.taskAssignees.findFirst({
-    where: (ta, { and, eq: e }) =>
-      and(e(ta.taskId, taskId), e(ta.memberId, memberId)),
+    where: and(
+      eq(taskAssignees.taskId, taskId),
+      eq(taskAssignees.memberId, memberId),
+    ),
   });
   return !!assignment;
+}
+
+export async function listTaskOwners(taskId: string) {
+  const owners = await db.query.taskOwners.findMany({
+    where: eq(taskOwners.taskId, taskId),
+    with: { member: true },
+  });
+  return owners.map((o) => o.member);
+}
+
+export async function addTaskOwner(taskId: string, memberId: string) {
+  await db
+    .insert(taskOwners)
+    .values({ taskId, memberId })
+    .onConflictDoNothing();
+}
+
+export async function removeTaskOwner(taskId: string, memberId: string) {
+  // Count current owners
+  const owners = await db.query.taskOwners.findMany({
+    where: eq(taskOwners.taskId, taskId),
+  });
+  if (owners.length <= 1) {
+    return { error: "cannot_remove_last_owner" as const };
+  }
+
+  await db
+    .delete(taskOwners)
+    .where(
+      and(eq(taskOwners.taskId, taskId), eq(taskOwners.memberId, memberId)),
+    );
+  return { error: null };
 }
 
 export async function toggleAssigneeDone(taskId: string, memberId: string) {
@@ -109,6 +153,12 @@ export async function createTask(data: {
   const { assigneeIds, ...taskData } = data;
 
   const [task] = await db.insert(tasks).values(taskData).returning();
+
+  // Creator becomes the default owner
+  await db.insert(taskOwners).values({
+    taskId: task.id,
+    memberId: data.createdById,
+  });
 
   if (assigneeIds.length > 0) {
     await db.insert(taskAssignees).values(

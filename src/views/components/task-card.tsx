@@ -7,11 +7,13 @@ type Task = InferSelectModel<typeof tasks>;
 export function TaskCard({
   task,
   done,
+  isOwner,
   showActions,
   locale,
 }: {
   task: Task;
   done?: boolean;
+  isOwner?: boolean;
   showActions?: boolean;
   locale?: string;
 }) {
@@ -84,23 +86,27 @@ export function TaskCard({
         </div>
         {showActions && !task.archived && (
           <div class="flex items-center gap-1 shrink-0">
-            <a
-              href={`/tasks/${task.id}/edit`}
-              class="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
-              title={t(loc, "button.edit.title")}
-            >
-              {t(loc, "button.edit")}
-            </a>
-            <button
-              hx-patch={`/tasks/${task.id}/archive`}
-              hx-target={`#task-${task.id}`}
-              hx-swap="outerHTML"
-              hx-confirm={t(loc, "confirm.archive")}
-              class="text-xs px-2 py-1 rounded border border-gray-300 text-gray-400 hover:bg-gray-50 transition-colors"
-              title={t(loc, "button.archive.title")}
-            >
-              {t(loc, "button.archive")}
-            </button>
+            {isOwner && (
+              <a
+                href={`/tasks/${task.id}/edit`}
+                class="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
+                title={t(loc, "button.edit.title")}
+              >
+                {t(loc, "button.edit")}
+              </a>
+            )}
+            {isOwner && (
+              <button
+                hx-patch={`/tasks/${task.id}/archive`}
+                hx-target={`#task-${task.id}`}
+                hx-swap="outerHTML"
+                hx-confirm={t(loc, "confirm.archive")}
+                class="text-xs px-2 py-1 rounded border border-gray-300 text-gray-400 hover:bg-gray-50 transition-colors"
+                title={t(loc, "button.archive.title")}
+              >
+                {t(loc, "button.archive")}
+              </button>
+            )}
           </div>
         )}
       </div>

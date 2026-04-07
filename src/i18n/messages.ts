@@ -60,6 +60,13 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Confirm dialogs
     "confirm.archive": "このタスクをアーカイブしますか？",
+    "confirm.removeOwner": "このオーナーを除外しますか？",
+
+    // Owners
+    "owners.title": "オーナー",
+    "owners.slackUserIdPlaceholder": "Slack ユーザー ID",
+    "button.addOwner": "追加",
+    "button.remove": "除外",
 
     // Language switcher
     "lang.switch": "EN",
@@ -124,6 +131,13 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Confirm dialogs
     "confirm.archive": "Are you sure you want to archive this task?",
+    "confirm.removeOwner": "Are you sure you want to remove this owner?",
+
+    // Owners
+    "owners.title": "Owners",
+    "owners.slackUserIdPlaceholder": "Slack User ID",
+    "button.addOwner": "Add",
+    "button.remove": "Remove",
 
     // Language switcher
     "lang.switch": "日本語",

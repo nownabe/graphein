@@ -59,10 +59,27 @@ export const taskAssignees = pgTable(
   (t) => [primaryKey({ columns: [t.taskId, t.memberId] })],
 );
 
+export const taskOwners = pgTable(
+  "task_owners",
+  {
+    taskId: uuid("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => members.id, { onDelete: "cascade" }),
+    assignedAt: timestamp("assigned_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.taskId, t.memberId] })],
+);
+
 // Relations
 export const membersRelations = relations(members, ({ many }) => ({
   createdTasks: many(tasks),
   assignments: many(taskAssignees),
+  ownedTasks: many(taskOwners),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -71,6 +88,7 @@ export const tasksRelations = relations(tasks, ({ one, many }) => ({
     references: [members.id],
   }),
   assignees: many(taskAssignees),
+  owners: many(taskOwners),
 }));
 
 export const taskAssigneesRelations = relations(taskAssignees, ({ one }) => ({
@@ -80,6 +98,17 @@ export const taskAssigneesRelations = relations(taskAssignees, ({ one }) => ({
   }),
   member: one(members, {
     fields: [taskAssignees.memberId],
+    references: [members.id],
+  }),
+}));
+
+export const taskOwnersRelations = relations(taskOwners, ({ one }) => ({
+  task: one(tasks, {
+    fields: [taskOwners.taskId],
+    references: [tasks.id],
+  }),
+  member: one(members, {
+    fields: [taskOwners.memberId],
     references: [members.id],
   }),
 }));
