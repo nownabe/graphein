@@ -115,10 +115,10 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
             optional: true,
             label: { type: "plain_text", text: "期限" },
             element: {
-              type: "datepicker",
+              type: "datetimepicker",
               action_id: "deadline",
               ...(details.deadline
-                ? { initial_date: details.deadline }
+                ? { initial_date_time: Math.floor(new Date(details.deadline).getTime() / 1000) }
                 : {}),
             },
           },
@@ -134,38 +134,60 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
     });
   } catch (err) {
     console.error("Error in create_task shortcut:", err);
+    try {
+      await client.chat.postEphemeral({
+        channel: channelId,
+        user: shortcut.user.id,
+        text: "タスクの作成中にエラーが発生しました。もう一度お試しください。",
+      });
+    } catch (ephemeralErr) {
+      console.error("Failed to send ephemeral error message:", ephemeralErr);
+    }
   }
 });
 
 // Modal submission: create_task_modal
-boltApp.view("create_task_modal", async ({ ack, view, client }) => {
+boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
   await ack();
 
   const metadata = JSON.parse(view.private_metadata);
   const title =
     view.state.values.title_block.title.value ?? "Untitled task";
-  const deadlineStr =
-    view.state.values.deadline_block.deadline.selected_date;
+  const deadlineTimestamp =
+    view.state.values.deadline_block.deadline.selected_date_time;
 
-  const task = await createTask({
-    title,
-    description: undefined,
-    deadline: deadlineStr ? new Date(deadlineStr) : null,
-    slackMessageTs: metadata.messageTs,
-    slackChannelId: metadata.channelId,
-    slackPermalink: metadata.permalink,
-    createdById: metadata.createdById,
-    assigneeIds: metadata.assigneeIds,
-  });
-
-  // Post confirmation message
   try {
-    await client.chat.postMessage({
-      channel: metadata.channelId,
-      thread_ts: metadata.messageTs,
-      text: `タスクを作成しました: *${task.title}*\n${env.BASE_URL}/tasks/${task.id}`,
+    const task = await createTask({
+      title,
+      description: undefined,
+      deadline: deadlineTimestamp ? new Date(deadlineTimestamp * 1000) : null,
+      slackMessageTs: metadata.messageTs,
+      slackChannelId: metadata.channelId,
+      slackPermalink: metadata.permalink,
+      createdById: metadata.createdById,
+      assigneeIds: metadata.assigneeIds,
     });
-  } catch {
-    // Non-critical: confirmation message failed
+
+    // Post confirmation message
+    try {
+      await client.chat.postMessage({
+        channel: metadata.channelId,
+        thread_ts: metadata.messageTs,
+        text: `タスクを作成しました: *${task.title}*\n${env.BASE_URL}/tasks/${task.id}`,
+      });
+    } catch {
+      // Non-critical: confirmation message failed
+    }
+  } catch (err) {
+    console.error("Error creating task from modal:", err);
+    try {
+      await client.chat.postEphemeral({
+        channel: metadata.channelId,
+        user: body.user.id,
+        text: "タスクの作成中にエラーが発生しました。もう一度お試しください。",
+      });
+    } catch (ephemeralErr) {
+      console.error("Failed to send ephemeral error message:", ephemeralErr);
+    }
   }
 });

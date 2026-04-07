@@ -23,7 +23,13 @@ export function TaskCard({
   showActions?: boolean;
 }) {
   const deadlineStr = task.deadline
-    ? new Date(task.deadline).toLocaleDateString("ja-JP")
+    ? new Date(task.deadline).toLocaleString("ja-JP", {
+        year: "numeric",
+        month: "numeric",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      })
     : null;
 
   return (

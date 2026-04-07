@@ -13,21 +13,21 @@ export async function generateTaskDetails(
 ): Promise<TaskDetails> {
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-2.0-flash",
-      contents: `以下のSlackメッセージからタスクのタイトルと期限を抽出してください。タイトルは簡潔に、期限はメッセージに含まれていれば ISO 8601 形式 (YYYY-MM-DD) で返してください。期限が不明な場合は null としてください。
+      model: "gemini-2.5-flash",
+      contents: `Extract a task title and deadline from the following Slack message. The title should be concise. If a deadline is mentioned, return it in ISO 8601 format (YYYY-MM-DDTHH:mm). If no deadline is found, return null.
 
-メッセージ:
+Message:
 ${messageText}`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
           properties: {
-            title: { type: Type.STRING, description: "タスクのタイトル" },
+            title: { type: Type.STRING, description: "Concise task title" },
             deadline: {
               type: Type.STRING,
               nullable: true,
-              description: "期限 (YYYY-MM-DD形式、不明な場合はnull)",
+              description: "Deadline in ISO 8601 format (YYYY-MM-DDTHH:mm), or null if unknown",
             },
           },
           required: ["title", "deadline"],

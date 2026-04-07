@@ -13,7 +13,15 @@ export function TaskEditPage({
   displayName: string;
 }) {
   const deadlineValue = task.deadline
-    ? new Date(task.deadline).toISOString().split("T")[0]
+    ? (() => {
+        const d = new Date(task.deadline);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+      })()
     : "";
 
   return (
@@ -63,10 +71,11 @@ export function TaskEditPage({
               期限
             </label>
             <input
-              type="date"
+              type="datetime-local"
               id="deadline"
               name="deadline"
               value={deadlineValue}
+              step="60"
               class="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
           </div>
