@@ -1,5 +1,6 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { tasks } from "../../db/schema";
+import { t } from "../../i18n/index";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 
@@ -8,9 +9,11 @@ type Task = InferSelectModel<typeof tasks>;
 export function TaskEditPage({
   task,
   displayName,
+  locale,
 }: {
   task: Task;
   displayName: string;
+  locale: string;
 }) {
   const deadlineValue = task.deadline
     ? (() => {
@@ -25,13 +28,18 @@ export function TaskEditPage({
     : "";
 
   return (
-    <Layout title={`${task.title} を編集`}>
-      <Nav displayName={displayName} />
+    <Layout title={t(locale, "page.editTask")} locale={locale}>
+      <Nav displayName={displayName} locale={locale} />
       <main class="max-w-3xl mx-auto px-4 py-8">
-        <a href="/" class="text-sm text-indigo-600 hover:text-indigo-800 mb-4 inline-block">
-          ← マイタスクに戻る
+        <a
+          href="/"
+          class="text-sm text-indigo-600 hover:text-indigo-800 mb-4 inline-block"
+        >
+          {t(locale, "link.backToMyTasksFromEdit")}
         </a>
-        <h1 class="text-2xl font-bold text-gray-900 mb-6">タスクを編集</h1>
+        <h1 class="text-2xl font-bold text-gray-900 mb-6">
+          {t(locale, "page.editTask")}
+        </h1>
 
         <form
           method="post"
@@ -39,8 +47,11 @@ export function TaskEditPage({
           class="bg-white rounded-lg border border-gray-200 p-6 space-y-4"
         >
           <div>
-            <label for="title" class="block text-sm font-medium text-gray-700">
-              タイトル
+            <label
+              for="title"
+              class="block text-sm font-medium text-gray-700"
+            >
+              {t(locale, "form.title")}
             </label>
             <input
               type="text"
@@ -53,8 +64,11 @@ export function TaskEditPage({
           </div>
 
           <div>
-            <label for="description" class="block text-sm font-medium text-gray-700">
-              説明
+            <label
+              for="description"
+              class="block text-sm font-medium text-gray-700"
+            >
+              {t(locale, "form.description")}
             </label>
             <textarea
               id="description"
@@ -67,8 +81,11 @@ export function TaskEditPage({
           </div>
 
           <div>
-            <label for="deadline" class="block text-sm font-medium text-gray-700">
-              期限
+            <label
+              for="deadline"
+              class="block text-sm font-medium text-gray-700"
+            >
+              {t(locale, "form.deadline")}
             </label>
             <input
               type="datetime-local"
@@ -85,13 +102,13 @@ export function TaskEditPage({
               type="submit"
               class="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 transition-colors"
             >
-              保存
+              {t(locale, "button.save")}
             </button>
             <a
               href="/"
               class="px-4 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
             >
-              キャンセル
+              {t(locale, "button.cancel")}
             </a>
           </div>
         </form>

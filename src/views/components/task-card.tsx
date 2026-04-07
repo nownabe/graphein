@@ -1,13 +1,8 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { tasks } from "../../db/schema";
+import { t } from "../../i18n/index";
 
 type Task = InferSelectModel<typeof tasks>;
-
-const statusLabel: Record<string, string> = {
-  open: "未完了",
-  done: "完了",
-  archived: "アーカイブ済み",
-};
 
 const statusColor: Record<string, string> = {
   open: "bg-gray-100 text-gray-700",
@@ -18,12 +13,15 @@ const statusColor: Record<string, string> = {
 export function TaskCard({
   task,
   showActions,
+  locale,
 }: {
   task: Task;
   showActions?: boolean;
+  locale?: string;
 }) {
+  const loc = locale ?? "ja";
   const deadlineStr = task.deadline
-    ? new Date(task.deadline).toLocaleString("ja-JP", {
+    ? new Date(task.deadline).toLocaleString(loc === "en" ? "en-US" : "ja-JP", {
         year: "numeric",
         month: "numeric",
         day: "numeric",
@@ -32,10 +30,15 @@ export function TaskCard({
       })
     : null;
 
+  const isOverdue =
+    task.deadline &&
+    task.status === "open" &&
+    new Date(task.deadline) < new Date();
+
   return (
     <div
       id={`task-${task.id}`}
-      class="bg-white rounded-lg border border-gray-200 p-4"
+      class="bg-white rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md"
     >
       <div class="flex items-start justify-between gap-2">
         <div class="min-w-0 flex-1">
@@ -49,9 +52,13 @@ export function TaskCard({
             <span
               class={`font-medium px-2 py-0.5 rounded-full ${statusColor[task.status]}`}
             >
-              {statusLabel[task.status]}
+              {t(loc, `status.${task.status}`)}
             </span>
-            {deadlineStr && <span>期限: {deadlineStr}</span>}
+            {deadlineStr && (
+              <span class={isOverdue ? "text-red-600 font-medium" : ""}>
+                {t(loc, "task.deadline")}: {deadlineStr}
+              </span>
+            )}
             {task.slackPermalink && (
               <a
                 href={task.slackPermalink}
@@ -74,9 +81,9 @@ export function TaskCard({
                 hx-target={`#task-${task.id}`}
                 hx-swap="outerHTML"
                 class="text-xs px-2 py-1 rounded border border-green-300 text-green-700 hover:bg-green-50 transition-colors"
-                title="完了にする"
+                title={t(loc, "button.done.title")}
               >
-                完了
+                {t(loc, "button.done")}
               </button>
             ) : (
               <button
@@ -85,27 +92,28 @@ export function TaskCard({
                 hx-target={`#task-${task.id}`}
                 hx-swap="outerHTML"
                 class="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
-                title="未完了に戻す"
+                title={t(loc, "button.reopen.title")}
               >
-                戻す
+                {t(loc, "button.reopen")}
               </button>
             )}
             <a
               href={`/tasks/${task.id}/edit`}
               class="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
-              title="編集"
+              title={t(loc, "button.edit.title")}
             >
-              編集
+              {t(loc, "button.edit")}
             </a>
             <button
               hx-patch={`/tasks/${task.id}/status`}
               hx-vals='{"status":"archived"}'
               hx-target={`#task-${task.id}`}
               hx-swap="outerHTML"
+              hx-confirm={t(loc, "confirm.archive")}
               class="text-xs px-2 py-1 rounded border border-gray-300 text-gray-400 hover:bg-gray-50 transition-colors"
-              title="アーカイブ"
+              title={t(loc, "button.archive.title")}
             >
-              アーカイブ
+              {t(loc, "button.archive")}
             </button>
           </div>
         )}

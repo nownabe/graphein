@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { getCookie } from "hono/cookie";
 import { authMiddleware } from "../auth/middleware";
 import {
   listActiveTasksForMember,
@@ -7,7 +8,7 @@ import {
   isTaskOwner,
   updateTask,
 } from "./service";
-import { HomePage } from "../views/pages/home";
+import { HomePage, HomeTaskListPartial } from "../views/pages/home";
 import { ArchivedPage } from "../views/pages/archived.tsx";
 import { TaskEditPage } from "../views/pages/task-detail.tsx";
 import { TaskCard } from "../views/components/task-card.tsx";
@@ -16,19 +17,52 @@ const taskRoutes = new Hono();
 
 taskRoutes.use("*", authMiddleware);
 
+function getLocale(c: { req: { raw: Request } }): string {
+  const cookie = getCookie(c as any, "locale");
+  return cookie === "en" ? "en" : "ja";
+}
+
 // Home - active tasks
 taskRoutes.get("/", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
-  const myTasks = await listActiveTasksForMember(memberId);
-  return c.html(<HomePage tasks={myTasks} displayName={displayName} />);
+  const locale = getLocale(c);
+  const filter = c.req.query("filter") ?? "all";
+  let myTasks = await listActiveTasksForMember(memberId);
+
+  if (filter === "open") {
+    myTasks = myTasks.filter((t) => t.status === "open");
+  } else if (filter === "done") {
+    myTasks = myTasks.filter((t) => t.status === "done");
+  }
+
+  // htmx partial request — return just the task list
+  if (c.req.header("HX-Request")) {
+    return c.html(
+      <HomeTaskListPartial tasks={myTasks} locale={locale} />,
+    );
+  }
+
+  return c.html(
+    <HomePage
+      tasks={myTasks}
+      displayName={displayName}
+      locale={locale}
+      activeFilter={filter}
+    />,
+  );
 });
 
 // Archived tasks
 taskRoutes.get("/archived", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const locale = getLocale(c);
   const archivedTasks = await listArchivedTasksForMember(memberId);
   return c.html(
-    <ArchivedPage tasks={archivedTasks} displayName={displayName} />,
+    <ArchivedPage
+      tasks={archivedTasks}
+      displayName={displayName}
+      locale={locale}
+    />,
   );
 });
 
@@ -36,6 +70,7 @@ taskRoutes.get("/archived", async (c) => {
 taskRoutes.get("/tasks/:id/edit", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const locale = getLocale(c);
 
   const task = await getTask(taskId);
   if (!task) return c.notFound();
@@ -43,7 +78,9 @@ taskRoutes.get("/tasks/:id/edit", async (c) => {
   const owner = await isTaskOwner(taskId, memberId);
   if (!owner) return c.redirect("/");
 
-  return c.html(<TaskEditPage task={task} displayName={displayName} />);
+  return c.html(
+    <TaskEditPage task={task} displayName={displayName} locale={locale} />,
+  );
 });
 
 // Update task
@@ -68,6 +105,7 @@ taskRoutes.post("/tasks/:id", async (c) => {
 taskRoutes.patch("/tasks/:id/status", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
+  const locale = getLocale(c);
 
   const owner = await isTaskOwner(taskId, memberId);
   if (!owner) return c.text("Forbidden", 403);
@@ -82,7 +120,7 @@ taskRoutes.patch("/tasks/:id/status", async (c) => {
   }
 
   // Return updated card
-  return c.html(<TaskCard task={task} showActions />);
+  return c.html(<TaskCard task={task} showActions locale={locale} />);
 });
 
 export default taskRoutes;
