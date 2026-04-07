@@ -3,7 +3,12 @@ import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
 import { TaskCard } from "./task-card";
 
-type Task = InferSelectModel<typeof tasks> & { done: boolean; isOwner: boolean };
+type AssigneeStatus = { displayName: string; done: boolean };
+type Task = InferSelectModel<typeof tasks> & {
+  done: boolean;
+  isOwner: boolean;
+  assignees: AssigneeStatus[];
+};
 
 export function TaskList({
   tasks,
@@ -33,6 +38,7 @@ export function TaskList({
           task={task}
           done={task.done}
           isOwner={task.isOwner}
+          assignees={task.assignees}
           showActions={showActions}
           locale={loc}
         />

@@ -11,6 +11,7 @@ import {
   toggleAssigneeDone,
   archiveTask,
   listTaskOwners,
+  listTaskAssigneesWithStatus,
   addTaskOwner,
   removeTaskOwner,
 } from "./service";
@@ -42,12 +43,16 @@ taskRoutes.get("/", async (c) => {
     myTasks = myTasks.filter((t) => t.done);
   }
 
-  // Check ownership for each task to determine if archive button should show
+  // Check ownership and fetch assignee status for owned tasks
   const tasksWithOwnership = await Promise.all(
-    myTasks.map(async (t) => ({
-      ...t,
-      isOwner: await isTaskOwner(t.id, memberId),
-    })),
+    myTasks.map(async (t) => {
+      const owner = await isTaskOwner(t.id, memberId);
+      return {
+        ...t,
+        isOwner: owner,
+        assignees: owner ? await listTaskAssigneesWithStatus(t.id) : [],
+      };
+    }),
   );
 
   // htmx partial request — return just the task list (but not for boosted navigation)
@@ -73,10 +78,14 @@ taskRoutes.get("/archived", async (c) => {
   const locale = getLocale(c);
   const archivedTasks = await listArchivedTasksForMember(memberId);
   const tasksWithOwnership = await Promise.all(
-    archivedTasks.map(async (t) => ({
-      ...t,
-      isOwner: await isTaskOwner(t.id, memberId),
-    })),
+    archivedTasks.map(async (t) => {
+      const owner = await isTaskOwner(t.id, memberId);
+      return {
+        ...t,
+        isOwner: owner,
+        assignees: owner ? await listTaskAssigneesWithStatus(t.id) : [],
+      };
+    }),
   );
   return c.html(
     <ArchivedPage
@@ -142,8 +151,9 @@ taskRoutes.patch("/tasks/:id/done", async (c) => {
   if (!task) return c.notFound();
 
   const owner = await isTaskOwner(taskId, memberId);
+  const assignees = owner ? await listTaskAssigneesWithStatus(taskId) : [];
   return c.html(
-    <TaskCard task={task} done={task.done} isOwner={owner} showActions locale={locale} />,
+    <TaskCard task={task} done={task.done} isOwner={owner} assignees={assignees} showActions locale={locale} />,
   );
 });
 

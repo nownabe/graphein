@@ -38,6 +38,17 @@ export async function getTaskAssignees(taskId: string) {
   return assignments.map((a) => a.member);
 }
 
+export async function listTaskAssigneesWithStatus(taskId: string) {
+  const assignments = await db.query.taskAssignees.findMany({
+    where: eq(taskAssignees.taskId, taskId),
+    with: { member: true },
+  });
+  return assignments.map((a) => ({
+    displayName: a.member.displayName,
+    done: a.done,
+  }));
+}
+
 export async function isTaskOwner(taskId: string, memberId: string) {
   const ownership = await db.query.taskOwners.findFirst({
     where: and(

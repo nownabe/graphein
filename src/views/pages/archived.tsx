@@ -5,7 +5,12 @@ import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 import { TaskList } from "../components/task-list";
 
-type Task = InferSelectModel<typeof tasks> & { done: boolean; isOwner: boolean };
+type AssigneeStatus = { displayName: string; done: boolean };
+type Task = InferSelectModel<typeof tasks> & {
+  done: boolean;
+  isOwner: boolean;
+  assignees: AssigneeStatus[];
+};
 
 export function ArchivedPage({
   tasks,

@@ -3,17 +3,20 @@ import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
 
 type Task = InferSelectModel<typeof tasks>;
+type AssigneeStatus = { displayName: string; done: boolean };
 
 export function TaskCard({
   task,
   done,
   isOwner,
+  assignees,
   showActions,
   locale,
 }: {
   task: Task;
   done?: boolean;
   isOwner?: boolean;
+  assignees?: AssigneeStatus[];
   showActions?: boolean;
   locale?: string;
 }) {
@@ -83,6 +86,22 @@ export function TaskCard({
               </a>
             )}
           </div>
+          {isOwner && assignees && assignees.length > 0 && (
+            <div class="flex flex-wrap gap-2 mt-2">
+              {assignees.map((a) => (
+                <span
+                  class={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                    a.done
+                      ? "bg-green-100 text-green-700"
+                      : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  <span>{a.done ? "\u2713" : "\u2015"}</span>
+                  <span>{a.displayName}</span>
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         {showActions && !task.archived && (
           <div class="flex items-center gap-1 shrink-0">
