@@ -5,7 +5,7 @@ import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 import { TaskList } from "../components/task-list";
 
-type Task = InferSelectModel<typeof tasks>;
+type Task = InferSelectModel<typeof tasks> & { done: boolean };
 
 export function StatusFilterTabs({
   activeFilter,

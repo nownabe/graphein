@@ -1,0 +1,27 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1775399088931,
+      "tag": "0000_flaky_lila_cheney",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1775569939878,
+      "tag": "0001_long_odin",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1775750400000,
+      "tag": "0002_assignee_done_status",
+      "breakpoints": true
+    }
+  ]
+}

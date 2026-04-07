@@ -7,6 +7,8 @@ import {
   getTask,
   isTaskOwner,
   updateTask,
+  toggleAssigneeDone,
+  archiveTask,
 } from "./service";
 import { HomePage, HomeTaskListPartial } from "../views/pages/home";
 import { ArchivedPage } from "../views/pages/archived.tsx";
@@ -30,9 +32,9 @@ taskRoutes.get("/", async (c) => {
   let myTasks = await listActiveTasksForMember(memberId);
 
   if (filter === "open") {
-    myTasks = myTasks.filter((t) => t.status === "open");
+    myTasks = myTasks.filter((t) => !t.done);
   } else if (filter === "done") {
-    myTasks = myTasks.filter((t) => t.status === "done");
+    myTasks = myTasks.filter((t) => t.done);
   }
 
   // htmx partial request — return just the task list (but not for boosted navigation)
@@ -101,8 +103,8 @@ taskRoutes.post("/tasks/:id", async (c) => {
   return c.redirect("/");
 });
 
-// Update task status (htmx inline)
-taskRoutes.patch("/tasks/:id/status", async (c) => {
+// Toggle assignee done status (htmx inline)
+taskRoutes.patch("/tasks/:id/done", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
   const locale = getLocale(c);
@@ -110,17 +112,24 @@ taskRoutes.patch("/tasks/:id/status", async (c) => {
   const owner = await isTaskOwner(taskId, memberId);
   if (!owner) return c.text("Forbidden", 403);
 
-  const body = await c.req.parseBody();
-  const status = body.status as "open" | "done" | "archived";
-  const task = await updateTask(taskId, { status });
+  const task = await toggleAssigneeDone(taskId, memberId);
+  if (!task) return c.notFound();
 
-  // If archived, remove the card from the list
-  if (status === "archived") {
-    return c.body(null, 200);
-  }
+  return c.html(<TaskCard task={task} done={task.done} showActions locale={locale} />);
+});
 
-  // Return updated card
-  return c.html(<TaskCard task={task} showActions locale={locale} />);
+// Archive task (htmx inline)
+taskRoutes.patch("/tasks/:id/archive", async (c) => {
+  const taskId = c.req.param("id");
+  const { sub: memberId } = c.get("jwtPayload");
+
+  const owner = await isTaskOwner(taskId, memberId);
+  if (!owner) return c.text("Forbidden", 403);
+
+  await archiveTask(taskId);
+
+  // Remove the card from the list
+  return c.body(null, 200);
 });
 
 export default taskRoutes;

@@ -3,7 +3,7 @@ import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
 import { TaskCard } from "./task-card";
 
-type Task = InferSelectModel<typeof tasks>;
+type Task = InferSelectModel<typeof tasks> & { done: boolean };
 
 export function TaskList({
   tasks,
@@ -31,6 +31,7 @@ export function TaskList({
         <TaskCard
           key={task.id}
           task={task}
+          done={task.done}
           showActions={showActions}
           locale={loc}
         />

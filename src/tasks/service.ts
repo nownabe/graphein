@@ -1,4 +1,4 @@
-import { eq, ne, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "../db/client";
 import { tasks, taskAssignees, members } from "../db/schema";
 
@@ -8,7 +8,9 @@ export async function listActiveTasksForMember(memberId: string) {
     with: { task: true },
     orderBy: desc(taskAssignees.assignedAt),
   });
-  return assignments.map((a) => a.task).filter((t) => t.status !== "archived");
+  return assignments
+    .filter((a) => !a.task.archived)
+    .map((a) => ({ ...a.task, done: a.done }));
 }
 
 export async function listArchivedTasksForMember(memberId: string) {
@@ -17,7 +19,9 @@ export async function listArchivedTasksForMember(memberId: string) {
     with: { task: true },
     orderBy: desc(taskAssignees.assignedAt),
   });
-  return assignments.map((a) => a.task).filter((t) => t.status === "archived");
+  return assignments
+    .filter((a) => a.task.archived)
+    .map((a) => ({ ...a.task, done: a.done }));
 }
 
 export async function getTask(taskId: string) {
@@ -42,13 +46,46 @@ export async function isTaskOwner(taskId: string, memberId: string) {
   return !!assignment;
 }
 
+export async function toggleAssigneeDone(taskId: string, memberId: string) {
+  const assignment = await db.query.taskAssignees.findFirst({
+    where: and(
+      eq(taskAssignees.taskId, taskId),
+      eq(taskAssignees.memberId, memberId),
+    ),
+  });
+  if (!assignment) return null;
+
+  const newDone = !assignment.done;
+  await db
+    .update(taskAssignees)
+    .set({ done: newDone })
+    .where(
+      and(
+        eq(taskAssignees.taskId, taskId),
+        eq(taskAssignees.memberId, memberId),
+      ),
+    );
+
+  const task = await getTask(taskId);
+  if (!task) return null;
+  return { ...task, done: newDone };
+}
+
+export async function archiveTask(taskId: string) {
+  const [updated] = await db
+    .update(tasks)
+    .set({ archived: true, updatedAt: new Date() })
+    .where(eq(tasks.id, taskId))
+    .returning();
+  return updated;
+}
+
 export async function updateTask(
   taskId: string,
   data: {
     title?: string;
     description?: string | null;
     deadline?: Date | null;
-    status?: "open" | "done" | "archived";
   },
 ) {
   const [updated] = await db

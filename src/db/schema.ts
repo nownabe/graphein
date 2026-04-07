@@ -3,7 +3,7 @@ import {
   text,
   timestamp,
   uuid,
-  pgEnum,
+  boolean,
   primaryKey,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
@@ -22,17 +22,11 @@ export const members = pgTable("members", {
     .defaultNow(),
 });
 
-export const taskStatusEnum = pgEnum("task_status", [
-  "open",
-  "done",
-  "archived",
-]);
-
 export const tasks = pgTable("tasks", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: text("title").notNull(),
   description: text("description"),
-  status: taskStatusEnum("status").notNull().default("open"),
+  archived: boolean("archived").notNull().default(false),
   deadline: timestamp("deadline", { withTimezone: true }),
   slackMessageTs: text("slack_message_ts"),
   slackChannelId: text("slack_channel_id"),
@@ -57,6 +51,7 @@ export const taskAssignees = pgTable(
     memberId: uuid("member_id")
       .notNull()
       .references(() => members.id, { onDelete: "cascade" }),
+    done: boolean("done").notNull().default(false),
     assignedAt: timestamp("assigned_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

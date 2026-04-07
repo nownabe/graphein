@@ -6,14 +6,17 @@ type Task = InferSelectModel<typeof tasks>;
 
 export function TaskCard({
   task,
+  done,
   showActions,
   locale,
 }: {
   task: Task;
+  done?: boolean;
   showActions?: boolean;
   locale?: string;
 }) {
   const loc = locale ?? "ja";
+  const isDone = done ?? false;
   const deadlineStr = task.deadline
     ? new Date(task.deadline).toLocaleString(loc === "en" ? "en-US" : "ja-JP", {
         year: "numeric",
@@ -26,10 +29,8 @@ export function TaskCard({
 
   const isOverdue =
     task.deadline &&
-    task.status === "open" &&
+    !isDone &&
     new Date(task.deadline) < new Date();
-
-  const isDone = task.status === "done";
 
   return (
     <div
@@ -37,12 +38,11 @@ export function TaskCard({
       class={`bg-white rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md ${isDone ? "opacity-60" : ""}`}
     >
       <div class="flex items-start gap-3">
-        {showActions && task.status !== "archived" && (
+        {showActions && !task.archived && (
           <input
             type="checkbox"
             checked={isDone}
-            hx-patch={`/tasks/${task.id}/status`}
-            hx-vals={isDone ? '{"status":"open"}' : '{"status":"done"}'}
+            hx-patch={`/tasks/${task.id}/done`}
             hx-target={`#task-${task.id}`}
             hx-swap="outerHTML"
             class="mt-1 h-5 w-5 rounded border-gray-300 text-indigo-600 cursor-pointer shrink-0"
@@ -82,7 +82,7 @@ export function TaskCard({
             )}
           </div>
         </div>
-        {showActions && task.status !== "archived" && (
+        {showActions && !task.archived && (
           <div class="flex items-center gap-1 shrink-0">
             <a
               href={`/tasks/${task.id}/edit`}
@@ -92,8 +92,7 @@ export function TaskCard({
               {t(loc, "button.edit")}
             </a>
             <button
-              hx-patch={`/tasks/${task.id}/status`}
-              hx-vals='{"status":"archived"}'
+              hx-patch={`/tasks/${task.id}/archive`}
               hx-target={`#task-${task.id}`}
               hx-swap="outerHTML"
               hx-confirm={t(loc, "confirm.archive")}
