@@ -84,7 +84,12 @@ taskRoutes.put("/tasks/:id", async (c) => {
     deadline: body.deadline ? new Date(body.deadline as string) : null,
   });
 
-  return c.redirect(`/tasks/${taskId}`);
+  const redirectUrl = `/tasks/${taskId}`;
+  if (c.req.header("HX-Request")) {
+    c.header("HX-Redirect", redirectUrl);
+    return c.body(null, 204);
+  }
+  return c.redirect(redirectUrl);
 });
 
 // Update task status
@@ -96,10 +101,15 @@ taskRoutes.patch("/tasks/:id/status", async (c) => {
   if (!owner) return c.text("Forbidden", 403);
 
   const body = await c.req.parseBody();
-  const status = body.status as "open" | "in_progress" | "done";
+  const status = body.status as "open" | "done" | "archived";
   await updateTask(taskId, { status });
 
-  return c.redirect(`/tasks/${taskId}`);
+  const redirectUrl = `/tasks/${taskId}`;
+  if (c.req.header("HX-Request")) {
+    c.header("HX-Redirect", redirectUrl);
+    return c.body(null, 204);
+  }
+  return c.redirect(redirectUrl);
 });
 
 export default taskRoutes;

@@ -39,7 +39,7 @@ export async function updateTask(
     title?: string;
     description?: string | null;
     deadline?: Date | null;
-    status?: "open" | "in_progress" | "done";
+    status?: "open" | "done" | "archived";
   },
 ) {
   const [updated] = await db

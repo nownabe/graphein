@@ -24,8 +24,8 @@ export const members = pgTable("members", {
 
 export const taskStatusEnum = pgEnum("task_status", [
   "open",
-  "in_progress",
   "done",
+  "archived",
 ]);
 
 export const tasks = pgTable("tasks", {

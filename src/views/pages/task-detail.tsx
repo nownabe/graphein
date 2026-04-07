@@ -8,27 +8,25 @@ type Task = InferSelectModel<typeof tasks>;
 type Member = InferSelectModel<typeof members>;
 
 const statusLabel: Record<string, string> = {
-  open: "未着手",
-  in_progress: "進行中",
+  open: "未完了",
   done: "完了",
+  archived: "アーカイブ済み",
 };
 
 const statusColor: Record<string, string> = {
   open: "bg-gray-100 text-gray-700",
-  in_progress: "bg-blue-100 text-blue-700",
   done: "bg-green-100 text-green-700",
+  archived: "bg-yellow-100 text-yellow-700",
 };
 
 const nextStatus: Record<string, string> = {
-  open: "in_progress",
-  in_progress: "done",
+  open: "done",
   done: "open",
 };
 
 const nextStatusAction: Record<string, string> = {
-  open: "着手する",
-  in_progress: "完了にする",
-  done: "再開する",
+  open: "完了にする",
+  done: "未完了に戻す",
 };
 
 export function TaskDetailPage({
@@ -108,7 +106,7 @@ export function TaskDetailPage({
               )}
             </dl>
 
-            {isOwner && (
+            {isOwner && task.status !== "archived" && (
               <div class="flex gap-3 border-t border-gray-200 pt-4">
                 <button
                   hx-patch={`/tasks/${task.id}/status`}
@@ -126,6 +124,14 @@ export function TaskDetailPage({
                 >
                   編集
                 </a>
+                <button
+                  hx-patch={`/tasks/${task.id}/status`}
+                  hx-vals={JSON.stringify({ status: "archived" })}
+                  hx-target="body"
+                  class="ml-auto px-4 py-2 rounded-md text-sm text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  アーカイブ
+                </button>
               </div>
             )}
           </div>

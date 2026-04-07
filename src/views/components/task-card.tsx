@@ -4,15 +4,15 @@ import type { tasks } from "../../db/schema";
 type Task = InferSelectModel<typeof tasks>;
 
 const statusLabel: Record<string, string> = {
-  open: "未着手",
-  in_progress: "進行中",
+  open: "未完了",
   done: "完了",
+  archived: "アーカイブ済み",
 };
 
 const statusColor: Record<string, string> = {
   open: "bg-gray-100 text-gray-700",
-  in_progress: "bg-blue-100 text-blue-700",
   done: "bg-green-100 text-green-700",
+  archived: "bg-yellow-100 text-yellow-700",
 };
 
 export function TaskCard({ task }: { task: Task }) {
