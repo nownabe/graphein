@@ -21,10 +21,10 @@ export function ArchivedPage({
       <Nav displayName={displayName} locale={locale} />
       <main class="max-w-3xl mx-auto px-4 py-8">
         <div class="flex items-center gap-4 mb-6">
-          <a href="/" class="text-sm text-indigo-600 hover:text-indigo-800">
+          <a href="/" class="text-sm text-warm-500 hover:text-vermillion-500 transition-colors">
             {t(locale, "link.backToMyTasks")}
           </a>
-          <h1 class="text-2xl font-bold text-gray-900">
+          <h1 class="font-display text-3xl font-semibold text-ink tracking-wide">
             {t(locale, "page.archived")}
           </h1>
         </div>

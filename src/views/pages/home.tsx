@@ -21,7 +21,7 @@ export function StatusFilterTabs({
   ];
 
   return (
-    <div class="flex gap-1 mb-4">
+    <div class="flex gap-1 mb-5">
       {tabs.map((tab) => {
         const isActive = tab.key === activeFilter;
         return (
@@ -31,10 +31,10 @@ export function StatusFilterTabs({
             hx-target="#task-list"
             hx-swap="innerHTML"
             hx-push-url="false"
-            class={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${
+            class={`px-3 py-1.5 text-sm font-medium rounded-md transition-all ${
               isActive
-                ? "bg-indigo-600 text-white"
-                : "bg-white text-gray-600 border border-gray-300 hover:bg-gray-50"
+                ? "bg-vermillion-500 text-white shadow-sm"
+                : "bg-cream text-warm-500 border border-warm-200 hover:text-ink hover:border-warm-300"
             }`}
           >
             {tab.label}
@@ -62,12 +62,12 @@ export function HomePage({
       <Nav displayName={displayName} locale={locale} />
       <main class="max-w-3xl mx-auto px-4 py-8">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-2xl font-bold text-gray-900">
+          <h1 class="font-display text-3xl font-semibold text-ink tracking-wide">
             {t(locale, "page.myTasks")}
           </h1>
           <a
             href="/archived"
-            class="text-sm text-gray-500 hover:text-gray-700"
+            class="text-sm text-warm-400 hover:text-vermillion-500 transition-colors"
           >
             {t(locale, "link.archived")}
           </a>

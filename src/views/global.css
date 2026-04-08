@@ -1,1 +1,102 @@
 @import "tailwindcss";
+
+@theme {
+  --color-paper: #f5f0e8;
+  --color-cream: #fefcf6;
+  --color-ink: #2c2420;
+  --color-sumi: #4a3f35;
+  --color-vermillion-50: #fef5f5;
+  --color-vermillion-100: #fde6e7;
+  --color-vermillion-500: #c53d43;
+  --color-vermillion-600: #b13338;
+  --color-vermillion-700: #9a2b2f;
+  --color-warm-50: #faf7f2;
+  --color-warm-100: #f0ebe2;
+  --color-warm-200: #e8dfd3;
+  --color-warm-300: #d4c9b8;
+  --color-warm-400: #b5a48e;
+  --color-warm-500: #9a8a73;
+  --color-warm-600: #6b5c4c;
+  --color-warm-700: #564a3d;
+  --color-warm-800: #433a30;
+  --color-forest-50: #f0f7f3;
+  --color-forest-100: #d9ede1;
+  --color-forest-500: #3d7a5f;
+  --color-forest-600: #2f6149;
+  --font-display: "Cormorant Garamond", "Shippori Mincho", serif;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", sans-serif;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  position: relative;
+}
+
+/* Subtle paper grain texture overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.025;
+  z-index: 9999;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+/* Custom checkbox styling */
+input[type="checkbox"] {
+  accent-color: var(--color-vermillion-500);
+}
+
+/* Focus ring styling */
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-vermillion-500) !important;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--color-vermillion-500) 20%, transparent) !important;
+}
+
+/* Smooth transitions for htmx swaps */
+.htmx-settling {
+  opacity: 1;
+  transition: opacity 200ms ease-in;
+}
+
+.htmx-swapping {
+  opacity: 0;
+  transition: opacity 100ms ease-out;
+}
+
+/* Details/summary marker */
+details summary {
+  list-style: none;
+}
+details summary::-webkit-details-marker {
+  display: none;
+}
+details summary::before {
+  content: "▸";
+  display: inline-block;
+  margin-right: 0.375rem;
+  font-size: 0.75rem;
+  color: var(--color-warm-400);
+  transition: transform 200ms ease;
+}
+details[open] summary::before {
+  transform: rotate(90deg);
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-warm-100);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-warm-300);
+  border-radius: 3px;
+}

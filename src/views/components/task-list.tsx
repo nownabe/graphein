@@ -19,14 +19,14 @@ export function TaskList({
   const loc = locale ?? "ja";
   if (tasks.length === 0) {
     return (
-      <div class="text-center py-12 text-gray-500">
-        <p class="text-lg">{emptyMessage ?? t(loc, "empty.default")}</p>
+      <div class="text-center py-16 text-warm-400">
+        <p class="text-base">{emptyMessage ?? t(loc, "empty.default")}</p>
       </div>
     );
   }
 
   return (
-    <div class="grid gap-3">
+    <div class="grid gap-2">
       {tasks.map((task) => (
         <TaskCard
           key={task.id}
