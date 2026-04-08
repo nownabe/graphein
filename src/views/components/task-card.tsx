@@ -48,16 +48,20 @@ export function TaskCard({
   return (
     <div id={`task-${task.id}`} class={`${cardBase} ${cardState}`}>
       <div class="flex items-start gap-3">
-        {showActions && !task.archived && isAssignee && (
-          <input
-            type="checkbox"
-            checked={isDone}
-            aria-label={task.title}
-            hx-patch={`/tasks/${task.id}/done`}
-            hx-target={`#task-${task.id}`}
-            hx-swap="outerHTML"
-            class="mt-0.5"
-          />
+        {showActions && !task.archived && (
+          isAssignee ? (
+            <input
+              type="checkbox"
+              checked={isDone}
+              aria-label={task.title}
+              hx-patch={`/tasks/${task.id}/done`}
+              hx-target={`#task-${task.id}`}
+              hx-swap="outerHTML"
+              class="mt-0.5"
+            />
+          ) : (
+            <div class="shrink-0" style="width:1.125rem" />
+          )
         )}
         <div class="min-w-0 flex-1">
           {task.description ? (
