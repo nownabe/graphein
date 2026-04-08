@@ -17,9 +17,10 @@ import {
   removeTaskOwner,
 } from "./service";
 import { findMemberBySlackUserId } from "../members/service";
-import { HomePage, HomeTaskListPartial } from "../views/pages/home";
+import { HomePage, HomeContentPartial } from "../views/pages/home";
+import type { FilterCounts } from "../views/pages/home";
 import { ArchivedPage } from "../views/pages/archived.tsx";
-import { TaskEditPage } from "../views/pages/task-detail.tsx";
+import { TaskEditPage, OwnersPartial } from "../views/pages/task-detail.tsx";
 import { TaskStatusPage } from "../views/pages/task-status.tsx";
 import { TaskCard } from "../views/components/task-card.tsx";
 
@@ -32,30 +33,39 @@ function getLocale(c: { req: { raw: Request } }): string {
   return cookie === "en" ? "en" : "ja";
 }
 
-// Home - active tasks
-taskRoutes.get("/", async (c) => {
-  const { sub: memberId, name: displayName } = c.get("jwtPayload");
-  const locale = getLocale(c);
-  const filter = c.req.query("filter") ?? "all";
-  let assignedTasks = await listActiveTasksForMember(memberId);
+async function buildHomeData(memberId: string, filter: string) {
+  const allAssignedTasks = await listActiveTasksForMember(memberId);
+  const ownedOnlyTasks = await listOwnedOnlyActiveTasksForMember(memberId);
 
+  const now = new Date();
+  const counts: FilterCounts = {
+    all: allAssignedTasks.length + ownedOnlyTasks.length,
+    open:
+      allAssignedTasks.filter((t) => !t.done).length + ownedOnlyTasks.length,
+    done: allAssignedTasks.filter((t) => t.done).length,
+  };
+  const overdueCount =
+    allAssignedTasks.filter(
+      (t) => !t.done && t.deadline && new Date(t.deadline) < now,
+    ).length +
+    ownedOnlyTasks.filter((t) => t.deadline && new Date(t.deadline) < now)
+      .length;
+
+  let filteredAssigned = allAssignedTasks;
   if (filter === "open") {
-    assignedTasks = assignedTasks.filter((t) => !t.done);
+    filteredAssigned = allAssignedTasks.filter((t) => !t.done);
   } else if (filter === "done") {
-    assignedTasks = assignedTasks.filter((t) => t.done);
+    filteredAssigned = allAssignedTasks.filter((t) => t.done);
   }
 
-  // Check ownership for each assigned task
   const assignedWithOwnership = await Promise.all(
-    assignedTasks.map(async (t) => ({
+    filteredAssigned.map(async (t) => ({
       ...t,
       isOwner: await isTaskOwner(t.id, memberId),
       isAssignee: true,
     })),
   );
 
-  // Owner-only tasks (not assigned to this member)
-  const ownedOnlyTasks = await listOwnedOnlyActiveTasksForMember(memberId);
   const ownedOnlyWithFlags = ownedOnlyTasks.map((t) => ({
     ...t,
     done: false,
@@ -63,12 +73,33 @@ taskRoutes.get("/", async (c) => {
     isAssignee: false,
   }));
 
-  const allTasks = [...assignedWithOwnership, ...ownedOnlyWithFlags];
+  const filteredOwnedOnly = filter === "done" ? [] : ownedOnlyWithFlags;
+  const allTasks = [...assignedWithOwnership, ...filteredOwnedOnly];
 
-  // htmx partial request — return just the task list (but not for boosted navigation)
+  return { allTasks, counts, overdueCount };
+}
+
+// Home - active tasks
+taskRoutes.get("/", async (c) => {
+  const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const locale = getLocale(c);
+  const filter = c.req.query("filter") ?? "all";
+
+  const { allTasks, counts, overdueCount } = await buildHomeData(
+    memberId,
+    filter,
+  );
+
+  // htmx partial request — return summary + tabs + task list
   if (c.req.header("HX-Request") && !c.req.header("HX-Boosted")) {
     return c.html(
-      <HomeTaskListPartial tasks={allTasks} locale={locale} />,
+      <HomeContentPartial
+        tasks={allTasks}
+        locale={locale}
+        activeFilter={filter}
+        counts={counts}
+        overdueCount={overdueCount}
+      />,
     );
   }
 
@@ -78,6 +109,8 @@ taskRoutes.get("/", async (c) => {
       displayName={displayName}
       locale={locale}
       activeFilter={filter}
+      counts={counts}
+      overdueCount={overdueCount}
     />,
   );
 });
@@ -183,7 +216,14 @@ taskRoutes.patch("/tasks/:id/done", async (c) => {
 
   const owner = await isTaskOwner(taskId, memberId);
   return c.html(
-    <TaskCard task={task} done={task.done} isOwner={owner} isAssignee showActions locale={locale} />,
+    <TaskCard
+      task={task}
+      done={task.done}
+      isOwner={owner}
+      isAssignee
+      showActions
+      locale={locale}
+    />,
   );
 });
 
@@ -224,12 +264,7 @@ taskRoutes.post("/tasks/:id/owners", async (c) => {
   const owners = await listTaskOwners(taskId);
 
   return c.html(
-    <TaskEditPage
-      task={task}
-      owners={owners}
-      displayName={c.get("jwtPayload").name}
-      locale={locale}
-    />,
+    <OwnersPartial task={task} owners={owners} locale={locale} />,
   );
 });
 
@@ -243,33 +278,14 @@ taskRoutes.delete("/tasks/:id/owners/:memberId", async (c) => {
   const owner = await isTaskOwner(taskId, memberId);
   if (!owner) return c.text("Forbidden", 403);
 
-  const result = await removeTaskOwner(taskId, targetMemberId);
-  if (result.error === "cannot_remove_last_owner") {
-    // Re-render the page with the current owners (no change)
-    const task = await getTask(taskId);
-    if (!task) return c.notFound();
-    const owners = await listTaskOwners(taskId);
-    return c.html(
-      <TaskEditPage
-        task={task}
-        owners={owners}
-        displayName={c.get("jwtPayload").name}
-        locale={locale}
-      />,
-    );
-  }
+  await removeTaskOwner(taskId, targetMemberId);
 
   const task = await getTask(taskId);
   if (!task) return c.notFound();
   const owners = await listTaskOwners(taskId);
 
   return c.html(
-    <TaskEditPage
-      task={task}
-      owners={owners}
-      displayName={c.get("jwtPayload").name}
-      locale={locale}
-    />,
+    <OwnersPartial task={task} owners={owners} locale={locale} />,
   );
 });
 

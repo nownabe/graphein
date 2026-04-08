@@ -19,52 +19,98 @@ export function TaskStatusPage({
   locale: string;
 }) {
   const doneCount = assignees.filter((a) => a.done).length;
-  const progressPct = assignees.length > 0 ? Math.round((doneCount / assignees.length) * 100) : 0;
 
   return (
-    <Layout title={t(locale, "page.taskStatus")} locale={locale}>
+    <Layout
+      title={`${task.title} | ${t(locale, "page.taskStatus")}`}
+      locale={locale}
+    >
       <Nav displayName={displayName} locale={locale} />
-      <main class="max-w-3xl mx-auto px-4 py-8">
+      <main class="max-w-3xl mx-auto px-6 py-10">
         <a
           href="/"
-          class="text-sm text-warm-500 hover:text-vermillion-500 transition-colors mb-4 inline-block"
+          class="text-xs text-muted hover:text-accent transition-colors mb-4 inline-flex items-center gap-1"
         >
-          {t(locale, "link.backToMyTasksFromEdit")}
-        </a>
-        <h1 class="font-display text-3xl font-semibold text-ink tracking-wide mb-2">
-          {task.title}
-        </h1>
-        <div class="flex items-center gap-3 mb-6">
-          <span class="text-sm text-warm-500">
-            {t(locale, "taskStatus.progress")}: {doneCount} / {assignees.length}
-          </span>
-          {/* Progress bar */}
-          <div class="flex-1 max-w-48 h-1.5 bg-warm-200 rounded-full overflow-hidden">
-            <div
-              class="h-full bg-forest-500 rounded-full transition-all"
-              style={`width: ${progressPct}%`}
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            class="shrink-0"
+          >
+            <path
+              d="M8.5 3.5L5 7l3.5 3.5"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
             />
-          </div>
+          </svg>
+          {t(locale, "link.backToMyTasks")}
+        </a>
+        <div class="mb-8">
+          <h1 class="text-xl font-bold text-ink tracking-tight mb-1">
+            {task.title}
+          </h1>
+          <p class="text-sm text-secondary">
+            {t(locale, "page.taskStatus")}
+          </p>
         </div>
 
-        <div class="bg-cream rounded-lg border border-warm-200">
-          <ul class="divide-y divide-warm-100">
+        {assignees.length > 0 && (
+          <div class="mb-8">
+            <div
+              class="flex gap-1 mb-2"
+              role="progressbar"
+              aria-valuenow={doneCount}
+              aria-valuemin={0}
+              aria-valuemax={assignees.length}
+            >
+              {assignees.map((a, i) => (
+                <div
+                  key={i}
+                  class={`h-2 flex-1 min-w-1 rounded-full transition-colors ${
+                    a.done ? "bg-success" : "bg-edge"
+                  }`}
+                  title={a.displayName}
+                />
+              ))}
+            </div>
+            <p class="text-xs text-secondary tabular-nums">
+              {doneCount}/{assignees.length}{" "}
+              {t(locale, "taskStatus.progress").toLowerCase()}
+            </p>
+          </div>
+        )}
+
+        <div class="bg-surface border border-edge rounded-[var(--radius-lg)]">
+          <ul class="divide-y divide-edge">
             {assignees.map((a) => (
-              <li class="flex items-center gap-3 px-6 py-4">
+              <li class="flex items-center gap-3 px-5 py-4">
                 <span
-                  class={`flex items-center justify-center w-6 h-6 rounded-full text-sm ${
+                  class={`flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold ${
                     a.done
-                      ? "bg-forest-100 text-forest-600"
-                      : "bg-warm-100 text-warm-400"
+                      ? "bg-[var(--color-glow-success)] text-success"
+                      : "bg-surface-hover text-muted"
                   }`}
                 >
                   {a.done ? "\u2713" : ""}
                 </span>
-                <span class={`text-sm ${a.done ? "text-warm-400" : "text-ink font-medium"}`}>
+                <span
+                  class={`text-sm ${
+                    a.done ? "text-secondary" : "text-ink font-medium"
+                  }`}
+                >
                   {a.displayName}
                 </span>
-                <span class={`ml-auto text-xs ${a.done ? "text-forest-500" : "text-warm-400"}`}>
-                  {a.done ? t(locale, "status.done") : t(locale, "status.open")}
+                <span
+                  class={`ml-auto text-xs font-semibold ${
+                    a.done ? "text-success" : "text-muted"
+                  }`}
+                >
+                  {a.done
+                    ? t(locale, "status.done")
+                    : t(locale, "status.open")}
                 </span>
               </li>
             ))}

@@ -5,7 +5,11 @@ import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 import { TaskList } from "../components/task-list";
 
-type Task = InferSelectModel<typeof tasks> & { done: boolean; isOwner: boolean; isAssignee: boolean };
+type Task = InferSelectModel<typeof tasks> & {
+  done: boolean;
+  isOwner: boolean;
+  isAssignee: boolean;
+};
 
 export function ArchivedPage({
   tasks,
@@ -19,15 +23,31 @@ export function ArchivedPage({
   return (
     <Layout title={t(locale, "page.archived")} locale={locale}>
       <Nav displayName={displayName} locale={locale} />
-      <main class="max-w-3xl mx-auto px-4 py-8">
-        <div class="flex items-center gap-4 mb-6">
-          <a href="/" class="text-sm text-warm-500 hover:text-vermillion-500 transition-colors">
-            {t(locale, "link.backToMyTasks")}
-          </a>
-          <h1 class="font-display text-3xl font-semibold text-ink tracking-wide">
-            {t(locale, "page.archived")}
-          </h1>
-        </div>
+      <main class="max-w-3xl mx-auto px-6 py-10">
+        <a
+          href="/"
+          class="text-xs text-muted hover:text-accent transition-colors mb-4 inline-flex items-center gap-1"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            class="shrink-0"
+          >
+            <path
+              d="M8.5 3.5L5 7l3.5 3.5"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            />
+          </svg>
+          {t(locale, "link.backToMyTasks")}
+        </a>
+        <h1 class="text-xl font-bold text-ink tracking-tight mb-8">
+          {t(locale, "page.archived")}
+        </h1>
         <TaskList
           tasks={tasks}
           emptyMessage={t(locale, "empty.archived")}

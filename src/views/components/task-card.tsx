@@ -22,57 +22,85 @@ export function TaskCard({
   const loc = locale ?? "ja";
   const isDone = done ?? false;
   const deadlineStr = task.deadline
-    ? new Date(task.deadline).toLocaleString(loc === "en" ? "en-US" : "ja-JP", {
-        year: "numeric",
-        month: "numeric",
-        day: "numeric",
-        hour: "2-digit",
-        minute: "2-digit",
-      })
+    ? new Date(task.deadline).toLocaleString(
+        loc === "en" ? "en-US" : "ja-JP",
+        {
+          year: "numeric",
+          month: "numeric",
+          day: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        },
+      )
     : null;
 
   const isOverdue =
-    task.deadline &&
-    !isDone &&
-    new Date(task.deadline) < new Date();
+    task.deadline && !isDone && new Date(task.deadline) < new Date();
+
+  const cardBase =
+    "group rounded-[var(--radius-lg)] border p-4 transition-all duration-150";
+  const cardState = isOverdue
+    ? "bg-[color-mix(in_srgb,var(--color-danger)_6%,var(--color-surface))] border-danger-dim/30"
+    : isDone
+      ? "bg-surface/50 border-edge/50"
+      : "bg-surface border-edge hover:border-muted";
 
   return (
-    <div
-      id={`task-${task.id}`}
-      class={`group bg-cream rounded-lg border border-warm-200 p-4 transition-all hover:shadow-[0_2px_12px_rgba(44,36,32,0.06)] hover:border-warm-300 ${
-        isDone ? "opacity-50" : ""
-      } ${!isDone && !task.archived ? "border-l-[3px] border-l-vermillion-500/0 hover:border-l-vermillion-500/60" : ""}`}
-    >
+    <div id={`task-${task.id}`} class={`${cardBase} ${cardState}`}>
       <div class="flex items-start gap-3">
         {showActions && !task.archived && isAssignee && (
           <input
             type="checkbox"
             checked={isDone}
+            aria-label={task.title}
             hx-patch={`/tasks/${task.id}/done`}
             hx-target={`#task-${task.id}`}
             hx-swap="outerHTML"
-            class="mt-1 h-5 w-5 rounded border-warm-300 cursor-pointer shrink-0"
+            class="mt-0.5"
           />
         )}
         <div class="min-w-0 flex-1">
           {task.description ? (
             <details>
-              <summary class={`font-medium cursor-pointer ${isDone ? "line-through text-warm-400" : "text-ink"}`}>
+              <summary
+                class={`font-medium text-sm leading-snug cursor-pointer select-none ${
+                  isDone ? "line-through text-muted" : "text-ink"
+                }`}
+              >
                 {task.title}
+                <span class="disclosure-arrow text-muted ml-1.5 text-[10px]">
+                  &#9654;
+                </span>
               </summary>
-              <p class={`text-sm mt-2 whitespace-pre-wrap leading-relaxed ${isDone ? "text-warm-400" : "text-warm-600"}`}>
+              <p
+                class={`text-[13px] mt-2 whitespace-pre-wrap leading-relaxed ${
+                  isDone ? "text-muted" : "text-secondary"
+                }`}
+              >
                 {task.description}
               </p>
             </details>
           ) : (
-            <h3 class={`font-medium ${isDone ? "line-through text-warm-400" : "text-ink"}`}>
+            <h3
+              class={`font-medium text-sm leading-snug ${
+                isDone ? "line-through text-muted" : "text-ink"
+              }`}
+            >
               {task.title}
             </h3>
           )}
-          <div class="flex items-center gap-3 mt-2 text-xs text-warm-500">
+          <div class="flex items-center gap-3 mt-1.5 text-xs text-secondary">
             {deadlineStr && (
-              <span class={isOverdue ? "text-vermillion-500 font-medium" : ""}>
-                {t(loc, "task.deadline")}: {deadlineStr}
+              <span class={isOverdue ? "text-danger font-semibold" : ""}>
+                {isOverdue && (
+                  <span class="mr-1">⚠</span>
+                )}
+                {deadlineStr}
+                {isOverdue && (
+                  <span class="ml-1">
+                    ({t(loc, "task.overdue")})
+                  </span>
+                )}
               </span>
             )}
             {task.slackPermalink && (
@@ -81,19 +109,31 @@ export function TaskCard({
                 target="_blank"
                 rel="noopener noreferrer"
                 hx-boost="false"
-                class="text-warm-500 hover:text-vermillion-500 transition-colors"
+                class="text-muted hover:text-accent transition-colors inline-flex items-center gap-1"
               >
+                <svg
+                  width="12"
+                  height="12"
+                  viewBox="0 0 12 12"
+                  fill="none"
+                  class="shrink-0"
+                >
+                  <path
+                    d="M2.5 7.5a1.25 1.25 0 1 1 0-2.5H5v1.25A1.25 1.25 0 0 1 3.75 7.5h-1.25zM4.5 4.5a1.25 1.25 0 1 1 2.5 0V7h-1.25A1.25 1.25 0 0 1 4.5 5.75V4.5zM7.5 4.5a1.25 1.25 0 1 1 0 2.5H5V5.75A1.25 1.25 0 0 1 6.25 4.5h1.25zM9.5 7.5a1.25 1.25 0 0 1-1.25-1.25V5H7v1.25A1.25 1.25 0 0 0 8.25 7.5H9.5z"
+                    fill="currentColor"
+                  />
+                </svg>
                 Slack
               </a>
             )}
           </div>
         </div>
         {showActions && !task.archived && (
-          <div class="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div class="actions-reveal flex items-center gap-0.5 shrink-0">
             {isOwner && (
               <a
                 href={`/tasks/${task.id}/status`}
-                class="text-xs px-2 py-1 rounded border border-warm-200 text-warm-500 hover:text-ink hover:border-warm-400 hover:bg-warm-50 transition-colors"
+                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
                 title={t(loc, "button.status.title")}
               >
                 {t(loc, "button.status")}
@@ -102,7 +142,7 @@ export function TaskCard({
             {isOwner && (
               <a
                 href={`/tasks/${task.id}/edit`}
-                class="text-xs px-2 py-1 rounded border border-warm-200 text-warm-500 hover:text-ink hover:border-warm-400 hover:bg-warm-50 transition-colors"
+                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
                 title={t(loc, "button.edit.title")}
               >
                 {t(loc, "button.edit")}
@@ -114,7 +154,7 @@ export function TaskCard({
                 hx-target={`#task-${task.id}`}
                 hx-swap="outerHTML"
                 hx-confirm={t(loc, "confirm.archive")}
-                class="text-xs px-2 py-1 rounded border border-warm-200 text-warm-400 hover:text-vermillion-500 hover:border-vermillion-500/30 hover:bg-vermillion-50 transition-colors"
+                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-danger hover:bg-[var(--color-glow-danger)] transition-colors"
                 title={t(loc, "button.archive.title")}
               >
                 {t(loc, "button.archive")}

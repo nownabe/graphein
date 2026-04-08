@@ -50,7 +50,8 @@ const messages: Record<Locale, Record<string, string>> = {
     "link.backToMyTasksFromEdit": "← マイタスクに戻る",
 
     // Empty states
-    "empty.tasks": "タスクはまだありません。Slack のショートカットからタスクを作成できます。",
+    "empty.tasks":
+      "タスクはまだありません。\nSlack のメンションからタスクが自動で作成されます。",
     "empty.archived": "アーカイブ済みのタスクはありません",
     "empty.default": "タスクはありません",
 
@@ -76,6 +77,20 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Language switcher
     "lang.switch": "EN",
+
+    // Task card
+    "task.overdue": "期限切れ",
+
+    // Temporal sections
+    "section.overdue": "期限切れ",
+    "section.today": "今日",
+    "section.thisWeek": "今週",
+    "section.later": "それ以降",
+    "section.noDueDate": "期限なし",
+
+    // Summary
+    "summary.open": "件が未完了",
+    "summary.overdue": "件が期限切れ",
   },
   en: {
     // Nav
@@ -127,7 +142,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Empty states
     "empty.tasks":
-      "No tasks yet. Create tasks from Slack using the shortcut.",
+      "No tasks yet.\nTasks are created automatically from Slack mentions.",
     "empty.archived": "No archived tasks",
     "empty.default": "No tasks",
 
@@ -153,6 +168,20 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Language switcher
     "lang.switch": "日本語",
+
+    // Task card
+    "task.overdue": "overdue",
+
+    // Temporal sections
+    "section.overdue": "Overdue",
+    "section.today": "Today",
+    "section.thisWeek": "This Week",
+    "section.later": "Later",
+    "section.noDueDate": "No Due Date",
+
+    // Summary
+    "summary.open": "open",
+    "summary.overdue": "overdue",
   },
 };
 
