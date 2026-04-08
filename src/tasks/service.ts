@@ -24,6 +24,24 @@ export async function listArchivedTasksForMember(memberId: string) {
     .map((a) => ({ ...a.task, done: a.done }));
 }
 
+export async function listOwnedOnlyActiveTasksForMember(memberId: string) {
+  const ownerships = await db.query.taskOwners.findMany({
+    where: eq(taskOwners.memberId, memberId),
+    with: { task: true },
+  });
+  const assignedTaskIds = new Set(
+    (
+      await db.query.taskAssignees.findMany({
+        where: eq(taskAssignees.memberId, memberId),
+        columns: { taskId: true },
+      })
+    ).map((a) => a.taskId),
+  );
+  return ownerships
+    .filter((o) => !o.task.archived && !assignedTaskIds.has(o.task.id))
+    .map((o) => o.task);
+}
+
 export async function getTask(taskId: string) {
   return db.query.tasks.findFirst({
     where: eq(tasks.id, taskId),

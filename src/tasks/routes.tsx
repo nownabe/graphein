@@ -4,6 +4,7 @@ import { authMiddleware } from "../auth/middleware";
 import {
   listActiveTasksForMember,
   listArchivedTasksForMember,
+  listOwnedOnlyActiveTasksForMember,
   getTask,
   isTaskOwner,
   isTaskAssignee,
@@ -36,32 +37,44 @@ taskRoutes.get("/", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const locale = getLocale(c);
   const filter = c.req.query("filter") ?? "all";
-  let myTasks = await listActiveTasksForMember(memberId);
+  let assignedTasks = await listActiveTasksForMember(memberId);
 
   if (filter === "open") {
-    myTasks = myTasks.filter((t) => !t.done);
+    assignedTasks = assignedTasks.filter((t) => !t.done);
   } else if (filter === "done") {
-    myTasks = myTasks.filter((t) => t.done);
+    assignedTasks = assignedTasks.filter((t) => t.done);
   }
 
-  // Check ownership for each task
-  const tasksWithOwnership = await Promise.all(
-    myTasks.map(async (t) => ({
+  // Check ownership for each assigned task
+  const assignedWithOwnership = await Promise.all(
+    assignedTasks.map(async (t) => ({
       ...t,
       isOwner: await isTaskOwner(t.id, memberId),
+      isAssignee: true,
     })),
   );
+
+  // Owner-only tasks (not assigned to this member)
+  const ownedOnlyTasks = await listOwnedOnlyActiveTasksForMember(memberId);
+  const ownedOnlyWithFlags = ownedOnlyTasks.map((t) => ({
+    ...t,
+    done: false,
+    isOwner: true,
+    isAssignee: false,
+  }));
+
+  const allTasks = [...assignedWithOwnership, ...ownedOnlyWithFlags];
 
   // htmx partial request — return just the task list (but not for boosted navigation)
   if (c.req.header("HX-Request") && !c.req.header("HX-Boosted")) {
     return c.html(
-      <HomeTaskListPartial tasks={tasksWithOwnership} locale={locale} />,
+      <HomeTaskListPartial tasks={allTasks} locale={locale} />,
     );
   }
 
   return c.html(
     <HomePage
-      tasks={tasksWithOwnership}
+      tasks={allTasks}
       displayName={displayName}
       locale={locale}
       activeFilter={filter}
@@ -78,6 +91,7 @@ taskRoutes.get("/archived", async (c) => {
     archivedTasks.map(async (t) => ({
       ...t,
       isOwner: await isTaskOwner(t.id, memberId),
+      isAssignee: true,
     })),
   );
   return c.html(
@@ -169,7 +183,7 @@ taskRoutes.patch("/tasks/:id/done", async (c) => {
 
   const owner = await isTaskOwner(taskId, memberId);
   return c.html(
-    <TaskCard task={task} done={task.done} isOwner={owner} showActions locale={locale} />,
+    <TaskCard task={task} done={task.done} isOwner={owner} isAssignee showActions locale={locale} />,
   );
 });
 

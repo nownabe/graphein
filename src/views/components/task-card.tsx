@@ -8,12 +8,14 @@ export function TaskCard({
   task,
   done,
   isOwner,
+  isAssignee,
   showActions,
   locale,
 }: {
   task: Task;
   done?: boolean;
   isOwner?: boolean;
+  isAssignee?: boolean;
   showActions?: boolean;
   locale?: string;
 }) {
@@ -40,7 +42,7 @@ export function TaskCard({
       class={`bg-white rounded-lg border border-gray-200 p-4 transition-shadow hover:shadow-md ${isDone ? "opacity-60" : ""}`}
     >
       <div class="flex items-start gap-3">
-        {showActions && !task.archived && (
+        {showActions && !task.archived && isAssignee && (
           <input
             type="checkbox"
             checked={isDone}
