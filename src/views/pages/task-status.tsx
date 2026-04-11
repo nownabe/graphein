@@ -60,14 +60,14 @@ export function TaskStatusPage({
         {assignees.length > 0 && (
           <div class="mb-8">
             <div
-              class="h-2 w-full rounded-full bg-edge overflow-hidden mb-2"
+              class="h-2 w-full rounded-full bg-surface-hover border border-edge overflow-hidden mb-2"
               role="progressbar"
               aria-valuenow={doneCount}
               aria-valuemin={0}
               aria-valuemax={assignees.length}
             >
               <div
-                class="h-full bg-success rounded-full transition-[width] duration-300"
+                class="h-full bg-success transition-[width] duration-300"
                 style={`width: ${(doneCount / assignees.length) * 100}%`}
               />
             </div>
