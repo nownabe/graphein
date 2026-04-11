@@ -60,21 +60,16 @@ export function TaskStatusPage({
         {assignees.length > 0 && (
           <div class="mb-8">
             <div
-              class="flex gap-1 mb-2"
+              class="h-2 w-full rounded-full bg-edge overflow-hidden mb-2"
               role="progressbar"
               aria-valuenow={doneCount}
               aria-valuemin={0}
               aria-valuemax={assignees.length}
             >
-              {assignees.map((a, i) => (
-                <div
-                  key={i}
-                  class={`h-2 flex-1 min-w-1 rounded-full transition-colors ${
-                    a.done ? "bg-success" : "bg-edge"
-                  }`}
-                  title={a.displayName}
-                />
-              ))}
+              <div
+                class="h-full bg-success rounded-full transition-[width] duration-300"
+                style={`width: ${(doneCount / assignees.length) * 100}%`}
+              />
             </div>
             <p class="text-xs text-secondary tabular-nums">
               {doneCount}/{assignees.length}{" "}
