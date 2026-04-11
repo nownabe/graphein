@@ -230,7 +230,7 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
       await client.chat.postMessage({
         channel: metadata.channelId,
         thread_ts: metadata.messageTs,
-        text: `タスクを作成しました: *${task.title}*\n${env.BASE_URL}/tasks/${task.id}`,
+        text: `タスクを作成しました: *${task.title}*\n${env.BASE_URL}/#task-${task.id}`,
       });
     } catch {
       // Non-critical: confirmation message failed
