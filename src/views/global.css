@@ -235,6 +235,35 @@ details[open] summary .disclosure-arrow {
   }
 }
 
+/* Anchor target highlight — pulses when the task card is navigated to via
+   `#task-<id>` so the user can find the freshly-created task. */
+[id^="task-"]:target {
+  animation: task-target-pulse 1.8s ease-out 1;
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 1px var(--color-accent),
+    0 0 24px 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+  scroll-margin-top: 5rem;
+}
+@keyframes task-target-pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent),
+      0 0 24px 0 color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+  60% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--color-accent) 0%, transparent),
+      0 0 24px 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 1px var(--color-accent),
+      0 0 24px 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [id^="task-"]:target {
+    animation: none;
+  }
+}
+
 /* Scrollbar — dark */
 ::-webkit-scrollbar {
   width: 6px;
