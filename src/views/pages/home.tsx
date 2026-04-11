@@ -99,7 +99,7 @@ export function HomeContentPartial({
           counts={counts}
         />
         <a
-          href="/archived"
+          href="/tasks/archived"
           class="text-xs text-muted hover:text-accent transition-colors"
         >
           {t(locale, "link.archived")}

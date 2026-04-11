@@ -28,7 +28,7 @@ export function TaskStatusPage({
       <Nav displayName={displayName} locale={locale} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <a
-          href="/"
+          href="/tasks"
           class="text-xs text-muted hover:text-accent transition-colors mb-4 inline-flex items-center gap-1"
         >
           <svg

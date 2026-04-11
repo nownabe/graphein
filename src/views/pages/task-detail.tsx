@@ -95,7 +95,7 @@ function TaskEditContent({
   return (
     <main class="max-w-3xl mx-auto px-6 py-10">
       <a
-        href="/"
+        href="/tasks"
         class="text-xs text-muted hover:text-accent transition-colors mb-4 inline-flex items-center gap-1"
       >
         <svg
@@ -184,7 +184,7 @@ function TaskEditContent({
             {t(locale, "button.save")}
           </button>
           <a
-            href="/"
+            href="/tasks"
             class="px-6 py-2.5 rounded-[var(--radius-sm)] text-sm text-secondary hover:text-ink hover:bg-surface-hover transition-colors"
           >
             {t(locale, "button.cancel")}

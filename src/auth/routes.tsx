@@ -82,7 +82,7 @@ auth.get("/slack/callback", async (c) => {
     maxAge: 60 * 60 * 24 * 7,
   });
 
-  return c.redirect("/");
+  return c.redirect("/tasks");
 });
 
 auth.get("/logout", (c) => {

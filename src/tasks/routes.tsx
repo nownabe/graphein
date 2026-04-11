@@ -80,8 +80,11 @@ async function buildHomeData(memberId: string, filter: string) {
   return { allTasks, counts, overdueCount };
 }
 
-// Home - active tasks
-taskRoutes.get("/", async (c) => {
+// Redirect root to the task list
+taskRoutes.get("/", (c) => c.redirect("/tasks"));
+
+// Task list - active tasks
+taskRoutes.get("/tasks", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const locale = getLocale(c);
   const filter = c.req.query("filter") ?? "all";
@@ -122,7 +125,7 @@ taskRoutes.get("/", async (c) => {
 });
 
 // Archived tasks
-taskRoutes.get("/archived", async (c) => {
+taskRoutes.get("/tasks/archived", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const locale = getLocale(c);
   const archivedTasks = await listArchivedTasksForMember(memberId);
@@ -156,7 +159,7 @@ taskRoutes.get("/tasks/:id/status", async (c) => {
   if (!task) return c.notFound();
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.redirect("/");
+  if (!owner) return c.redirect("/tasks");
 
   const assignees = await listTaskAssigneesWithStatus(taskId);
 
@@ -180,7 +183,7 @@ taskRoutes.get("/tasks/:id/edit", async (c) => {
   if (!task) return c.notFound();
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.redirect("/");
+  if (!owner) return c.redirect("/tasks");
 
   const owners = await listTaskOwners(taskId);
 
@@ -209,7 +212,7 @@ taskRoutes.post("/tasks/:id", async (c) => {
     deadline: body.deadline ? new Date(body.deadline as string) : null,
   });
 
-  return c.redirect("/");
+  return c.redirect("/tasks");
 });
 
 // Toggle assignee done status (assignee only)
