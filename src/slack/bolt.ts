@@ -71,7 +71,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
     // Resolve mentions to members
     const mentions = await resolveMentions(client, messageText);
     const assigneeIds: string[] = [];
-    const assigneeSlackUserIds: string[] = [];
+    const assigneeNames: string[] = [];
 
     for (const mention of mentions) {
       const member = await findOrCreateMember({
@@ -81,7 +81,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
         avatarUrl: null,
       });
       assigneeIds.push(member.id);
-      assigneeSlackUserIds.push(mention.slackUserId);
+      assigneeNames.push(mention.displayName);
     }
 
     // If no mentions, assign to the user who triggered the shortcut
@@ -90,17 +90,18 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
         user: shortcut.user.id,
       });
       if (triggeredBy.user?.profile?.email) {
+        const displayName =
+          triggeredBy.user.profile.display_name ||
+          triggeredBy.user.profile.real_name ||
+          shortcut.user.id;
         const member = await findOrCreateMember({
           slackUserId: shortcut.user.id,
           email: triggeredBy.user.profile.email,
-          displayName:
-            triggeredBy.user.profile.display_name ||
-            triggeredBy.user.profile.real_name ||
-            shortcut.user.id,
+          displayName,
           avatarUrl: triggeredBy.user.profile.image_72 ?? null,
         });
         assigneeIds.push(member.id);
-        assigneeSlackUserIds.push(shortcut.user.id);
+        assigneeNames.push(displayName);
       }
     }
 
@@ -141,7 +142,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
           permalink: permalinkRes.permalink ?? "",
           createdById: creator.id,
           assigneeIds,
-          assigneeSlackUserIds,
+          assigneeNames,
         }),
         title: { type: "plain_text", text: "タスク作成" },
         submit: { type: "plain_text", text: "作成" },
@@ -231,15 +232,15 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
 
     // Post confirmation message
     try {
-      const assigneeMentions: string[] = (
-        metadata.assigneeSlackUserIds ?? []
-      ).map((uid: string) => `<@${uid}>`);
-      const mentionText =
-        assigneeMentions.length > 0 ? assigneeMentions.join(" ") : "担当者";
+      const names: string[] = (metadata.assigneeNames ?? []).map(
+        (n: string) => `@${n}`,
+      );
+      const who = names.length > 0 ? names.join(" ") : "担当者";
+      const taskLink = `<${env.BASE_URL}/#task-${task.id}|タスク>`;
       await client.chat.postMessage({
         channel: metadata.channelId,
         thread_ts: metadata.messageTs,
-        text: `${mentionText} にタスクをアサインしました: *${task.title}*\n${env.BASE_URL}/#task-${task.id}`,
+        text: `${who} に${taskLink}をアサインしました: *${task.title}*`,
       });
     } catch {
       // Non-critical: confirmation message failed
