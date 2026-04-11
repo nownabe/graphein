@@ -97,15 +97,41 @@ export function TaskCard({
           )}
           <div class="flex items-center gap-3 mt-1.5 text-xs text-secondary">
             {deadlineStr && (
-              <span class={isOverdue ? "text-danger font-semibold" : ""}>
-                {isOverdue && (
-                  <span class="mr-1">⚠</span>
+              <span
+                class={`inline-flex items-center gap-1 ${isOverdue ? "text-danger font-semibold" : ""}`}
+                title={t(loc, "task.deadline")}
+              >
+                {isOverdue ? (
+                  <span aria-hidden="true">⚠</span>
+                ) : (
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    class="shrink-0 opacity-70"
+                    aria-hidden="true"
+                  >
+                    <circle
+                      cx="7"
+                      cy="7"
+                      r="5.5"
+                      stroke="currentColor"
+                      stroke-width="1.3"
+                    />
+                    <path
+                      d="M7 4v3.2l2 1.4"
+                      stroke="currentColor"
+                      stroke-width="1.3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
                 )}
+                <span class="sr-only">{t(loc, "task.deadline")}: </span>
                 {deadlineStr}
                 {isOverdue && (
-                  <span class="ml-1">
-                    ({t(loc, "task.overdue")})
-                  </span>
+                  <span>({t(loc, "task.overdue")})</span>
                 )}
               </span>
             )}
