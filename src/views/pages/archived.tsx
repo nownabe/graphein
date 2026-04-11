@@ -53,6 +53,7 @@ export function ArchivedPage({
         </h1>
         <TaskList
           tasks={tasks}
+          showActions
           emptyMessage={t(locale, "empty.archived")}
           locale={locale}
           mrkdwnLabels={mrkdwnLabels}

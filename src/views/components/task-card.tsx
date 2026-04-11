@@ -50,7 +50,7 @@ export function TaskCard({
   return (
     <div id={`task-${task.id}`} class={`${cardBase} ${cardState}`}>
       <div class="flex items-start gap-3">
-        {showActions && !task.archived && (
+        {showActions && (
           isAssignee ? (
             <input
               type="checkbox"
