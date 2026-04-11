@@ -71,7 +71,6 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
     // Resolve mentions to members
     const mentions = await resolveMentions(client, messageText);
     const assigneeIds: string[] = [];
-    const assigneeNames: string[] = [];
 
     for (const mention of mentions) {
       const member = await findOrCreateMember({
@@ -81,11 +80,17 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
         avatarUrl: null,
       });
       assigneeIds.push(member.id);
-      assigneeNames.push(mention.displayName);
     }
 
+    // Track the "assign target" labels for the confirmation reply. We want to
+    // show the original mention (e.g. the group handle `@frontend`) instead of
+    // expanding it into individual user mentions, so we extract them from the
+    // raw message text rather than from the resolved member list.
+    const assigneeLabels: string[] = [];
+    let fallbackToTriggerUser = assigneeIds.length === 0;
+
     // If no mentions, assign to the user who triggered the shortcut
-    if (assigneeIds.length === 0) {
+    if (fallbackToTriggerUser) {
       const triggeredBy = await client.users.info({
         user: shortcut.user.id,
       });
@@ -101,16 +106,37 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
           avatarUrl: triggeredBy.user.profile.image_72 ?? null,
         });
         assigneeIds.push(member.id);
-        assigneeNames.push(displayName);
+        assigneeLabels.push(`@${displayName}`);
+      } else {
+        fallbackToTriggerUser = false;
       }
     }
 
     // Hydrate Slack entities (<@U1>, <#C1>, <!subteam^S1>) with display labels
     // so the stored description renders with names instead of raw IDs.
+    const resolver = createSlackLabelResolver(client);
     const hydratedMessageText = await hydrateMentionLabels(
       messageText,
-      createSlackLabelResolver(client),
+      resolver,
     );
+
+    // Build display labels for the confirmation reply by walking the original
+    // message in order and picking up each user / usergroup mention. We prefer
+    // the inline `|label` form (from hydratedMessageText); if that's missing
+    // we fall back to the resolver, then to the raw id.
+    if (!fallbackToTriggerUser) {
+      const mentionRe =
+        /<@(U[A-Z0-9]+)(?:\|([^>]+))?>|<!subteam\^(S[A-Z0-9]+)(?:\|([^>]+))?>/g;
+      for (const m of hydratedMessageText.matchAll(mentionRe)) {
+        if (m[1]) {
+          const label = m[2] ?? (await resolver.user(m[1])) ?? m[1];
+          assigneeLabels.push(`@${label}`);
+        } else if (m[3]) {
+          const label = m[4] ?? (await resolver.usergroup(m[3])) ?? m[3];
+          assigneeLabels.push(`@${label}`);
+        }
+      }
+    }
 
     // Generate title and deadline with Gemini. Use the Slack message's post
     // time as the reference for relative expressions like "tomorrow".
@@ -142,7 +168,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
           permalink: permalinkRes.permalink ?? "",
           createdById: creator.id,
           assigneeIds,
-          assigneeNames,
+          assigneeLabels,
         }),
         title: { type: "plain_text", text: "タスク作成" },
         submit: { type: "plain_text", text: "作成" },
@@ -232,10 +258,8 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
 
     // Post confirmation message
     try {
-      const names: string[] = (metadata.assigneeNames ?? []).map(
-        (n: string) => `@${n}`,
-      );
-      const who = names.length > 0 ? names.join(" ") : "担当者";
+      const labels: string[] = metadata.assigneeLabels ?? [];
+      const who = labels.length > 0 ? labels.join(" ") : "担当者";
       const taskLink = `<${env.BASE_URL}/#task-${task.id}|タスク>`;
       await client.chat.postMessage({
         channel: metadata.channelId,
