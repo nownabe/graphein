@@ -153,6 +153,15 @@ export async function archiveTask(taskId: string) {
   return updated;
 }
 
+export async function unarchiveTask(taskId: string) {
+  const [updated] = await db
+    .update(tasks)
+    .set({ archived: false, updatedAt: new Date() })
+    .where(eq(tasks.id, taskId))
+    .returning();
+  return updated;
+}
+
 export async function updateTask(
   taskId: string,
   data: {

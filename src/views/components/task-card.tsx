@@ -163,27 +163,33 @@ export function TaskCard({
             )}
           </div>
         </div>
-        {showActions && !task.archived && (
+        {showActions && isOwner && (
           <div class="actions-reveal flex items-center gap-0.5 shrink-0">
-            {isOwner && (
-              <a
-                href={`/tasks/${task.id}/status`}
-                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
-                title={t(loc, "button.status.title")}
+            <a
+              href={`/tasks/${task.id}/status`}
+              class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
+              title={t(loc, "button.status.title")}
+            >
+              {t(loc, "button.status")}
+            </a>
+            <a
+              href={`/tasks/${task.id}/edit`}
+              class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
+              title={t(loc, "button.edit.title")}
+            >
+              {t(loc, "button.edit")}
+            </a>
+            {task.archived ? (
+              <button
+                hx-patch={`/tasks/${task.id}/unarchive`}
+                hx-target={`#task-${task.id}`}
+                hx-swap="outerHTML"
+                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-accent hover:bg-surface-hover transition-colors"
+                title={t(loc, "button.unarchive.title")}
               >
-                {t(loc, "button.status")}
-              </a>
-            )}
-            {isOwner && (
-              <a
-                href={`/tasks/${task.id}/edit`}
-                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
-                title={t(loc, "button.edit.title")}
-              >
-                {t(loc, "button.edit")}
-              </a>
-            )}
-            {isOwner && (
+                {t(loc, "button.unarchive")}
+              </button>
+            ) : (
               <button
                 hx-patch={`/tasks/${task.id}/archive`}
                 hx-target={`#task-${task.id}`}

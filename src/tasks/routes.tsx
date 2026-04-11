@@ -11,6 +11,7 @@ import {
   updateTask,
   toggleAssigneeDone,
   archiveTask,
+  unarchiveTask,
   listTaskOwners,
   listTaskAssigneesWithStatus,
   addTaskOwner,
@@ -253,6 +254,20 @@ taskRoutes.patch("/tasks/:id/archive", async (c) => {
   await archiveTask(taskId);
 
   // Remove the card from the list
+  return c.body(null, 200);
+});
+
+// Unarchive task (owner only)
+taskRoutes.patch("/tasks/:id/unarchive", async (c) => {
+  const taskId = c.req.param("id");
+  const { sub: memberId } = c.get("jwtPayload");
+
+  const owner = await isTaskOwner(taskId, memberId);
+  if (!owner) return c.text("Forbidden", 403);
+
+  await unarchiveTask(taskId);
+
+  // Remove the card from the archived list
   return c.body(null, 200);
 });
 

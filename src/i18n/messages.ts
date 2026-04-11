@@ -23,6 +23,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "button.edit": "編集",
     "button.status": "状態",
     "button.archive": "アーカイブ",
+    "button.unarchive": "戻す",
     "button.save": "保存",
     "button.cancel": "キャンセル",
 
@@ -32,6 +33,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "button.edit.title": "編集",
     "button.status.title": "完了状態を確認",
     "button.archive.title": "アーカイブ",
+    "button.unarchive.title": "アーカイブから戻す",
 
     // Form labels
     "form.title": "タイトル",
@@ -114,6 +116,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "button.edit": "Edit",
     "button.status": "Status",
     "button.archive": "Archive",
+    "button.unarchive": "Unarchive",
     "button.save": "Save",
     "button.cancel": "Cancel",
 
@@ -123,6 +126,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "button.edit.title": "Edit",
     "button.status.title": "View completion status",
     "button.archive.title": "Archive",
+    "button.unarchive.title": "Restore from archive",
 
     // Form labels
     "form.title": "Title",
