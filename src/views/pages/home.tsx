@@ -36,10 +36,10 @@ function StatusFilterTabs({
         return (
           <button
             key={tab.key}
-            hx-get={`/?filter=${tab.key}`}
+            hx-get={`/tasks?filter=${tab.key}`}
             hx-target="#home-content"
             hx-swap="innerHTML"
-            hx-push-url={`/?filter=${tab.key}`}
+            hx-push-url={`/tasks?filter=${tab.key}`}
             class={`px-3 py-1.5 text-xs font-semibold rounded-[6px] transition-all ${
               isActive
                 ? "bg-accent text-page"
