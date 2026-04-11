@@ -256,11 +256,13 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
     try {
       const labels: string[] = metadata.assigneeLabels ?? [];
       const who = labels.length > 0 ? labels.join(" ") : "担当者";
-      const taskLink = `<${env.BASE_URL}/#task-${task.id}|タスク>`;
+      // Slack link labels can't contain `|` or `>`; escape defensively.
+      const safeTitle = task.title.replace(/[|>]/g, " ");
+      const taskLink = `<${env.BASE_URL}/#task-${task.id}|${safeTitle}>`;
       await client.chat.postMessage({
         channel: metadata.channelId,
         thread_ts: metadata.messageTs,
-        text: `${who} に${taskLink}をアサインしました: *${task.title}*`,
+        text: `${who} にタスク *${taskLink}* をアサインしました`,
       });
     } catch {
       // Non-critical: confirmation message failed
