@@ -43,12 +43,28 @@ Before reporting that a task is complete, you MUST:
 
 ## Slack bot required scopes
 
-The Slack bot token needs at least these scopes for full functionality:
+### Production (runtime)
 
-- `chat:write`, `commands`, `im:history`, `channels:history`, `groups:history` — core message/shortcut handling
-- `users:read`, `users:read.email` — resolving user mentions to members
-- `usergroups:read` — resolving `<!subteam^...>` to group names
-- `channels:read`, `groups:read` — resolving `<#C...>` channel mentions to names (without these, channels render as raw IDs)
+These are the scopes the running web service needs. The shortcut handler
+receives the source message (including `blocks`) directly in the shortcut
+payload, so it does not need history scopes at runtime.
+
+- `commands` — receive the "Create task" message shortcut
+- `chat:write` — post task-created confirmation + ephemeral error messages
+- `users:read`, `users:read.email` — resolve `<@U...>` mentions to members
+- `usergroups:read` — resolve `<!subteam^...>` group handles
+- `channels:read`, `groups:read` — resolve `<#C...>` channel names
+  (without these, channels render as raw IDs)
+
+### Development / maintenance only
+
+Only needed when running `scripts/rehydrate-descriptions.ts` to backfill
+existing task descriptions by re-fetching the original Slack messages.
+Not required by the running service.
+
+- `channels:history`, `groups:history`, `im:history`, `mpim:history` —
+  read the original message via `conversations.history` to recover the
+  rich_text blocks
 
 ## Architecture
 

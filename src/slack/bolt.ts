@@ -6,6 +6,7 @@ import {
   hydrateMentionLabels,
   resolveMentions,
 } from "./helpers";
+import { blocksToMrkdwn } from "./rich-text";
 import { findOrCreateMember } from "../members/service";
 import { createTask } from "../tasks/service";
 import { generateTaskDetails } from "../llm/gemini";
@@ -26,7 +27,12 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
 
   if (shortcut.type !== "message_action") return;
 
-  const messageText = shortcut.message.text ?? "";
+  // Prefer the structured `blocks` data so bold/italic/strike/lists/quotes
+  // survive; fall back to plain `text` for legacy messages.
+  const messageText =
+    blocksToMrkdwn((shortcut.message as { blocks?: unknown }).blocks) ??
+    shortcut.message.text ??
+    "";
   const channelId = shortcut.channel.id;
   const messageTs = shortcut.message_ts;
   const triggerId = shortcut.trigger_id;

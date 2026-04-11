@@ -166,12 +166,12 @@ describe("parseMrkdwn - code", () => {
     expect(blocks).toEqual([
       {
         type: "paragraph",
-        children: [{ type: "text", value: "before\n" }],
+        children: [{ type: "text", value: "before" }],
       },
-      { type: "codeblock", value: "\nconst x = 1;\nconst y = 2;\n" },
+      { type: "codeblock", value: "const x = 1;\nconst y = 2;" },
       {
         type: "paragraph",
-        children: [{ type: "text", value: "\nafter" }],
+        children: [{ type: "text", value: "after" }],
       },
     ]);
   });
@@ -179,6 +179,123 @@ describe("parseMrkdwn - code", () => {
   it("does not format content inside a fenced code block", () => {
     expect(parseMrkdwn("```*not bold* <@U1>```")).toEqual([
       { type: "codeblock", value: "*not bold* <@U1>" },
+    ]);
+  });
+});
+
+describe("parseMrkdwn - lists", () => {
+  it("parses a flat bullet list", () => {
+    expect(parseMrkdwn("- one\n- two")).toEqual([
+      {
+        type: "list",
+        ordered: false,
+        items: [
+          { inlines: [{ type: "text", value: "one" }], children: [] },
+          { inlines: [{ type: "text", value: "two" }], children: [] },
+        ],
+      },
+    ]);
+  });
+
+  it("parses a flat ordered list", () => {
+    expect(parseMrkdwn("1. one\n2. two")).toEqual([
+      {
+        type: "list",
+        ordered: true,
+        items: [
+          { inlines: [{ type: "text", value: "one" }], children: [] },
+          { inlines: [{ type: "text", value: "two" }], children: [] },
+        ],
+      },
+    ]);
+  });
+
+  it("parses unicode bullet markers", () => {
+    expect(parseMrkdwn("• one\n• two")).toEqual([
+      {
+        type: "list",
+        ordered: false,
+        items: [
+          { inlines: [{ type: "text", value: "one" }], children: [] },
+          { inlines: [{ type: "text", value: "two" }], children: [] },
+        ],
+      },
+    ]);
+  });
+
+  it("parses nested lists based on indent", () => {
+    const blocks = parseMrkdwn(
+      "1. first\n    a. nested one\n    b. nested two\n2. second",
+    );
+    expect(blocks).toEqual([
+      {
+        type: "list",
+        ordered: true,
+        items: [
+          {
+            inlines: [{ type: "text", value: "first" }],
+            children: [
+              {
+                type: "list",
+                ordered: true,
+                items: [
+                  {
+                    inlines: [{ type: "text", value: "nested one" }],
+                    children: [],
+                  },
+                  {
+                    inlines: [{ type: "text", value: "nested two" }],
+                    children: [],
+                  },
+                ],
+              },
+            ],
+          },
+          { inlines: [{ type: "text", value: "second" }], children: [] },
+        ],
+      },
+    ]);
+  });
+
+  it("parses inline formatting inside list items", () => {
+    expect(parseMrkdwn("- *bold* item")).toEqual([
+      {
+        type: "list",
+        ordered: false,
+        items: [
+          {
+            inlines: [
+              {
+                type: "bold",
+                children: [{ type: "text", value: "bold" }],
+              },
+              { type: "text", value: " item" },
+            ],
+            children: [],
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("separates paragraphs from lists", () => {
+    expect(parseMrkdwn("intro\n- one\n- two\noutro")).toEqual([
+      {
+        type: "paragraph",
+        children: [{ type: "text", value: "intro" }],
+      },
+      {
+        type: "list",
+        ordered: false,
+        items: [
+          { inlines: [{ type: "text", value: "one" }], children: [] },
+          { inlines: [{ type: "text", value: "two" }], children: [] },
+        ],
+      },
+      {
+        type: "paragraph",
+        children: [{ type: "text", value: "outro" }],
+      },
     ]);
   });
 });
