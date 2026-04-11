@@ -48,8 +48,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Links
     "link.archived": "アーカイブ済み →",
-    "link.backToMyTasks": "← マイタスク",
-    "link.backToMyTasksFromEdit": "← マイタスクに戻る",
+    "link.backToMyTasks": "マイタスクに戻る",
 
     // Empty states
     "empty.tasks":
@@ -141,8 +140,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Links
     "link.archived": "Archived →",
-    "link.backToMyTasks": "← My Tasks",
-    "link.backToMyTasksFromEdit": "← Back to My Tasks",
+    "link.backToMyTasks": "Back to My Tasks",
 
     // Empty states
     "empty.tasks":

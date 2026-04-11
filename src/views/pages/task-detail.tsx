@@ -113,7 +113,7 @@ function TaskEditContent({
             stroke-linejoin="round"
           />
         </svg>
-        {t(locale, "link.backToMyTasksFromEdit")}
+        {t(locale, "link.backToMyTasks")}
       </a>
       <div class="mb-8">
         <h1 class="text-xl font-bold text-ink tracking-tight mb-1">
