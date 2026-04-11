@@ -17,12 +17,20 @@ import {
   addTaskOwner,
   removeTaskOwner,
 } from "./service";
-import { findMemberBySlackUserId } from "../members/service";
+import {
+  findMemberById,
+  findMemberBySlackUserId,
+  searchMembersByName,
+} from "../members/service";
 import { buildMrkdwnLabels } from "../slack/labels";
 import { HomePage, HomeContentPartial } from "../views/pages/home";
 import type { FilterCounts } from "../views/pages/home";
 import { ArchivedPage } from "../views/pages/archived.tsx";
-import { TaskEditPage, OwnersPartial } from "../views/pages/task-detail.tsx";
+import {
+  TaskEditPage,
+  OwnersPartial,
+  OwnerSearchResults,
+} from "../views/pages/task-detail.tsx";
 import { TaskStatusPage } from "../views/pages/task-status.tsx";
 import { TaskCard } from "../views/components/task-card.tsx";
 
@@ -271,6 +279,26 @@ taskRoutes.patch("/tasks/:id/unarchive", async (c) => {
   return c.body(null, 200);
 });
 
+// Owner autocomplete search (owner only)
+taskRoutes.get("/tasks/:id/owners/search", async (c) => {
+  const taskId = c.req.param("id");
+  const { sub: memberId } = c.get("jwtPayload");
+  const locale = getLocale(c);
+
+  const owner = await isTaskOwner(taskId, memberId);
+  if (!owner) return c.text("Forbidden", 403);
+
+  const q = c.req.query("q")?.trim() ?? "";
+  const currentOwners = await listTaskOwners(taskId);
+  const results = await searchMembersByName(q, {
+    excludeIds: currentOwners.map((o) => o.id),
+  });
+
+  return c.html(
+    <OwnerSearchResults taskId={taskId} results={results} locale={locale} />,
+  );
+});
+
 // Add task owner (owner only)
 taskRoutes.post("/tasks/:id/owners", async (c) => {
   const taskId = c.req.param("id");
@@ -281,10 +309,19 @@ taskRoutes.post("/tasks/:id/owners", async (c) => {
   if (!owner) return c.text("Forbidden", 403);
 
   const body = await c.req.parseBody();
+  // Prefer member_id (from the autocomplete results); fall back to
+  // slack_user_id for any older clients still posting raw Slack IDs.
+  const newOwnerMemberId = (body.member_id as string)?.trim();
   const slackUserId = (body.slack_user_id as string)?.trim();
-  if (!slackUserId) return c.text("Bad Request", 400);
 
-  const member = await findMemberBySlackUserId(slackUserId);
+  let member = null;
+  if (newOwnerMemberId) {
+    member = await findMemberById(newOwnerMemberId);
+  } else if (slackUserId) {
+    member = await findMemberBySlackUserId(slackUserId);
+  } else {
+    return c.text("Bad Request", 400);
+  }
   if (!member) return c.text("Member not found", 404);
 
   await addTaskOwner(taskId, member.id);

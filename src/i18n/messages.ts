@@ -73,6 +73,8 @@ const messages: Record<Locale, Record<string, string>> = {
     // Owners
     "owners.title": "オーナー",
     "owners.slackUserIdPlaceholder": "Slack ユーザー ID",
+    "owners.searchPlaceholder": "名前またはメールで検索",
+    "owners.searchNoResults": "該当するメンバーが見つかりません",
     "button.addOwner": "追加",
     "button.remove": "除外",
 
@@ -165,6 +167,8 @@ const messages: Record<Locale, Record<string, string>> = {
     // Owners
     "owners.title": "Owners",
     "owners.slackUserIdPlaceholder": "Slack User ID",
+    "owners.searchPlaceholder": "Search by name or email",
+    "owners.searchNoResults": "No matching members",
     "button.addOwner": "Add",
     "button.remove": "Remove",
 

@@ -47,27 +47,58 @@ export function OwnersPartial({
         ))}
       </ul>
 
-      <form
-        hx-post={`/tasks/${task.id}/owners`}
-        hx-target="#owners-section"
-        hx-swap="outerHTML"
-        class="flex gap-2"
-      >
+      <div class="relative">
         <input
           type="text"
-          name="slack_user_id"
-          placeholder={t(locale, "owners.slackUserIdPlaceholder")}
-          required
-          class="flex-1 rounded-[var(--radius-sm)] border border-edge bg-page px-4 py-2.5 text-sm text-ink placeholder:text-muted transition-colors"
+          name="q"
+          autocomplete="off"
+          placeholder={t(locale, "owners.searchPlaceholder")}
+          hx-get={`/tasks/${task.id}/owners/search`}
+          hx-trigger="input changed delay:150ms, focus"
+          hx-target="#owner-search-results"
+          hx-swap="innerHTML"
+          class="block w-full rounded-[var(--radius-sm)] border border-edge bg-page px-4 py-2.5 text-sm text-ink placeholder:text-muted transition-colors"
         />
-        <button
-          type="submit"
-          class="text-sm px-5 py-2.5 rounded-[var(--radius-sm)] bg-accent text-page font-semibold hover:bg-accent-hover transition-colors"
-        >
-          {t(locale, "button.addOwner")}
-        </button>
-      </form>
+        <div id="owner-search-results" class="mt-2" />
+      </div>
     </div>
+  );
+}
+
+export function OwnerSearchResults({
+  taskId,
+  results,
+  locale,
+}: {
+  taskId: string;
+  results: Member[];
+  locale: string;
+}) {
+  if (results.length === 0) {
+    return (
+      <p class="text-xs text-muted px-3 py-2">
+        {t(locale, "owners.searchNoResults")}
+      </p>
+    );
+  }
+  return (
+    <ul class="border border-edge rounded-[var(--radius-sm)] bg-page divide-y divide-edge overflow-hidden">
+      {results.map((m) => (
+        <li key={m.id}>
+          <button
+            type="button"
+            hx-post={`/tasks/${taskId}/owners`}
+            hx-vals={JSON.stringify({ member_id: m.id })}
+            hx-target="#owners-section"
+            hx-swap="outerHTML"
+            class="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface-hover transition-colors cursor-pointer flex items-center justify-between"
+          >
+            <span>{m.displayName}</span>
+            <span class="text-xs text-muted">{m.email}</span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 

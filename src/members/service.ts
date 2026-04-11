@@ -1,4 +1,4 @@
-import { eq, inArray } from "drizzle-orm";
+import { eq, inArray, ilike, or } from "drizzle-orm";
 import { db } from "../db/client";
 import { members } from "../db/schema";
 
@@ -47,4 +47,22 @@ export async function findMembersBySlackUserIds(slackUserIds: string[]) {
   return db.query.members.findMany({
     where: inArray(members.slackUserId, slackUserIds),
   });
+}
+
+// Case-insensitive name/email search for owner autocomplete.
+export async function searchMembersByName(
+  q: string,
+  opts: { excludeIds?: string[]; limit?: number } = {},
+) {
+  const query = q.trim();
+  if (!query) return [];
+  const like = `%${query}%`;
+  const excluded = opts.excludeIds ?? [];
+  const rows = await db.query.members.findMany({
+    where: or(ilike(members.displayName, like), ilike(members.email, like)),
+    orderBy: (m, { asc }) => asc(m.displayName),
+    limit: (opts.limit ?? 8) + excluded.length,
+  });
+  const filtered = rows.filter((r) => !excluded.includes(r.id));
+  return filtered.slice(0, opts.limit ?? 8);
 }
