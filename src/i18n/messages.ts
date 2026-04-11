@@ -57,7 +57,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Login page
     "login.title": "Graphein",
-    "login.description": "Slack のポストをタスクに変換",
+    "login.description": "ἐκ λόγων εἰς ἔργα",
     "login.slack": "Slack でログイン",
 
     // Filter tabs
@@ -148,7 +148,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Login page
     "login.title": "Graphein",
-    "login.description": "Create tasks from Slack messages",
+    "login.description": "ἐκ λόγων εἰς ἔργα",
     "login.slack": "Sign in with Slack",
 
     // Filter tabs
