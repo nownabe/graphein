@@ -108,8 +108,10 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
       createSlackLabelResolver(client),
     );
 
-    // Generate title and deadline with Gemini
-    const details = await generateTaskDetails(messageText);
+    // Generate title and deadline with Gemini. Use the Slack message's post
+    // time as the reference for relative expressions like "tomorrow".
+    const postedAt = new Date(Number(messageTs.split(".")[0]) * 1000);
+    const details = await generateTaskDetails(messageText, postedAt);
 
     // Creator is the person who triggered the shortcut
     const creatorInfo = await client.users.info({ user: shortcut.user.id });
