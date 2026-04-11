@@ -106,7 +106,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
           avatarUrl: triggeredBy.user.profile.image_72 ?? null,
         });
         assigneeIds.push(member.id);
-        assigneeLabels.push(`@${displayName}`);
+        assigneeLabels.push(`<@${shortcut.user.id}>`);
       } else {
         fallbackToTriggerUser = false;
       }
@@ -120,21 +120,17 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
       resolver,
     );
 
-    // Build display labels for the confirmation reply by walking the original
-    // message in order and picking up each user / usergroup mention. We prefer
-    // the inline `|label` form (from hydratedMessageText); if that's missing
-    // we fall back to the resolver, then to the raw id.
+    // Collect mention tokens for the confirmation reply. We keep the original
+    // `<@U1>` / `<!subteam^S1>` form so Slack renders them as real mentions
+    // (and notifies), without expanding a group mention into individual users.
     if (!fallbackToTriggerUser) {
-      const mentionRe =
-        /<@(U[A-Z0-9]+)(?:\|([^>]+))?>|<!subteam\^(S[A-Z0-9]+)(?:\|([^>]+))?>/g;
-      for (const m of hydratedMessageText.matchAll(mentionRe)) {
-        if (m[1]) {
-          const label = m[2] ?? (await resolver.user(m[1])) ?? m[1];
-          assigneeLabels.push(`@${label}`);
-        } else if (m[3]) {
-          const label = m[4] ?? (await resolver.usergroup(m[3])) ?? m[3];
-          assigneeLabels.push(`@${label}`);
-        }
+      const mentionRe = /<@U[A-Z0-9]+(?:\|[^>]+)?>|<!subteam\^S[A-Z0-9]+(?:\|[^>]+)?>/g;
+      const seen = new Set<string>();
+      for (const m of messageText.matchAll(mentionRe)) {
+        const bareId = m[0].replace(/\|[^>]+>/, ">");
+        if (seen.has(bareId)) continue;
+        seen.add(bareId);
+        assigneeLabels.push(bareId);
       }
     }
 
