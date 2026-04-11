@@ -1,6 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
+import type { MrkdwnOptions } from "../../slack/mrkdwn";
 import { TaskCard } from "./task-card";
 
 type Task = InferSelectModel<typeof tasks> & {
@@ -85,10 +86,12 @@ function TaskSection({
   group,
   showActions,
   locale,
+  mrkdwnLabels,
 }: {
   group: TaskGroup;
   showActions?: boolean;
   locale: string;
+  mrkdwnLabels?: MrkdwnOptions;
 }) {
   return (
     <div>
@@ -116,6 +119,7 @@ function TaskSection({
             isAssignee={task.isAssignee}
             showActions={showActions}
             locale={locale}
+            mrkdwnLabels={mrkdwnLabels}
           />
         ))}
       </div>
@@ -129,12 +133,14 @@ export function TaskList({
   emptyMessage,
   locale,
   grouped,
+  mrkdwnLabels,
 }: {
   tasks: Task[];
   showActions?: boolean;
   emptyMessage?: string;
   locale?: string;
   grouped?: boolean;
+  mrkdwnLabels?: MrkdwnOptions;
 }) {
   const loc = locale ?? "ja";
 
@@ -189,6 +195,7 @@ export function TaskList({
             group={group}
             showActions={showActions}
             locale={loc}
+            mrkdwnLabels={mrkdwnLabels}
           />
         ))}
       </div>
@@ -206,6 +213,7 @@ export function TaskList({
           isAssignee={task.isAssignee}
           showActions={showActions}
           locale={loc}
+          mrkdwnLabels={mrkdwnLabels}
         />
       ))}
     </div>

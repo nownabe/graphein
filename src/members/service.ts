@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { members } from "../db/schema";
 
@@ -39,5 +39,12 @@ export async function findMemberById(id: string) {
 export async function findMemberBySlackUserId(slackUserId: string) {
   return db.query.members.findFirst({
     where: eq(members.slackUserId, slackUserId),
+  });
+}
+
+export async function findMembersBySlackUserIds(slackUserIds: string[]) {
+  if (slackUserIds.length === 0) return [];
+  return db.query.members.findMany({
+    where: inArray(members.slackUserId, slackUserIds),
   });
 }

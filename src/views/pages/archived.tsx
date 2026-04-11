@@ -1,6 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
+import type { MrkdwnOptions } from "../../slack/mrkdwn";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 import { TaskList } from "../components/task-list";
@@ -15,10 +16,12 @@ export function ArchivedPage({
   tasks,
   displayName,
   locale,
+  mrkdwnLabels,
 }: {
   tasks: Task[];
   displayName: string;
   locale: string;
+  mrkdwnLabels?: MrkdwnOptions;
 }) {
   return (
     <Layout title={t(locale, "page.archived")} locale={locale}>
@@ -52,6 +55,7 @@ export function ArchivedPage({
           tasks={tasks}
           emptyMessage={t(locale, "empty.archived")}
           locale={locale}
+          mrkdwnLabels={mrkdwnLabels}
         />
       </main>
     </Layout>

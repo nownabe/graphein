@@ -1,6 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
+import type { MrkdwnOptions } from "../../slack/mrkdwn";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 import { TaskList } from "../components/task-list";
@@ -66,12 +67,14 @@ export function HomeContentPartial({
   activeFilter,
   counts,
   overdueCount,
+  mrkdwnLabels,
 }: {
   tasks: Task[];
   locale: string;
   activeFilter: string;
   counts: FilterCounts;
   overdueCount: number;
+  mrkdwnLabels?: MrkdwnOptions;
 }) {
   return (
     <>
@@ -108,6 +111,7 @@ export function HomeContentPartial({
         emptyMessage={t(locale, "empty.tasks")}
         locale={locale}
         grouped
+        mrkdwnLabels={mrkdwnLabels}
       />
     </>
   );
@@ -120,6 +124,7 @@ export function HomePage({
   activeFilter,
   counts,
   overdueCount,
+  mrkdwnLabels,
 }: {
   tasks: Task[];
   displayName: string;
@@ -127,6 +132,7 @@ export function HomePage({
   activeFilter?: string;
   counts: FilterCounts;
   overdueCount: number;
+  mrkdwnLabels?: MrkdwnOptions;
 }) {
   const filter = activeFilter ?? "all";
   return (
@@ -140,6 +146,7 @@ export function HomePage({
             activeFilter={filter}
             counts={counts}
             overdueCount={overdueCount}
+            mrkdwnLabels={mrkdwnLabels}
           />
         </div>
       </main>

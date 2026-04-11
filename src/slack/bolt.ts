@@ -1,7 +1,11 @@
 import { App } from "@slack/bolt";
 import { env } from "../env";
 import { HonoReceiver } from "./receiver";
-import { resolveMentions } from "./helpers";
+import {
+  createSlackLabelResolver,
+  hydrateMentionLabels,
+  resolveMentions,
+} from "./helpers";
 import { findOrCreateMember } from "../members/service";
 import { createTask } from "../tasks/service";
 import { generateTaskDetails } from "../llm/gemini";
@@ -91,6 +95,13 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
       }
     }
 
+    // Hydrate Slack entities (<@U1>, <#C1>, <!subteam^S1>) with display labels
+    // so the stored description renders with names instead of raw IDs.
+    const hydratedMessageText = await hydrateMentionLabels(
+      messageText,
+      createSlackLabelResolver(client),
+    );
+
     // Generate title and deadline with Gemini
     const details = await generateTaskDetails(messageText);
 
@@ -115,7 +126,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
         private_metadata: JSON.stringify({
           channelId,
           messageTs,
-          messageText,
+          messageText: hydratedMessageText,
           permalink: permalinkRes.permalink ?? "",
           createdById: creator.id,
           assigneeIds,

@@ -17,6 +17,7 @@ import {
   removeTaskOwner,
 } from "./service";
 import { findMemberBySlackUserId } from "../members/service";
+import { buildMrkdwnLabels } from "../slack/labels";
 import { HomePage, HomeContentPartial } from "../views/pages/home";
 import type { FilterCounts } from "../views/pages/home";
 import { ArchivedPage } from "../views/pages/archived.tsx";
@@ -89,6 +90,9 @@ taskRoutes.get("/", async (c) => {
     memberId,
     filter,
   );
+  const mrkdwnLabels = await buildMrkdwnLabels(
+    allTasks.map((t) => t.description),
+  );
 
   // htmx partial request — return summary + tabs + task list
   if (c.req.header("HX-Request") && !c.req.header("HX-Boosted")) {
@@ -99,6 +103,7 @@ taskRoutes.get("/", async (c) => {
         activeFilter={filter}
         counts={counts}
         overdueCount={overdueCount}
+        mrkdwnLabels={mrkdwnLabels}
       />,
     );
   }
@@ -111,6 +116,7 @@ taskRoutes.get("/", async (c) => {
       activeFilter={filter}
       counts={counts}
       overdueCount={overdueCount}
+      mrkdwnLabels={mrkdwnLabels}
     />,
   );
 });
@@ -127,11 +133,15 @@ taskRoutes.get("/archived", async (c) => {
       isAssignee: true,
     })),
   );
+  const mrkdwnLabels = await buildMrkdwnLabels(
+    tasksWithOwnership.map((t) => t.description),
+  );
   return c.html(
     <ArchivedPage
       tasks={tasksWithOwnership}
       displayName={displayName}
       locale={locale}
+      mrkdwnLabels={mrkdwnLabels}
     />,
   );
 });
@@ -215,6 +225,7 @@ taskRoutes.patch("/tasks/:id/done", async (c) => {
   if (!task) return c.notFound();
 
   const owner = await isTaskOwner(taskId, memberId);
+  const mrkdwnLabels = await buildMrkdwnLabels([task.description]);
   return c.html(
     <TaskCard
       task={task}
@@ -223,6 +234,7 @@ taskRoutes.patch("/tasks/:id/done", async (c) => {
       isAssignee
       showActions
       locale={locale}
+      mrkdwnLabels={mrkdwnLabels}
     />,
   );
 });

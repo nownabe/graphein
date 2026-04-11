@@ -1,7 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
-import { Mrkdwn } from "../../slack/mrkdwn";
+import { Mrkdwn, type MrkdwnOptions } from "../../slack/mrkdwn";
 
 type Task = InferSelectModel<typeof tasks>;
 
@@ -12,6 +12,7 @@ export function TaskCard({
   isAssignee,
   showActions,
   locale,
+  mrkdwnLabels,
 }: {
   task: Task;
   done?: boolean;
@@ -19,6 +20,7 @@ export function TaskCard({
   isAssignee?: boolean;
   showActions?: boolean;
   locale?: string;
+  mrkdwnLabels?: MrkdwnOptions;
 }) {
   const loc = locale ?? "ja";
   const isDone = done ?? false;
@@ -81,7 +83,7 @@ export function TaskCard({
                   isDone ? "text-muted" : "text-secondary"
                 }`}
               >
-                <Mrkdwn text={task.description} />
+                <Mrkdwn text={task.description} options={mrkdwnLabels} />
               </div>
             </details>
           ) : (

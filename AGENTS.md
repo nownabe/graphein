@@ -25,6 +25,30 @@ Graphein - a web service that converts Slack posts into tasks, built with Bun/Ty
 - `bun run css` — watch & build Tailwind CSS
 - `bun run css:build` — build & minify Tailwind CSS
 - `bun run tsc --noEmit` — type check
+- `bun test` — run `bun:test` unit tests (files: `src/**/*.test.ts{,x}`)
+
+## Definition of done
+
+Before reporting that a task is complete, you MUST:
+
+1. Run `bun run tsc --noEmit` and make sure it passes.
+2. Run `bun test` and make sure all tests pass. Add or update tests when you
+   change behavior.
+3. **Visually verify the change in the browser** using the chrome-devtools MCP
+   tools (`navigate_page` / `take_screenshot`). Do not trust code-level
+   reasoning alone for UI changes — actually look at the rendered result. Save
+   the screenshot to the repo root with a descriptive name if it's useful for
+   the user to inspect.
+4. Only after all three steps succeed may you report the work as done.
+
+## Slack bot required scopes
+
+The Slack bot token needs at least these scopes for full functionality:
+
+- `chat:write`, `commands`, `im:history`, `channels:history`, `groups:history` — core message/shortcut handling
+- `users:read`, `users:read.email` — resolving user mentions to members
+- `usergroups:read` — resolving `<!subteam^...>` to group names
+- `channels:read`, `groups:read` — resolving `<#C...>` channel mentions to names (without these, channels render as raw IDs)
 
 ## Architecture
 
