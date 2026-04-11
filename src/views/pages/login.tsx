@@ -51,12 +51,6 @@ export function LoginPage({ locale }: { locale?: string }) {
             hx-boost="false"
             class="inline-flex items-center gap-2.5 bg-accent text-page px-8 py-3 rounded-[var(--radius-sm)] text-sm font-bold hover:bg-accent-hover transition-all shadow-[0_0_40px_-8px_rgba(229,160,13,0.4)]"
           >
-            <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
-              <path
-                d="M3.75 11.25a1.5 1.5 0 1 1 0-3h1.5v1.5a1.5 1.5 0 0 1-1.5 1.5zm3-3a1.5 1.5 0 1 1 3 0v3.75a1.5 1.5 0 1 1-3 0V8.25zm3-4.5a1.5 1.5 0 1 1 0 3h-1.5v-1.5a1.5 1.5 0 0 1 1.5-1.5zm-3 3a1.5 1.5 0 1 1-3 0V3a1.5 1.5 0 1 1 3 0v3.75zm3 3a1.5 1.5 0 1 1 0 3h-1.5v-1.5c0-.828.672-1.5 1.5-1.5zm1.5-1.5a1.5 1.5 0 0 1 0-3h1.5a1.5 1.5 0 0 1 0 3h-1.5zm-1.5-3a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3 4.5a1.5 1.5 0 0 1 0 3 1.5 1.5 0 0 1 0-3z"
-                fill="currentColor"
-              />
-            </svg>
             {t(loc, "login.slack")}
           </a>
         </div>
