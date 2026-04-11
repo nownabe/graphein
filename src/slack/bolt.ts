@@ -71,6 +71,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
     // Resolve mentions to members
     const mentions = await resolveMentions(client, messageText);
     const assigneeIds: string[] = [];
+    const assigneeSlackUserIds: string[] = [];
 
     for (const mention of mentions) {
       const member = await findOrCreateMember({
@@ -80,6 +81,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
         avatarUrl: null,
       });
       assigneeIds.push(member.id);
+      assigneeSlackUserIds.push(mention.slackUserId);
     }
 
     // If no mentions, assign to the user who triggered the shortcut
@@ -98,6 +100,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
           avatarUrl: triggeredBy.user.profile.image_72 ?? null,
         });
         assigneeIds.push(member.id);
+        assigneeSlackUserIds.push(shortcut.user.id);
       }
     }
 
@@ -138,6 +141,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
           permalink: permalinkRes.permalink ?? "",
           createdById: creator.id,
           assigneeIds,
+          assigneeSlackUserIds,
         }),
         title: { type: "plain_text", text: "タスク作成" },
         submit: { type: "plain_text", text: "作成" },
@@ -227,10 +231,15 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
 
     // Post confirmation message
     try {
+      const assigneeMentions: string[] = (
+        metadata.assigneeSlackUserIds ?? []
+      ).map((uid: string) => `<@${uid}>`);
+      const mentionText =
+        assigneeMentions.length > 0 ? assigneeMentions.join(" ") : "担当者";
       await client.chat.postMessage({
         channel: metadata.channelId,
         thread_ts: metadata.messageTs,
-        text: `タスクを作成しました: *${task.title}*\n${env.BASE_URL}/#task-${task.id}`,
+        text: `${mentionText} にタスクをアサインしました: *${task.title}*\n${env.BASE_URL}/#task-${task.id}`,
       });
     } catch {
       // Non-critical: confirmation message failed
