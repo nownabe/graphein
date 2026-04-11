@@ -10,7 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "css": "tailwindcss -i src/views/global.css -o public/styles.css --watch",
-    "css:build": "tailwindcss -i src/views/global.css -o public/styles.css --minify"
+    "css:build": "tailwindcss -i src/views/global.css -o public/styles.css --minify",
+    "test": "bun test"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

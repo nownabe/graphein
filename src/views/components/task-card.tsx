@@ -1,6 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
+import { Mrkdwn } from "../../slack/mrkdwn";
 
 type Task = InferSelectModel<typeof tasks>;
 
@@ -75,13 +76,13 @@ export function TaskCard({
                   &#9654;
                 </span>
               </summary>
-              <p
-                class={`text-[13px] mt-2 whitespace-pre-wrap leading-relaxed ${
+              <div
+                class={`text-[13px] mt-2 leading-relaxed ${
                   isDone ? "text-muted" : "text-secondary"
                 }`}
               >
-                {task.description}
-              </p>
+                <Mrkdwn text={task.description} />
+              </div>
             </details>
           ) : (
             <h3
