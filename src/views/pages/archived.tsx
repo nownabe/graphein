@@ -17,15 +17,17 @@ export function ArchivedPage({
   displayName,
   locale,
   mrkdwnLabels,
+  isAdmin,
 }: {
   tasks: Task[];
   displayName: string;
   locale: string;
   mrkdwnLabels?: MrkdwnOptions;
+  isAdmin?: boolean;
 }) {
   return (
     <Layout title={t(locale, "page.archived")} locale={locale}>
-      <Nav displayName={displayName} locale={locale} />
+      <Nav displayName={displayName} locale={locale} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <a
           href="/tasks"

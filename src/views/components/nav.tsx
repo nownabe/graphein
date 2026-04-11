@@ -3,9 +3,11 @@ import { t } from "../../i18n/index";
 export function Nav({
   displayName,
   locale,
+  isAdmin,
 }: {
   displayName: string;
   locale: string;
+  isAdmin?: boolean;
 }) {
   const switchLabel = t(locale, "lang.switch");
   const switchHref = locale === "en" ? "/locale/ja" : "/locale/en";
@@ -43,6 +45,14 @@ export function Nav({
           </span>
         </a>
         <div class="flex items-center gap-3">
+          {isAdmin && (
+            <a
+              href="/admin/members"
+              class="text-xs text-muted hover:text-accent transition-colors px-2 py-1 rounded-[var(--radius-sm)]"
+            >
+              {t(locale, "nav.admin")}
+            </a>
+          )}
           <a
             href={switchHref}
             class="text-xs text-muted hover:text-secondary transition-colors px-2 py-1 rounded-[var(--radius-sm)]"

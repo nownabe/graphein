@@ -5,6 +5,7 @@ import { setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import authRoutes from "./auth/routes.tsx";
 import taskRoutes from "./tasks/routes.tsx";
+import adminRoutes from "./admin/routes.tsx";
 import { receiver } from "./slack/bolt";
 
 const app = new Hono();
@@ -50,6 +51,9 @@ if (receiver != null) {
   app.post("/slack/events", (c) => r.handleRequest(c));
   app.post("/slack/interactions", (c) => r.handleRequest(c));
 }
+
+// Admin routes
+app.route("/", adminRoutes);
 
 // Task routes (includes home page)
 app.route("/", taskRoutes);

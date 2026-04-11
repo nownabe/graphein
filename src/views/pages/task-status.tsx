@@ -12,11 +12,13 @@ export function TaskStatusPage({
   assignees,
   displayName,
   locale,
+  isAdmin,
 }: {
   task: Task;
   assignees: AssigneeStatus[];
   displayName: string;
   locale: string;
+  isAdmin?: boolean;
 }) {
   const doneCount = assignees.filter((a) => a.done).length;
 
@@ -25,7 +27,7 @@ export function TaskStatusPage({
       title={`${task.title} | ${t(locale, "page.taskStatus")}`}
       locale={locale}
     >
-      <Nav displayName={displayName} locale={locale} />
+      <Nav displayName={displayName} locale={locale} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <a
           href="/tasks"

@@ -4,6 +4,19 @@ const messages: Record<Locale, Record<string, string>> = {
   ja: {
     // Nav
     "nav.logout": "ログアウト",
+    "nav.admin": "管理",
+
+    // Admin
+    "admin.members.title": "メンバー管理",
+    "admin.members.description":
+      "管理者は所有者かどうかにかかわらず、すべてのタスク操作を実行できます。",
+    "admin.role.admin": "管理者",
+    "admin.role.user": "ユーザー",
+    "admin.button.promote": "管理者に昇格",
+    "admin.button.demote": "管理者から外す",
+    "admin.confirm.demote": "このメンバーを管理者から外しますか？",
+    "admin.cannotRemoveLastAdmin": "管理者は少なくとも1人必要です",
+    "admin.you": "あなた",
 
     // Page titles
     "page.myTasks": "マイタスク",
@@ -98,6 +111,19 @@ const messages: Record<Locale, Record<string, string>> = {
   en: {
     // Nav
     "nav.logout": "Logout",
+    "nav.admin": "Admin",
+
+    // Admin
+    "admin.members.title": "Member Management",
+    "admin.members.description":
+      "Admins can perform all task owner actions on any task, regardless of ownership.",
+    "admin.role.admin": "Admin",
+    "admin.role.user": "User",
+    "admin.button.promote": "Promote to admin",
+    "admin.button.demote": "Remove admin",
+    "admin.confirm.demote": "Remove admin role from this member?",
+    "admin.cannotRemoveLastAdmin": "At least one admin must remain",
+    "admin.you": "you",
 
     // Page titles
     "page.myTasks": "My Tasks",

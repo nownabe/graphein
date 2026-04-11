@@ -125,6 +125,7 @@ export function HomePage({
   counts,
   overdueCount,
   mrkdwnLabels,
+  isAdmin,
 }: {
   tasks: Task[];
   displayName: string;
@@ -133,11 +134,12 @@ export function HomePage({
   counts: FilterCounts;
   overdueCount: number;
   mrkdwnLabels?: MrkdwnOptions;
+  isAdmin?: boolean;
 }) {
   const filter = activeFilter ?? "all";
   return (
     <Layout title={t(locale, "page.myTasks")} locale={locale}>
-      <Nav displayName={displayName} locale={locale} />
+      <Nav displayName={displayName} locale={locale} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div id="home-content">
           <HomeContentPartial

@@ -43,7 +43,11 @@ function getLocale(c: { req: { raw: Request } }): string {
   return cookie === "en" ? "en" : "ja";
 }
 
-async function buildHomeData(memberId: string, filter: string) {
+async function buildHomeData(
+  memberId: string,
+  filter: string,
+  isAdmin: boolean,
+) {
   const allAssignedTasks = await listActiveTasksForMember(memberId);
   const ownedOnlyTasks = await listOwnedOnlyActiveTasksForMember(memberId);
 
@@ -71,7 +75,7 @@ async function buildHomeData(memberId: string, filter: string) {
   const assignedWithOwnership = await Promise.all(
     filteredAssigned.map(async (t) => ({
       ...t,
-      isOwner: await isTaskOwner(t.id, memberId),
+      isOwner: isAdmin || (await isTaskOwner(t.id, memberId)),
       isAssignee: true,
     })),
   );
@@ -95,12 +99,14 @@ taskRoutes.get("/", (c) => c.redirect("/tasks"));
 // Task list - active tasks
 taskRoutes.get("/tasks", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
   const filter = c.req.query("filter") ?? "all";
 
   const { allTasks, counts, overdueCount } = await buildHomeData(
     memberId,
     filter,
+    isAdmin,
   );
   const mrkdwnLabels = await buildMrkdwnLabels(
     allTasks.map((t) => t.description),
@@ -129,6 +135,7 @@ taskRoutes.get("/tasks", async (c) => {
       counts={counts}
       overdueCount={overdueCount}
       mrkdwnLabels={mrkdwnLabels}
+      isAdmin={isAdmin}
     />,
   );
 });
@@ -136,12 +143,13 @@ taskRoutes.get("/tasks", async (c) => {
 // Archived tasks
 taskRoutes.get("/tasks/archived", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
   const archivedTasks = await listArchivedTasksForMember(memberId);
   const tasksWithOwnership = await Promise.all(
     archivedTasks.map(async (t) => ({
       ...t,
-      isOwner: await isTaskOwner(t.id, memberId),
+      isOwner: isAdmin || (await isTaskOwner(t.id, memberId)),
       isAssignee: true,
     })),
   );
@@ -154,21 +162,23 @@ taskRoutes.get("/tasks/archived", async (c) => {
       displayName={displayName}
       locale={locale}
       mrkdwnLabels={mrkdwnLabels}
+      isAdmin={isAdmin}
     />,
   );
 });
 
-// Task status — assignee completion (owner only)
+// Task status — assignee completion (owner or admin)
 taskRoutes.get("/tasks/:id/status", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
 
   const task = await getTask(taskId);
   if (!task) return c.notFound();
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.redirect("/tasks");
+  if (!owner && !isAdmin) return c.redirect("/tasks");
 
   const assignees = await listTaskAssigneesWithStatus(taskId);
 
@@ -178,21 +188,23 @@ taskRoutes.get("/tasks/:id/status", async (c) => {
       assignees={assignees}
       displayName={displayName}
       locale={locale}
+      isAdmin={isAdmin}
     />,
   );
 });
 
-// Task edit form (owner only)
+// Task edit form (owner or admin)
 taskRoutes.get("/tasks/:id/edit", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
 
   const task = await getTask(taskId);
   if (!task) return c.notFound();
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.redirect("/tasks");
+  if (!owner && !isAdmin) return c.redirect("/tasks");
 
   const owners = await listTaskOwners(taskId);
 
@@ -202,17 +214,19 @@ taskRoutes.get("/tasks/:id/edit", async (c) => {
       owners={owners}
       displayName={displayName}
       locale={locale}
+      isAdmin={isAdmin}
     />,
   );
 });
 
-// Update task (owner only)
+// Update task (owner or admin)
 taskRoutes.post("/tasks/:id", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.text("Forbidden", 403);
+  if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   const body = await c.req.parseBody();
   await updateTask(taskId, {
@@ -236,13 +250,14 @@ taskRoutes.patch("/tasks/:id/done", async (c) => {
   const task = await toggleAssigneeDone(taskId, memberId);
   if (!task) return c.notFound();
 
+  const isAdmin = c.get("isAdmin");
   const owner = await isTaskOwner(taskId, memberId);
   const mrkdwnLabels = await buildMrkdwnLabels([task.description]);
   return c.html(
     <TaskCard
       task={task}
       done={task.done}
-      isOwner={owner}
+      isOwner={owner || isAdmin}
       isAssignee
       showActions
       locale={locale}
@@ -251,13 +266,14 @@ taskRoutes.patch("/tasks/:id/done", async (c) => {
   );
 });
 
-// Archive task (owner only)
+// Archive task (owner or admin)
 taskRoutes.patch("/tasks/:id/archive", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.text("Forbidden", 403);
+  if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   await archiveTask(taskId);
 
@@ -265,13 +281,14 @@ taskRoutes.patch("/tasks/:id/archive", async (c) => {
   return c.body(null, 200);
 });
 
-// Unarchive task (owner only)
+// Unarchive task (owner or admin)
 taskRoutes.patch("/tasks/:id/unarchive", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.text("Forbidden", 403);
+  if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   await unarchiveTask(taskId);
 
@@ -279,14 +296,15 @@ taskRoutes.patch("/tasks/:id/unarchive", async (c) => {
   return c.body(null, 200);
 });
 
-// Owner autocomplete search (owner only)
+// Owner autocomplete search (owner or admin)
 taskRoutes.get("/tasks/:id/owners/search", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.text("Forbidden", 403);
+  if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   const q = c.req.query("q")?.trim() ?? "";
   const currentOwners = await listTaskOwners(taskId);
@@ -299,14 +317,15 @@ taskRoutes.get("/tasks/:id/owners/search", async (c) => {
   );
 });
 
-// Add task owner (owner only)
+// Add task owner (owner or admin)
 taskRoutes.post("/tasks/:id/owners", async (c) => {
   const taskId = c.req.param("id");
   const { sub: memberId } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.text("Forbidden", 403);
+  if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   const body = await c.req.parseBody();
   // Prefer member_id (from the autocomplete results); fall back to
@@ -335,15 +354,16 @@ taskRoutes.post("/tasks/:id/owners", async (c) => {
   );
 });
 
-// Remove task owner (owner only)
+// Remove task owner (owner or admin)
 taskRoutes.delete("/tasks/:id/owners/:memberId", async (c) => {
   const taskId = c.req.param("id");
   const targetMemberId = c.req.param("memberId");
   const { sub: memberId } = c.get("jwtPayload");
+  const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
 
   const owner = await isTaskOwner(taskId, memberId);
-  if (!owner) return c.text("Forbidden", 403);
+  if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   await removeTaskOwner(taskId, targetMemberId);
 
