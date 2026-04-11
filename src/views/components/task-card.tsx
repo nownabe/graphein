@@ -22,16 +22,15 @@ export function TaskCard({
   const loc = locale ?? "ja";
   const isDone = done ?? false;
   const deadlineStr = task.deadline
-    ? new Date(task.deadline).toLocaleString(
-        loc === "en" ? "en-US" : "ja-JP",
-        {
-          year: "numeric",
-          month: "numeric",
-          day: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-        },
-      )
+    ? (() => {
+        const d = new Date(task.deadline);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+      })()
     : null;
 
   const isOverdue =
@@ -115,19 +114,22 @@ export function TaskCard({
                 hx-boost="false"
                 class="text-muted hover:text-accent transition-colors inline-flex items-center gap-1"
               >
+                Slack
                 <svg
-                  width="12"
-                  height="12"
+                  width="10"
+                  height="10"
                   viewBox="0 0 12 12"
                   fill="none"
                   class="shrink-0"
                 >
                   <path
-                    d="M2.5 7.5a1.25 1.25 0 1 1 0-2.5H5v1.25A1.25 1.25 0 0 1 3.75 7.5h-1.25zM4.5 4.5a1.25 1.25 0 1 1 2.5 0V7h-1.25A1.25 1.25 0 0 1 4.5 5.75V4.5zM7.5 4.5a1.25 1.25 0 1 1 0 2.5H5V5.75A1.25 1.25 0 0 1 6.25 4.5h1.25zM9.5 7.5a1.25 1.25 0 0 1-1.25-1.25V5H7v1.25A1.25 1.25 0 0 0 8.25 7.5H9.5z"
-                    fill="currentColor"
+                    d="M4.5 2.5h5v5M9.5 2.5L4 8"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
                   />
                 </svg>
-                Slack
               </a>
             )}
           </div>
