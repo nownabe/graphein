@@ -501,9 +501,10 @@ function renderInlineNode(node: InlineNode, opts: MrkdwnOptions) {
           target="_blank"
           rel="noopener noreferrer"
           hx-boost="false"
-          class="text-accent hover:underline"
+          class="text-accent underline decoration-accent/50 decoration-dotted underline-offset-2 hover:decoration-solid"
         >
           {renderInline(node.children, opts)}
+          <span class="inline-block align-[-1px] ml-0.5 text-[0.85em] opacity-70">↗</span>
         </a>
       );
     }

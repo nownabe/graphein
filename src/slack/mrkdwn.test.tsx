@@ -594,7 +594,7 @@ describe("Mrkdwn JSX renderer", () => {
     const html = render("<https://example.com|Example>");
     expect(html).toContain('href="https://example.com"');
     expect(html).toContain('rel="noopener noreferrer"');
-    expect(html).toContain(">Example</a>");
+    expect(html).toContain(">Example");
   });
 
   it("renders a user mention using the provided users map", () => {
