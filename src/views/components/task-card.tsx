@@ -184,7 +184,7 @@ export function TaskCard({
                 hx-patch={`/tasks/${task.id}/unarchive`}
                 hx-target={`#task-${task.id}`}
                 hx-swap="outerHTML"
-                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-accent hover:bg-surface-hover transition-colors"
+                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-accent hover:bg-surface-hover transition-colors cursor-pointer"
                 title={t(loc, "button.unarchive.title")}
               >
                 {t(loc, "button.unarchive")}
@@ -195,7 +195,7 @@ export function TaskCard({
                 hx-target={`#task-${task.id}`}
                 hx-swap="outerHTML"
                 hx-confirm={t(loc, "confirm.archive")}
-                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-danger hover:bg-[var(--color-glow-danger)] transition-colors"
+                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-danger hover:bg-[var(--color-glow-danger)] transition-colors cursor-pointer"
                 title={t(loc, "button.archive.title")}
               >
                 {t(loc, "button.archive")}
