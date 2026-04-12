@@ -1,7 +1,6 @@
 ---
 name: pr
 description: Create a pull request following trunk-based development workflow. Use when the user asks to create a PR, submit changes, or send changes for review.
-disable-model-invocation: true
 argument-hint: "[description of the change]"
 ---
 
