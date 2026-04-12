@@ -5,6 +5,7 @@ import {
   listActiveTasksForMember,
   listArchivedTasksForMember,
   listOwnedActiveTasksForMember,
+  listOwnedArchivedTasksForMember,
   getTask,
   isTaskOwner,
   isTaskAssignee,
@@ -156,22 +157,37 @@ taskRoutes.get("/tasks/archived", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
-  const archivedTasks = await listArchivedTasksForMember(memberId);
-  const tasksWithOwnership = await Promise.all(
-    archivedTasks.map(async (t) => ({
-      ...t,
-      isOwner: isAdmin || (await isTaskOwner(t.id, memberId)),
-      isAssignee: true,
-    })),
-  );
+  const view = c.req.query("view") === "owned" ? "owned" : "assigned";
+
+  const assignedArchived = await listArchivedTasksForMember(memberId);
+  const ownedArchived = await listOwnedArchivedTasksForMember(memberId);
+
+  const tasksWithFlags = view === "owned"
+    ? ownedArchived.map((t) => ({
+        ...t,
+        done: false,
+        isOwner: true,
+        isAssignee: false,
+      }))
+    : await Promise.all(
+        assignedArchived.map(async (t) => ({
+          ...t,
+          isOwner: isAdmin || (await isTaskOwner(t.id, memberId)),
+          isAssignee: true,
+        })),
+      );
+
   const mrkdwnLabels = await buildMrkdwnLabels(
-    tasksWithOwnership.map((t) => t.description),
+    tasksWithFlags.map((t) => t.description),
   );
   return c.html(
     <ArchivedPage
-      tasks={tasksWithOwnership}
+      tasks={tasksWithFlags}
       displayName={displayName}
       locale={locale}
+      activeView={view}
+      assignedCount={assignedArchived.length}
+      ownedCount={ownedArchived.length}
       mrkdwnLabels={mrkdwnLabels}
       isAdmin={isAdmin}
     />,

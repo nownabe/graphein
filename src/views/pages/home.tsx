@@ -61,16 +61,20 @@ function StatusFilterTabs({
   );
 }
 
-function ViewTabs({
+export function ViewTabs({
   activeView,
   locale,
   assignedCount,
   ownedCount,
+  baseUrl = "/tasks",
+  htmxTarget,
 }: {
   activeView: "assigned" | "owned";
   locale: string;
   assignedCount: number;
   ownedCount: number;
+  baseUrl?: string;
+  htmxTarget?: string;
 }) {
   const tabs: Array<{
     key: "assigned" | "owned";
@@ -93,32 +97,38 @@ function ViewTabs({
       {tabs.map((tab) => {
         const isActive = tab.key === activeView;
         const href =
-          tab.key === "assigned" ? "/tasks" : "/tasks?view=owned";
-        return (
-          <button
+          tab.key === "assigned" ? baseUrl : `${baseUrl}?view=owned`;
+        const htmxProps = htmxTarget
+          ? {
+              "hx-get": href,
+              "hx-target": htmxTarget,
+              "hx-swap": "innerHTML",
+              "hx-push-url": href,
+            }
+          : {};
+        return isActive ? (
+          <span
             key={tab.key}
-            hx-get={href}
-            hx-target="#home-content"
-            hx-swap="innerHTML"
-            hx-push-url={href}
-            class={`relative px-4 py-2.5 text-sm font-semibold transition-colors ${
-              isActive
-                ? "text-ink"
-                : "text-muted hover:text-secondary"
-            }`}
+            class="relative px-4 py-2.5 text-sm font-semibold text-ink"
           >
             {tab.label}
-            <span
-              class={`ml-1.5 text-xs tabular-nums ${
-                isActive ? "text-secondary" : "text-muted/60"
-              }`}
-            >
+            <span class="ml-1.5 text-xs tabular-nums text-secondary">
               {tab.count}
             </span>
-            {isActive && (
-              <span class="absolute left-0 right-0 -bottom-px h-0.5 bg-accent" />
-            )}
-          </button>
+            <span class="absolute left-0 right-0 -bottom-px h-0.5 bg-accent" />
+          </span>
+        ) : (
+          <a
+            key={tab.key}
+            href={href}
+            {...htmxProps}
+            class="relative px-4 py-2.5 text-sm font-semibold text-muted hover:text-secondary transition-colors"
+          >
+            {tab.label}
+            <span class="ml-1.5 text-xs tabular-nums text-muted/60">
+              {tab.count}
+            </span>
+          </a>
         );
       })}
     </div>
@@ -154,38 +164,31 @@ export function HomeContentPartial({
         locale={locale}
         assignedCount={counts.all}
         ownedCount={ownedTasks.length}
+        htmxTarget="#home-content"
       />
-      <div class="flex items-center justify-between mb-6">
-        <p class="text-sm text-secondary">
-          {isOwnedView ? (
-            <>
-              {ownedTasks.length} {t(locale, "summary.owned")}
-              {ownedOverdueCount > 0 && (
-                <span class="text-danger font-medium">
-                  {" "}
-                  · {ownedOverdueCount} {t(locale, "summary.overdue")}
-                </span>
-              )}
-            </>
-          ) : (
-            <>
-              {counts.open} {t(locale, "summary.open")}
-              {overdueCount > 0 && (
-                <span class="text-danger font-medium">
-                  {" "}
-                  · {overdueCount} {t(locale, "summary.overdue")}
-                </span>
-              )}
-            </>
-          )}
-        </p>
-        <a
-          href="/tasks/archived"
-          class="text-xs text-muted hover:text-accent transition-colors"
-        >
-          {t(locale, "link.archived")}
-        </a>
-      </div>
+      <p class="text-sm text-secondary mb-6">
+        {isOwnedView ? (
+          <>
+            {ownedTasks.length} {t(locale, "summary.owned")}
+            {ownedOverdueCount > 0 && (
+              <span class="text-danger font-medium">
+                {" "}
+                · {ownedOverdueCount} {t(locale, "summary.overdue")}
+              </span>
+            )}
+          </>
+        ) : (
+          <>
+            {counts.open} {t(locale, "summary.open")}
+            {overdueCount > 0 && (
+              <span class="text-danger font-medium">
+                {" "}
+                · {overdueCount} {t(locale, "summary.overdue")}
+              </span>
+            )}
+          </>
+        )}
+      </p>
       {isOwnedView ? (
         <TaskList
           tasks={ownedTasks}
@@ -249,6 +252,17 @@ export function HomePage({
     <Layout title={t(locale, "page.myTasks")} locale={locale}>
       <Nav displayName={displayName} locale={locale} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-xl font-bold text-ink tracking-tight">
+            {t(locale, "page.myTasks")}
+          </h1>
+          <a
+            href="/tasks/archived"
+            class="text-xs text-muted hover:text-accent transition-colors"
+          >
+            {t(locale, "link.archived")}
+          </a>
+        </div>
         <div id="home-content">
           <HomeContentPartial
             assignedTasks={assignedTasks}

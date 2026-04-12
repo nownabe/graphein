@@ -34,6 +34,16 @@ export async function listOwnedActiveTasksForMember(memberId: string) {
     .map((o) => o.task);
 }
 
+export async function listOwnedArchivedTasksForMember(memberId: string) {
+  const ownerships = await db.query.taskOwners.findMany({
+    where: eq(taskOwners.memberId, memberId),
+    with: { task: true },
+  });
+  return ownerships
+    .filter((o) => o.task.archived)
+    .map((o) => o.task);
+}
+
 export async function getTask(taskId: string) {
   return db.query.tasks.findFirst({
     where: eq(tasks.id, taskId),
