@@ -149,7 +149,9 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       ].filter((id) => !groupUserIds.has(id));
       // Default to the triggering user if no individual mentions remain
       const initialUsers =
-        userMentionIds.length > 0 || groupCandidates.length > 0 ? userMentionIds : [shortcut.user.id];
+        userMentionIds.length > 0 || groupCandidates.length > 0
+          ? userMentionIds
+          : [shortcut.user.id];
 
       // Hydrate Slack entities (<@U1>, <#C1>, <!subteam^S1>) with display labels
       // so the stored description renders with names instead of raw IDs.

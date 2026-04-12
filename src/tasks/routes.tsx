@@ -14,7 +14,9 @@ export interface TaskRoutesDeps {
   authMiddleware: MiddlewareHandler;
   taskService: TaskService;
   userService: UserService;
-  buildMrkdwnLabels: (texts: (string | null | undefined)[]) => Promise<import("../slack/mrkdwn").MrkdwnOptions>;
+  buildMrkdwnLabels: (
+    texts: (string | null | undefined)[],
+  ) => Promise<import("../slack/mrkdwn").MrkdwnOptions>;
   devMode: boolean;
 }
 

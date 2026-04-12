@@ -1,7 +1,15 @@
 import { t } from "../../i18n/index";
 import { Layout } from "../layout";
 
-export function LoginPage({ locale, theme, devMode }: { locale?: string; theme?: string; devMode?: boolean }) {
+export function LoginPage({
+  locale,
+  theme,
+  devMode,
+}: {
+  locale?: string;
+  theme?: string;
+  devMode?: boolean;
+}) {
   const loc = locale ?? "en";
   return (
     <Layout title={t(loc, "page.login")} locale={loc} theme={theme} devMode={devMode}>
