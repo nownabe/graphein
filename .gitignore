@@ -17,3 +17,4 @@ drizzle/meta/
 
 # OS
 .DS_Store
+.playwright-mcp
