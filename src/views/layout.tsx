@@ -10,7 +10,7 @@ export function Layout({
   locale?: string;
 }) {
   const pageTitle = title ? `${title} | Graphein` : "Graphein";
-  const lang = locale === "en" ? "en" : "ja";
+  const lang = locale === "ja" ? "ja" : "en";
   const isDev = process.env.NODE_ENV !== "production";
   return (
     <html lang={lang}>

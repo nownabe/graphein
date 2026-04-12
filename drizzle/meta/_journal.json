@@ -36,6 +36,20 @@
       "when": 1775925983192,
       "tag": "0004_thick_terror",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1775966768122,
+      "tag": "0005_woozy_eddie_brock",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775967390809,
+      "tag": "0006_oval_sage",
+      "breakpoints": true
     }
   ]
 }

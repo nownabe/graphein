@@ -116,6 +116,19 @@ const messages: Record<Locale, Record<string, string>> = {
     "summary.open": "件が未完了",
     "summary.overdue": "件が期限切れ",
     "summary.owned": "件",
+
+    // Slack modal & messages
+    "slack.modal.title": "タスク作成",
+    "slack.modal.submit": "作成",
+    "slack.modal.cancel": "キャンセル",
+    "slack.modal.close": "閉じる",
+    "slack.modal.loading": "タスクを準備中です...",
+    "slack.modal.titleLabel": "タイトル",
+    "slack.modal.deadlineLabel": "期限",
+    "slack.modal.originalMessage": "元のメッセージ:",
+    "slack.modal.error": "タスクの作成中にエラーが発生しました。もう一度お試しください。",
+    "slack.reply.assigned": "タスク *{taskLink}* を {who} に割り当てました",
+    "slack.reply.fallbackAssignee": "担当者",
   },
   en: {
     // Nav
@@ -232,6 +245,19 @@ const messages: Record<Locale, Record<string, string>> = {
     "summary.open": "open",
     "summary.overdue": "overdue",
     "summary.owned": "total",
+
+    // Slack modal & messages
+    "slack.modal.title": "Create Task",
+    "slack.modal.submit": "Create",
+    "slack.modal.cancel": "Cancel",
+    "slack.modal.close": "Close",
+    "slack.modal.loading": "Preparing task...",
+    "slack.modal.titleLabel": "Title",
+    "slack.modal.deadlineLabel": "Deadline",
+    "slack.modal.originalMessage": "Original message:",
+    "slack.modal.error": "An error occurred while creating the task. Please try again.",
+    "slack.reply.assigned": "Assigned task *{taskLink}* to {who}",
+    "slack.reply.fallbackAssignee": "the assignee",
   },
 };
 

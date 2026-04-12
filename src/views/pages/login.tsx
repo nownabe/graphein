@@ -2,7 +2,7 @@ import { t } from "../../i18n/index";
 import { Layout } from "../layout";
 
 export function LoginPage({ locale }: { locale?: string }) {
-  const loc = locale ?? "ja";
+  const loc = locale ?? "en";
   return (
     <Layout title={t(loc, "page.login")} locale={loc}>
       <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-page">

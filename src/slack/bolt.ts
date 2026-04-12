@@ -7,9 +7,10 @@ import {
   resolveMentions,
 } from "./helpers";
 import { blocksToMrkdwn } from "./rich-text";
-import { findOrCreateMember } from "../members/service";
+import { findOrCreateMember, findMemberBySlackUserId } from "../members/service";
 import { createTask } from "../tasks/service";
 import { generateTaskDetails } from "../llm/gemini";
+import { t } from "../i18n";
 
 export const receiver = env.SLACK_SOCKET_MODE ? undefined : new HonoReceiver();
 
@@ -26,6 +27,10 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
   await ack();
 
   if (shortcut.type !== "message_action") return;
+
+  // Look up user's saved locale for i18n
+  const existingMember = await findMemberBySlackUserId(shortcut.user.id);
+  const locale = existingMember?.locale ?? "en";
 
   // Prefer the structured `blocks` data so bold/italic/strike/lists/quotes
   // survive; fall back to plain `text` for legacy messages.
@@ -45,12 +50,12 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
       view: {
         type: "modal",
         callback_id: "create_task_modal_loading",
-        title: { type: "plain_text", text: "タスク作成" },
-        close: { type: "plain_text", text: "キャンセル" },
+        title: { type: "plain_text", text: t(locale, "slack.modal.title") },
+        close: { type: "plain_text", text: t(locale, "slack.modal.cancel") },
         blocks: [
           {
             type: "section",
-            text: { type: "mrkdwn", text: "タスクを準備中です..." },
+            text: { type: "mrkdwn", text: t(locale, "slack.modal.loading") },
           },
         ],
       },
@@ -165,15 +170,16 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
           createdById: creator.id,
           assigneeIds,
           assigneeLabels,
+          locale,
         }),
-        title: { type: "plain_text", text: "タスク作成" },
-        submit: { type: "plain_text", text: "作成" },
-        close: { type: "plain_text", text: "キャンセル" },
+        title: { type: "plain_text", text: t(locale, "slack.modal.title") },
+        submit: { type: "plain_text", text: t(locale, "slack.modal.submit") },
+        close: { type: "plain_text", text: t(locale, "slack.modal.cancel") },
         blocks: [
           {
             type: "input",
             block_id: "title_block",
-            label: { type: "plain_text", text: "タイトル" },
+            label: { type: "plain_text", text: t(locale, "slack.modal.titleLabel") },
             element: {
               type: "plain_text_input",
               action_id: "title",
@@ -184,7 +190,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
             type: "input",
             block_id: "deadline_block",
             optional: true,
-            label: { type: "plain_text", text: "期限" },
+            label: { type: "plain_text", text: t(locale, "slack.modal.deadlineLabel") },
             element: {
               type: "datetimepicker",
               action_id: "deadline",
@@ -197,7 +203,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `*元のメッセージ:*\n>${messageText.replace(/\n/g, "\n>")}`,
+              text: `*${t(locale, "slack.modal.originalMessage")}*\n>${messageText.replace(/\n/g, "\n>")}`,
             },
           },
         ],
@@ -213,12 +219,12 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
           view: {
             type: "modal",
             callback_id: "create_task_modal_error",
-            title: { type: "plain_text", text: "タスク作成" },
-            close: { type: "plain_text", text: "閉じる" },
+            title: { type: "plain_text", text: t(locale, "slack.modal.title") },
+            close: { type: "plain_text", text: t(locale, "slack.modal.close") },
             blocks: [
               {
                 type: "section",
-                text: { type: "mrkdwn", text: "タスクの作成中にエラーが発生しました。もう一度お試しください。" },
+                text: { type: "mrkdwn", text: t(locale, "slack.modal.error") },
               },
             ],
           },
@@ -254,26 +260,31 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
 
     // Post confirmation message
     try {
+      const loc = metadata.locale ?? "en";
       const labels: string[] = metadata.assigneeLabels ?? [];
-      const who = labels.length > 0 ? labels.join(" ") : "the assignee";
+      const who = labels.length > 0 ? labels.join(" ") : t(loc, "slack.reply.fallbackAssignee");
       // Slack link labels can't contain `|` or `>`; escape defensively.
       const safeTitle = task.title.replace(/[|>]/g, " ");
       const taskLink = `<${env.BASE_URL}/tasks#task-${task.id}|${safeTitle}>`;
+      const replyText = t(loc, "slack.reply.assigned")
+        .replace("{taskLink}", taskLink)
+        .replace("{who}", who);
       await client.chat.postMessage({
         channel: metadata.channelId,
         thread_ts: metadata.messageTs,
-        text: `Assigned task *${taskLink}* to ${who}`,
+        text: replyText,
       });
     } catch {
       // Non-critical: confirmation message failed
     }
   } catch (err) {
     console.error("Error creating task from modal:", err);
+    const loc = metadata.locale ?? "en";
     try {
       await client.chat.postEphemeral({
         channel: metadata.channelId,
         user: body.user.id,
-        text: "タスクの作成中にエラーが発生しました。もう一度お試しください。",
+        text: t(loc, "slack.modal.error"),
       });
     } catch (ephemeralErr) {
       console.error("Failed to send ephemeral error message:", ephemeralErr);

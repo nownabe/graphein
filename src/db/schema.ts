@@ -15,6 +15,7 @@ export const members = pgTable("members", {
   displayName: text("display_name").notNull(),
   avatarUrl: text("avatar_url"),
   role: text("role").notNull().default("user"),
+  locale: text("locale").notNull().default("en"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

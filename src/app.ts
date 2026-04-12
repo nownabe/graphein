@@ -1,12 +1,14 @@
 import { Hono } from "hono";
 import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
-import { setCookie } from "hono/cookie";
+import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import authRoutes from "./auth/routes.tsx";
 import taskRoutes from "./tasks/routes.tsx";
 import adminRoutes from "./admin/routes.tsx";
 import { receiver } from "./slack/bolt";
+import { verifyToken } from "./auth/session";
+import { updateMemberLocale } from "./members/service";
 
 const app = new Hono();
 
@@ -16,14 +18,24 @@ app.use("/public/*", serveStatic({ root: "./" }));
 app.get("/healthz", (c) => c.text("ok"));
 
 // Locale switching
-app.get("/locale/:lang", (c) => {
+app.get("/locale/:lang", async (c) => {
   const lang = c.req.param("lang");
-  const locale = lang === "en" ? "en" : "ja";
+  const locale = lang === "ja" ? "ja" : "en";
   setCookie(c, "locale", locale, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "Lax",
   });
+
+  // Persist locale to DB if user is logged in
+  const token = getCookie(c, "token");
+  if (token) {
+    const payload = await verifyToken(token);
+    if (payload) {
+      await updateMemberLocale(payload.sub, locale);
+    }
+  }
+
   const referer = c.req.header("Referer") || "/";
   return c.redirect(referer, 302);
 });

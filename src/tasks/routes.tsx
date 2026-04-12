@@ -42,7 +42,7 @@ taskRoutes.use("*", authMiddleware);
 
 function getLocale(c: { req: { raw: Request } }): string {
   const cookie = getCookie(c as any, "locale");
-  return cookie === "en" ? "en" : "ja";
+  return cookie === "ja" ? "ja" : "en";
 }
 
 async function buildHomeData(

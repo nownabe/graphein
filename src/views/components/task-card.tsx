@@ -24,7 +24,7 @@ export function TaskCard({
   mrkdwnLabels?: MrkdwnOptions;
   progress?: { total: number; done: number };
 }) {
-  const loc = locale ?? "ja";
+  const loc = locale ?? "en";
   const isDone = done ?? false;
   const deadlineStr = task.deadline
     ? (() => {

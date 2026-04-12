@@ -19,7 +19,7 @@ adminRoutes.use("/admin/*", adminMiddleware);
 
 function getLocale(c: { req: { raw: Request } }): string {
   const cookie = getCookie(c as any, "locale");
-  return cookie === "en" ? "en" : "ja";
+  return cookie === "ja" ? "ja" : "en";
 }
 
 adminRoutes.get("/admin/members", async (c) => {

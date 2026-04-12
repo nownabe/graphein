@@ -83,6 +83,15 @@ export async function setMemberRole(memberId: string, role: MemberRole) {
   return updated;
 }
 
+export async function updateMemberLocale(memberId: string, locale: string) {
+  const [updated] = await db
+    .update(members)
+    .set({ locale, updatedAt: new Date() })
+    .where(eq(members.id, memberId))
+    .returning();
+  return updated;
+}
+
 export async function countAdminsExcluding(memberId: string): Promise<number> {
   const [{ count }] = await db
     .select({ count: sql<number>`count(*)::int` })

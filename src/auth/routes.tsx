@@ -8,7 +8,7 @@ import { LoginPage } from "../views/pages/login";
 const auth = new Hono();
 
 auth.get("/login", (c) => {
-  const locale = getCookie(c, "locale") === "en" ? "en" : "ja";
+  const locale = getCookie(c, "locale") === "ja" ? "ja" : "en";
   return c.html(<LoginPage locale={locale} />);
 });
 
@@ -80,6 +80,13 @@ auth.get("/slack/callback", async (c) => {
     sameSite: "Lax",
     path: "/",
     maxAge: 60 * 60 * 24 * 7,
+  });
+
+  // Restore locale preference from DB
+  setCookie(c, "locale", member.locale, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "Lax",
   });
 
   return c.redirect("/tasks");

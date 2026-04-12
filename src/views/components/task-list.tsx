@@ -149,7 +149,7 @@ export function TaskList({
   mrkdwnLabels?: MrkdwnOptions;
   progressMap?: ProgressMap;
 }) {
-  const loc = locale ?? "ja";
+  const loc = locale ?? "en";
 
   if (taskList.length === 0) {
     return (
