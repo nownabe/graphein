@@ -4,8 +4,8 @@ Principles for keeping Graphein's UI/UX consistent. Refer to this document when 
 
 ## 1. Visual Tone
 
-- **Dark-first**: The background uses `--color-page` (#0c0c10) as the base. No light mode is provided.
-- **Amber accent**: The primary color is a warm amber (`--color-accent` #e5a00d). It serves as the focal point against the cool dark UI.
+- **Dark-first with light mode**: Dark mode is the default (`--color-page` #0c0c10). A light palette is available via `html[data-theme="light"]` which overrides all CSS custom properties.
+- **Amber accent**: The primary color is a warm amber (`--color-accent` #e5a00d dark / #c98a00 light). It serves as the focal point against the UI.
 - **Restrained decoration**: Communicate through whitespace, typography, and contrast. Avoid excessive ornamentation.
 
 ## 2. Color Usage
@@ -35,6 +35,14 @@ Principles for keeping Graphein's UI/UX consistent. Refer to this document when 
 | Danger | `--color-danger` | Destructive actions, overdue warnings |
 
 **Glow variants** (`--color-glow-*`) are used as hover backgrounds to avoid overpowering the semantic color.
+
+### Theme Switching
+
+- Theme is toggled via a sun/moon button in the navigation bar
+- Persisted via cookie (`theme`) and DB (`members.theme` column), mirroring the locale pattern
+- FOUC prevention: an inline `<script>` in `<head>` reads the cookie and sets `data-theme` before first paint
+- All color variables are defined in `global.css` under `@theme` (dark defaults) and `html[data-theme="light"]` (light overrides)
+- Always pass the `theme` prop through the component tree to `<Layout>` and `<Nav>`
 
 ## 3. Typography
 
@@ -87,6 +95,12 @@ Principles for keeping Graphein's UI/UX consistent. Refer to this document when 
 - Icon: muted SVG inside `bg-surface border border-edge`
 - Message: `text-secondary text-sm`
 - Always design an empty state. Clearly communicate the absence of data to the user.
+
+### Links (in rendered Slack content)
+
+- Use `border-b border-dotted border-accent` instead of `text-decoration: underline dotted` — `text-decoration: dotted` renders invisibly at small font sizes in some browsers
+- On hover: `hover:border-transparent` to hide the underline
+- External links include a `↗` indicator
 
 ## 5. Interaction
 
