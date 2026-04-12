@@ -135,6 +135,10 @@ Migrations live in `drizzle/`. Generate with `bun run db:generate`, apply with `
 - Fonts: Plus Jakarta Sans (Latin) + Noto Sans JP (Japanese), loaded from Google Fonts
 - Custom CSS for: checkbox styling, htmx request states, toast notifications, disclosure triangles, stagger-in animations
 
+## Language
+
+All documentation, code comments, commit messages, issues, and pull requests must be written in English.
+
 ## Conventions
 
 - Files using JSX must have `.tsx` extension
