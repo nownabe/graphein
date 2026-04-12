@@ -1,7 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import { getCookie } from "hono/cookie";
 import { verifyToken, type JwtPayload } from "./session";
-import { isAdmin as fetchIsAdmin } from "../members/service";
+import { isAdmin as fetchIsAdmin } from "../users/service";
 
 declare module "hono" {
   interface ContextVariableMap {

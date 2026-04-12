@@ -2,9 +2,9 @@ import { eq, and, desc, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { tasks, taskAssignees, taskOwners } from "../db/schema";
 
-export async function listActiveTasksForMember(memberId: string) {
+export async function listActiveTasksForMember(userId: string) {
   const assignments = await db.query.taskAssignees.findMany({
-    where: eq(taskAssignees.memberId, memberId),
+    where: eq(taskAssignees.userId, userId),
     with: { task: true },
     orderBy: desc(taskAssignees.assignedAt),
   });
@@ -13,9 +13,9 @@ export async function listActiveTasksForMember(memberId: string) {
     .map((a) => ({ ...a.task, done: a.done }));
 }
 
-export async function listArchivedTasksForMember(memberId: string) {
+export async function listArchivedTasksForMember(userId: string) {
   const assignments = await db.query.taskAssignees.findMany({
-    where: eq(taskAssignees.memberId, memberId),
+    where: eq(taskAssignees.userId, userId),
     with: { task: true },
     orderBy: desc(taskAssignees.assignedAt),
   });
@@ -24,9 +24,9 @@ export async function listArchivedTasksForMember(memberId: string) {
     .map((a) => ({ ...a.task, done: a.done }));
 }
 
-export async function listOwnedActiveTasksForMember(memberId: string) {
+export async function listOwnedActiveTasksForMember(userId: string) {
   const ownerships = await db.query.taskOwners.findMany({
-    where: eq(taskOwners.memberId, memberId),
+    where: eq(taskOwners.userId, userId),
     with: { task: true },
   });
   return ownerships
@@ -34,9 +34,9 @@ export async function listOwnedActiveTasksForMember(memberId: string) {
     .map((o) => o.task);
 }
 
-export async function listOwnedArchivedTasksForMember(memberId: string) {
+export async function listOwnedArchivedTasksForMember(userId: string) {
   const ownerships = await db.query.taskOwners.findMany({
-    where: eq(taskOwners.memberId, memberId),
+    where: eq(taskOwners.userId, userId),
     with: { task: true },
   });
   return ownerships
@@ -53,9 +53,9 @@ export async function getTask(taskId: string) {
 export async function getTaskAssignees(taskId: string) {
   const assignments = await db.query.taskAssignees.findMany({
     where: eq(taskAssignees.taskId, taskId),
-    with: { member: true },
+    with: { user: true },
   });
-  return assignments.map((a) => a.member);
+  return assignments.map((a) => a.user);
 }
 
 export async function getTasksProgress(
@@ -79,29 +79,29 @@ export async function getTasksProgress(
 export async function listTaskAssigneesWithStatus(taskId: string) {
   const assignments = await db.query.taskAssignees.findMany({
     where: eq(taskAssignees.taskId, taskId),
-    with: { member: true },
+    with: { user: true },
   });
   return assignments.map((a) => ({
-    displayName: a.member.displayName,
+    displayName: a.user.displayName,
     done: a.done,
   }));
 }
 
-export async function isTaskOwner(taskId: string, memberId: string) {
+export async function isTaskOwner(taskId: string, userId: string) {
   const ownership = await db.query.taskOwners.findFirst({
     where: and(
       eq(taskOwners.taskId, taskId),
-      eq(taskOwners.memberId, memberId),
+      eq(taskOwners.userId, userId),
     ),
   });
   return !!ownership;
 }
 
-export async function isTaskAssignee(taskId: string, memberId: string) {
+export async function isTaskAssignee(taskId: string, userId: string) {
   const assignment = await db.query.taskAssignees.findFirst({
     where: and(
       eq(taskAssignees.taskId, taskId),
-      eq(taskAssignees.memberId, memberId),
+      eq(taskAssignees.userId, userId),
     ),
   });
   return !!assignment;
@@ -110,19 +110,19 @@ export async function isTaskAssignee(taskId: string, memberId: string) {
 export async function listTaskOwners(taskId: string) {
   const owners = await db.query.taskOwners.findMany({
     where: eq(taskOwners.taskId, taskId),
-    with: { member: true },
+    with: { user: true },
   });
-  return owners.map((o) => o.member);
+  return owners.map((o) => o.user);
 }
 
-export async function addTaskOwner(taskId: string, memberId: string) {
+export async function addTaskOwner(taskId: string, userId: string) {
   await db
     .insert(taskOwners)
-    .values({ taskId, memberId })
+    .values({ taskId, userId })
     .onConflictDoNothing();
 }
 
-export async function removeTaskOwner(taskId: string, memberId: string) {
+export async function removeTaskOwner(taskId: string, userId: string) {
   // Count current owners
   const owners = await db.query.taskOwners.findMany({
     where: eq(taskOwners.taskId, taskId),
@@ -134,16 +134,16 @@ export async function removeTaskOwner(taskId: string, memberId: string) {
   await db
     .delete(taskOwners)
     .where(
-      and(eq(taskOwners.taskId, taskId), eq(taskOwners.memberId, memberId)),
+      and(eq(taskOwners.taskId, taskId), eq(taskOwners.userId, userId)),
     );
   return { error: null };
 }
 
-export async function toggleAssigneeDone(taskId: string, memberId: string) {
+export async function toggleAssigneeDone(taskId: string, userId: string) {
   const assignment = await db.query.taskAssignees.findFirst({
     where: and(
       eq(taskAssignees.taskId, taskId),
-      eq(taskAssignees.memberId, memberId),
+      eq(taskAssignees.userId, userId),
     ),
   });
   if (!assignment) return null;
@@ -155,7 +155,7 @@ export async function toggleAssigneeDone(taskId: string, memberId: string) {
     .where(
       and(
         eq(taskAssignees.taskId, taskId),
-        eq(taskAssignees.memberId, memberId),
+        eq(taskAssignees.userId, userId),
       ),
     );
 
@@ -215,14 +215,14 @@ export async function createTask(data: {
   // Creator becomes the default owner
   await db.insert(taskOwners).values({
     taskId: task.id,
-    memberId: data.createdById,
+    userId: data.createdById,
   });
 
   if (assigneeIds.length > 0) {
     await db.insert(taskAssignees).values(
-      assigneeIds.map((memberId) => ({
+      assigneeIds.map((userId) => ({
         taskId: task.id,
-        memberId,
+        userId,
       })),
     );
   }

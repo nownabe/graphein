@@ -20,10 +20,10 @@ import {
   getTasksProgress,
 } from "./service";
 import {
-  findMemberById,
-  findMemberBySlackUserId,
-  searchMembersByName,
-} from "../members/service";
+  findUserById,
+  findUserBySlackUserId,
+  searchUsersByName,
+} from "../users/service";
 import { buildMrkdwnLabels } from "../slack/labels";
 import { HomePage, HomeContentPartial } from "../views/pages/home";
 import type { FilterCounts } from "../views/pages/home";
@@ -51,12 +51,12 @@ function getTheme(c: { req: { raw: Request } }): string {
 }
 
 async function buildHomeData(
-  memberId: string,
+  userId: string,
   filter: string,
   isAdmin: boolean,
 ) {
-  const allAssignedTasks = await listActiveTasksForMember(memberId);
-  const allOwnedTasks = await listOwnedActiveTasksForMember(memberId);
+  const allAssignedTasks = await listActiveTasksForMember(userId);
+  const allOwnedTasks = await listOwnedActiveTasksForMember(userId);
 
   const now = new Date();
   const counts: FilterCounts = {
@@ -81,7 +81,7 @@ async function buildHomeData(
   const assignedTasks = await Promise.all(
     filteredAssigned.map(async (t) => ({
       ...t,
-      isOwner: isAdmin || (await isTaskOwner(t.id, memberId)),
+      isOwner: isAdmin || (await isTaskOwner(t.id, userId)),
       isAssignee: true,
     })),
   );
@@ -112,7 +112,7 @@ taskRoutes.get("/", (c) => c.redirect("/tasks"));
 
 // Task list - active tasks
 taskRoutes.get("/tasks", async (c) => {
-  const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const { sub: userId, name: displayName } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
   const theme = getTheme(c);
@@ -126,7 +126,7 @@ taskRoutes.get("/tasks", async (c) => {
     overdueCount,
     ownedOverdueCount,
     ownedProgressMap,
-  } = await buildHomeData(memberId, filter, isAdmin);
+  } = await buildHomeData(userId, filter, isAdmin);
   const mrkdwnLabels = await buildMrkdwnLabels(
     [...assignedTasks, ...ownedTasks].map((t) => t.description),
   );
@@ -170,14 +170,14 @@ taskRoutes.get("/tasks", async (c) => {
 
 // Archived tasks
 taskRoutes.get("/tasks/archived", async (c) => {
-  const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const { sub: userId, name: displayName } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
   const theme = getTheme(c);
   const view = c.req.query("view") === "owned" ? "owned" : "assigned";
 
-  const assignedArchived = await listArchivedTasksForMember(memberId);
-  const ownedArchived = await listOwnedArchivedTasksForMember(memberId);
+  const assignedArchived = await listArchivedTasksForMember(userId);
+  const ownedArchived = await listOwnedArchivedTasksForMember(userId);
 
   const tasksWithFlags = view === "owned"
     ? ownedArchived.map((t) => ({
@@ -189,7 +189,7 @@ taskRoutes.get("/tasks/archived", async (c) => {
     : await Promise.all(
         assignedArchived.map(async (t) => ({
           ...t,
-          isOwner: isAdmin || (await isTaskOwner(t.id, memberId)),
+          isOwner: isAdmin || (await isTaskOwner(t.id, userId)),
           isAssignee: true,
         })),
       );
@@ -215,7 +215,7 @@ taskRoutes.get("/tasks/archived", async (c) => {
 // Task status — assignee completion (owner or admin)
 taskRoutes.get("/tasks/:id/status", async (c) => {
   const taskId = c.req.param("id");
-  const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const { sub: userId, name: displayName } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
   const theme = getTheme(c);
@@ -223,7 +223,7 @@ taskRoutes.get("/tasks/:id/status", async (c) => {
   const task = await getTask(taskId);
   if (!task) return c.notFound();
 
-  const owner = await isTaskOwner(taskId, memberId);
+  const owner = await isTaskOwner(taskId, userId);
   if (!owner && !isAdmin) return c.redirect("/tasks");
 
   const assignees = await listTaskAssigneesWithStatus(taskId);
@@ -243,7 +243,7 @@ taskRoutes.get("/tasks/:id/status", async (c) => {
 // Task edit form (owner or admin)
 taskRoutes.get("/tasks/:id/edit", async (c) => {
   const taskId = c.req.param("id");
-  const { sub: memberId, name: displayName } = c.get("jwtPayload");
+  const { sub: userId, name: displayName } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
   const theme = getTheme(c);
@@ -251,7 +251,7 @@ taskRoutes.get("/tasks/:id/edit", async (c) => {
   const task = await getTask(taskId);
   if (!task) return c.notFound();
 
-  const owner = await isTaskOwner(taskId, memberId);
+  const owner = await isTaskOwner(taskId, userId);
   if (!owner && !isAdmin) return c.redirect("/tasks");
 
   const owners = await listTaskOwners(taskId);
@@ -271,10 +271,10 @@ taskRoutes.get("/tasks/:id/edit", async (c) => {
 // Update task (owner or admin)
 taskRoutes.post("/tasks/:id", async (c) => {
   const taskId = c.req.param("id");
-  const { sub: memberId } = c.get("jwtPayload");
+  const { sub: userId } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
 
-  const owner = await isTaskOwner(taskId, memberId);
+  const owner = await isTaskOwner(taskId, userId);
   if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   const body = await c.req.parseBody();
@@ -290,17 +290,17 @@ taskRoutes.post("/tasks/:id", async (c) => {
 // Toggle assignee done status (assignee only)
 taskRoutes.patch("/tasks/:id/done", async (c) => {
   const taskId = c.req.param("id");
-  const { sub: memberId } = c.get("jwtPayload");
+  const { sub: userId } = c.get("jwtPayload");
   const locale = getLocale(c);
 
-  const assignee = await isTaskAssignee(taskId, memberId);
+  const assignee = await isTaskAssignee(taskId, userId);
   if (!assignee) return c.text("Forbidden", 403);
 
-  const task = await toggleAssigneeDone(taskId, memberId);
+  const task = await toggleAssigneeDone(taskId, userId);
   if (!task) return c.notFound();
 
   const isAdmin = c.get("isAdmin");
-  const owner = await isTaskOwner(taskId, memberId);
+  const owner = await isTaskOwner(taskId, userId);
   const mrkdwnLabels = await buildMrkdwnLabels([task.description]);
   return c.html(
     <TaskCard
@@ -318,10 +318,10 @@ taskRoutes.patch("/tasks/:id/done", async (c) => {
 // Archive task (owner or admin)
 taskRoutes.patch("/tasks/:id/archive", async (c) => {
   const taskId = c.req.param("id");
-  const { sub: memberId } = c.get("jwtPayload");
+  const { sub: userId } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
 
-  const owner = await isTaskOwner(taskId, memberId);
+  const owner = await isTaskOwner(taskId, userId);
   if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   await archiveTask(taskId);
@@ -333,10 +333,10 @@ taskRoutes.patch("/tasks/:id/archive", async (c) => {
 // Unarchive task (owner or admin)
 taskRoutes.patch("/tasks/:id/unarchive", async (c) => {
   const taskId = c.req.param("id");
-  const { sub: memberId } = c.get("jwtPayload");
+  const { sub: userId } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
 
-  const owner = await isTaskOwner(taskId, memberId);
+  const owner = await isTaskOwner(taskId, userId);
   if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   await unarchiveTask(taskId);
@@ -348,16 +348,16 @@ taskRoutes.patch("/tasks/:id/unarchive", async (c) => {
 // Owner autocomplete search (owner or admin)
 taskRoutes.get("/tasks/:id/owners/search", async (c) => {
   const taskId = c.req.param("id");
-  const { sub: memberId } = c.get("jwtPayload");
+  const { sub: userId } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
 
-  const owner = await isTaskOwner(taskId, memberId);
+  const owner = await isTaskOwner(taskId, userId);
   if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   const q = c.req.query("q")?.trim() ?? "";
   const currentOwners = await listTaskOwners(taskId);
-  const results = await searchMembersByName(q, {
+  const results = await searchUsersByName(q, {
     excludeIds: currentOwners.map((o) => o.id),
   });
 
@@ -369,30 +369,30 @@ taskRoutes.get("/tasks/:id/owners/search", async (c) => {
 // Add task owner (owner or admin)
 taskRoutes.post("/tasks/:id/owners", async (c) => {
   const taskId = c.req.param("id");
-  const { sub: memberId } = c.get("jwtPayload");
+  const { sub: userId } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
 
-  const owner = await isTaskOwner(taskId, memberId);
+  const owner = await isTaskOwner(taskId, userId);
   if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
   const body = await c.req.parseBody();
-  // Prefer member_id (from the autocomplete results); fall back to
+  // Prefer user_id (from the autocomplete results); fall back to
   // slack_user_id for any older clients still posting raw Slack IDs.
-  const newOwnerMemberId = (body.member_id as string)?.trim();
+  const newOwnerUserId = (body.user_id as string)?.trim();
   const slackUserId = (body.slack_user_id as string)?.trim();
 
-  let member = null;
-  if (newOwnerMemberId) {
-    member = await findMemberById(newOwnerMemberId);
+  let user = null;
+  if (newOwnerUserId) {
+    user = await findUserById(newOwnerUserId);
   } else if (slackUserId) {
-    member = await findMemberBySlackUserId(slackUserId);
+    user = await findUserBySlackUserId(slackUserId);
   } else {
     return c.text("Bad Request", 400);
   }
-  if (!member) return c.text("Member not found", 404);
+  if (!user) return c.text("User not found", 404);
 
-  await addTaskOwner(taskId, member.id);
+  await addTaskOwner(taskId, user.id);
 
   const task = await getTask(taskId);
   if (!task) return c.notFound();
@@ -404,17 +404,17 @@ taskRoutes.post("/tasks/:id/owners", async (c) => {
 });
 
 // Remove task owner (owner or admin)
-taskRoutes.delete("/tasks/:id/owners/:memberId", async (c) => {
+taskRoutes.delete("/tasks/:id/owners/:userId", async (c) => {
   const taskId = c.req.param("id");
-  const targetMemberId = c.req.param("memberId");
-  const { sub: memberId } = c.get("jwtPayload");
+  const targetUserId = c.req.param("userId");
+  const { sub: userId } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
 
-  const owner = await isTaskOwner(taskId, memberId);
+  const owner = await isTaskOwner(taskId, userId);
   if (!owner && !isAdmin) return c.text("Forbidden", 403);
 
-  await removeTaskOwner(taskId, targetMemberId);
+  await removeTaskOwner(taskId, targetUserId);
 
   const task = await getTask(taskId);
   if (!task) return c.notFound();

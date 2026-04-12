@@ -2,11 +2,11 @@
 //
 // Existing tasks stored with unlabeled entities (`<@U1>`, `<#C1>`,
 // `<!subteam^S1>`) need to show human-readable names. Users are resolved from
-// the members table (every mentioned user is already upserted on ingestion).
+// the users table (every mentioned user is already upserted on ingestion).
 // Channels and usergroups are resolved via the Slack API with an in-memory
 // cache shared across requests.
 
-import { findMembersBySlackUserIds } from "../members/service";
+import { findUsersBySlackUserIds } from "../users/service";
 import { boltApp } from "./bolt";
 import { createSlackLabelResolver } from "./helpers";
 import type { MrkdwnOptions } from "./mrkdwn";
@@ -57,9 +57,9 @@ export async function buildMrkdwnLabels(
 
   const users: Record<string, string> = {};
   if (userIds.size > 0) {
-    const members = await findMembersBySlackUserIds([...userIds]);
-    for (const m of members) {
-      users[m.slackUserId] = m.displayName;
+    const resolved = await findUsersBySlackUserIds([...userIds]);
+    for (const u of resolved) {
+      users[u.slackUserId] = u.displayName;
     }
   }
 

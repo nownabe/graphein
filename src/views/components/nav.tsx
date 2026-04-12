@@ -50,7 +50,7 @@ export function Nav({
         <div class="flex items-center gap-3">
           {isAdmin && (
             <a
-              href="/admin/members"
+              href="/admin/users"
               class="text-xs text-muted hover:text-accent transition-colors px-2 py-1 rounded-[var(--radius-sm)]"
             >
               {t(locale, "nav.admin")}

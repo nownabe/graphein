@@ -57,6 +57,13 @@
       "when": 1775970821099,
       "tag": "0007_abandoned_iron_man",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1776144000000,
+      "tag": "0008_rename_members_to_users",
+      "breakpoints": true
     }
   ]
 }

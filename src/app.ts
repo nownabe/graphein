@@ -8,7 +8,7 @@ import taskRoutes from "./tasks/routes.tsx";
 import adminRoutes from "./admin/routes.tsx";
 import { receiver } from "./slack/bolt";
 import { verifyToken } from "./auth/session";
-import { updateMemberLocale, updateMemberTheme } from "./members/service";
+import { updateUserLocale, updateUserTheme } from "./users/service";
 
 const app = new Hono();
 
@@ -32,7 +32,7 @@ app.get("/locale/:lang", async (c) => {
   if (token) {
     const payload = await verifyToken(token);
     if (payload) {
-      await updateMemberLocale(payload.sub, locale);
+      await updateUserLocale(payload.sub, locale);
     }
   }
 
@@ -54,7 +54,7 @@ app.get("/theme/:mode", async (c) => {
   if (token) {
     const payload = await verifyToken(token);
     if (payload) {
-      await updateMemberTheme(payload.sub, theme);
+      await updateUserTheme(payload.sub, theme);
     }
   }
 

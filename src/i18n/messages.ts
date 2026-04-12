@@ -7,14 +7,14 @@ const messages: Record<Locale, Record<string, string>> = {
     "nav.admin": "管理",
 
     // Admin
-    "admin.members.title": "メンバー管理",
-    "admin.members.description":
+    "admin.users.title": "ユーザー管理",
+    "admin.users.description":
       "管理者は所有者かどうかにかかわらず、すべてのタスク操作を実行できます。",
     "admin.role.admin": "管理者",
     "admin.role.user": "ユーザー",
     "admin.button.promote": "管理者に昇格",
     "admin.button.demote": "管理者から外す",
-    "admin.confirm.demote": "このメンバーを管理者から外しますか？",
+    "admin.confirm.demote": "このユーザーを管理者から外しますか？",
     "admin.cannotRemoveLastAdmin": "管理者は少なくとも1人必要です",
     "admin.you": "あなた",
 
@@ -95,7 +95,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "owners.title": "オーナー",
     "owners.slackUserIdPlaceholder": "Slack ユーザー ID",
     "owners.searchPlaceholder": "名前またはメールで検索",
-    "owners.searchNoResults": "該当するメンバーが見つかりません",
+    "owners.searchNoResults": "該当するユーザーが見つかりません",
     "button.addOwner": "追加",
     "button.remove": "除外",
 
@@ -141,14 +141,14 @@ const messages: Record<Locale, Record<string, string>> = {
     "nav.admin": "Admin",
 
     // Admin
-    "admin.members.title": "Member Management",
-    "admin.members.description":
+    "admin.users.title": "User Management",
+    "admin.users.description":
       "Admins can perform all task owner actions on any task, regardless of ownership.",
     "admin.role.admin": "Admin",
     "admin.role.user": "User",
     "admin.button.promote": "Promote to admin",
     "admin.button.demote": "Remove admin",
-    "admin.confirm.demote": "Remove admin role from this member?",
+    "admin.confirm.demote": "Remove admin role from this user?",
     "admin.cannotRemoveLastAdmin": "At least one admin must remain",
     "admin.you": "you",
 
@@ -229,7 +229,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "owners.title": "Owners",
     "owners.slackUserIdPlaceholder": "Slack User ID",
     "owners.searchPlaceholder": "Search by name or email",
-    "owners.searchNoResults": "No matching members",
+    "owners.searchNoResults": "No matching users",
     "button.addOwner": "Add",
     "button.remove": "Remove",
 

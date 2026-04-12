@@ -1,45 +1,45 @@
 import type { InferSelectModel } from "drizzle-orm";
-import type { members } from "../../db/schema";
+import type { users } from "../../db/schema";
 import { t } from "../../i18n/index";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 
-type Member = InferSelectModel<typeof members>;
+type User = InferSelectModel<typeof users>;
 
-export function AdminMembersList({
-  members: allMembers,
-  currentMemberId,
+export function AdminUsersList({
+  users: allUsers,
+  currentUserId,
   locale,
 }: {
-  members: Member[];
-  currentMemberId: string;
+  users: User[];
+  currentUserId: string;
   locale: string;
 }) {
-  const adminCount = allMembers.filter((m) => m.role === "admin").length;
+  const adminCount = allUsers.filter((u) => u.role === "admin").length;
   return (
     <ul
-      id="admin-members-list"
+      id="admin-users-list"
       class="bg-surface border border-edge rounded-[var(--radius-lg)] divide-y divide-edge"
     >
-      {allMembers.map((m) => {
-        const isAdmin = m.role === "admin";
-        const isSelf = m.id === currentMemberId;
+      {allUsers.map((u) => {
+        const isAdmin = u.role === "admin";
+        const isSelf = u.id === currentUserId;
         const isLastAdmin = isAdmin && adminCount <= 1;
         return (
           <li
-            key={m.id}
+            key={u.id}
             class="flex items-center gap-3 px-5 py-4"
           >
             <div class="min-w-0 flex-1">
               <div class="text-sm font-medium text-ink truncate">
-                {m.displayName}
+                {u.displayName}
                 {isSelf && (
                   <span class="text-xs text-muted ml-2">
                     ({t(locale, "admin.you")})
                   </span>
                 )}
               </div>
-              <div class="text-xs text-muted truncate">{m.email}</div>
+              <div class="text-xs text-muted truncate">{u.email}</div>
             </div>
             <span
               class={`text-xs font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] ${
@@ -53,8 +53,8 @@ export function AdminMembersList({
             {isAdmin ? (
               isLastAdmin ? null : (
                 <button
-                  hx-post={`/admin/members/${m.id}/demote`}
-                  hx-target="#admin-members-list"
+                  hx-post={`/admin/users/${u.id}/demote`}
+                  hx-target="#admin-users-list"
                   hx-swap="outerHTML"
                   hx-confirm={t(locale, "admin.confirm.demote")}
                   class="text-xs px-2.5 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-danger hover:bg-[var(--color-glow-danger)] transition-colors"
@@ -64,8 +64,8 @@ export function AdminMembersList({
               )
             ) : (
               <button
-                hx-post={`/admin/members/${m.id}/promote`}
-                hx-target="#admin-members-list"
+                hx-post={`/admin/users/${u.id}/promote`}
+                hx-target="#admin-users-list"
                 hx-swap="outerHTML"
                 class="text-xs px-2.5 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-accent hover:bg-surface-hover transition-colors"
               >
@@ -79,21 +79,21 @@ export function AdminMembersList({
   );
 }
 
-export function AdminMembersPage({
-  members: allMembers,
-  currentMemberId,
+export function AdminUsersPage({
+  users: allUsers,
+  currentUserId,
   displayName,
   locale,
   theme,
 }: {
-  members: Member[];
-  currentMemberId: string;
+  users: User[];
+  currentUserId: string;
   displayName: string;
   locale: string;
   theme?: string;
 }) {
   return (
-    <Layout title={t(locale, "admin.members.title")} locale={locale} theme={theme}>
+    <Layout title={t(locale, "admin.users.title")} locale={locale} theme={theme}>
       <Nav displayName={displayName} locale={locale} theme={theme} isAdmin />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <a
@@ -119,15 +119,15 @@ export function AdminMembersPage({
         </a>
         <div class="mb-8">
           <h1 class="text-xl font-bold text-ink tracking-tight mb-1">
-            {t(locale, "admin.members.title")}
+            {t(locale, "admin.users.title")}
           </h1>
           <p class="text-sm text-secondary">
-            {t(locale, "admin.members.description")}
+            {t(locale, "admin.users.description")}
           </p>
         </div>
-        <AdminMembersList
-          members={allMembers}
-          currentMemberId={currentMemberId}
+        <AdminUsersList
+          users={allUsers}
+          currentUserId={currentUserId}
           locale={locale}
         />
       </main>

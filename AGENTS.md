@@ -26,10 +26,10 @@ src/
 ├── tasks/
 │   ├── routes.tsx    # CRUD routes: list, create, edit, archive, done toggle
 │   └── service.ts   # Business logic: createTask, archiveTask, toggleDone, etc.
-├── members/
-│   └── service.ts   # findOrCreateMember, findMemberBySlackUserId, updateMemberLocale
+├── users/
+│   └── service.ts   # findOrCreateUser, findUserBySlackUserId, updateUserLocale
 ├── admin/
-│   └── routes.tsx   # Member management (promote/demote)
+│   └── routes.tsx   # User management (promote/demote)
 ├── slack/
 │   ├── bolt.ts      # Slack Bolt app: shortcut handler + modal submission
 │   ├── receiver.ts  # Custom HonoReceiver for HTTP mode
@@ -54,17 +54,17 @@ src/
         ├── task-status.tsx  # Per-assignee completion progress
         ├── archived.tsx     # Archived tasks with assigned/owned tabs
         ├── login.tsx        # Slack OAuth login
-        └── admin-members.tsx
+        └── admin-users.tsx
 ```
 
 ## Database Schema
 
 Four tables with UUID primary keys:
 
-- **members**: `slackUserId` (unique), `email`, `displayName`, `avatarUrl`, `role` ("user"|"admin"), `locale` ("en"|"ja")
-- **tasks**: `title`, `description`, `archived`, `deadline`, `slackMessageTs`, `slackChannelId`, `slackPermalink`, `createdById` (FK → members)
-- **taskAssignees**: composite PK (`taskId`, `memberId`), `done` (boolean) — per-assignee completion
-- **taskOwners**: composite PK (`taskId`, `memberId`) — task creator is auto-added as owner
+- **users**: `slackUserId` (unique), `email`, `displayName`, `avatarUrl`, `role` ("user"|"admin"), `locale` ("en"|"ja")
+- **tasks**: `title`, `description`, `archived`, `deadline`, `slackMessageTs`, `slackChannelId`, `slackPermalink`, `createdById` (FK → users)
+- **taskAssignees**: composite PK (`taskId`, `userId`), `done` (boolean) — per-assignee completion
+- **taskOwners**: composite PK (`taskId`, `userId`) — task creator is auto-added as owner
 
 Migrations live in `drizzle/`. Generate with `bun run db:generate`, apply with `bun run db:migrate`.
 
@@ -75,12 +75,12 @@ Migrations live in `drizzle/`. Generate with `bun run db:generate`, apply with `
 1. User triggers "Create task" message shortcut in Slack
 2. `bolt.ts` shortcut handler opens a loading modal immediately (3s trigger_id limit)
 3. Extracts message text from `blocks` (rich text) or falls back to plain `text`
-4. Resolves usergroup mentions → pre-resolves group members to DB member IDs
+4. Resolves usergroup mentions → pre-resolves group users to DB user IDs
 5. Extracts individual user mentions (excluding those already in groups)
 6. Hydrates mention labels (`<@U1>` → `<@U1|alice>`) for stored description
 7. Calls Gemini to generate title + deadline from message content
 8. Updates modal: title input, optional deadline picker, `multi_users_select` (users), `multi_static_select` (groups), original message quote
-9. On submission: resolves selected users via Slack API → `findOrCreateMember`, combines with group member IDs, creates task, posts confirmation in thread
+9. On submission: resolves selected users via Slack API → `findOrCreateUser`, combines with group user IDs, creates task, posts confirmation in thread
 
 ### Auth Flow
 
@@ -101,7 +101,7 @@ Migrations live in `drizzle/`. Generate with `bun run db:generate`, apply with `
 - Two locales: `"en"` (default) and `"ja"`
 - `t(locale, "key.path")` returns translated string; falls back to key if missing
 - All messages in `src/i18n/messages.ts` as flat key-value records
-- Locale determined by: cookie → DB (`members.locale`) → default `"en"`
+- Locale determined by: cookie → DB (`users.locale`) → default `"en"`
 - Locale persisted to DB on switch (`POST /locale/:lang`), restored on login
 
 ## Slack Integration Details

@@ -2,7 +2,7 @@ import { sign, verify } from "hono/jwt";
 import { env } from "../env";
 
 export interface JwtPayload {
-  sub: string; // member ID
+  sub: string; // user ID
   name: string;
   exp: number;
 }
@@ -10,12 +10,12 @@ export interface JwtPayload {
 const EXPIRATION_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
 export async function createToken(
-  memberId: string,
+  userId: string,
   displayName: string,
 ): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   return sign(
-    { sub: memberId, name: displayName, exp: now + EXPIRATION_SECONDS },
+    { sub: userId, name: displayName, exp: now + EXPIRATION_SECONDS },
     env.JWT_SECRET,
   );
 }

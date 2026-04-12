@@ -2,15 +2,15 @@ import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { authMiddleware, adminMiddleware } from "../auth/middleware";
 import {
-  listAllMembers,
-  setMemberRole,
+  listAllUsers,
+  setUserRole,
   countAdminsExcluding,
-  findMemberById,
-} from "../members/service";
+  findUserById,
+} from "../users/service";
 import {
-  AdminMembersPage,
-  AdminMembersList,
-} from "../views/pages/admin-members.tsx";
+  AdminUsersPage,
+  AdminUsersList,
+} from "../views/pages/admin-users.tsx";
 
 const adminRoutes = new Hono();
 
@@ -27,15 +27,15 @@ function getTheme(c: { req: { raw: Request } }): string {
   return cookie === "light" ? "light" : "dark";
 }
 
-adminRoutes.get("/admin/members", async (c) => {
-  const { sub: memberId, name: displayName } = c.get("jwtPayload");
+adminRoutes.get("/admin/users", async (c) => {
+  const { sub: userId, name: displayName } = c.get("jwtPayload");
   const locale = getLocale(c);
   const theme = getTheme(c);
-  const members = await listAllMembers();
+  const users = await listAllUsers();
   return c.html(
-    <AdminMembersPage
-      members={members}
-      currentMemberId={memberId}
+    <AdminUsersPage
+      users={users}
+      currentUserId={userId}
       displayName={displayName}
       locale={locale}
       theme={theme}
@@ -43,32 +43,32 @@ adminRoutes.get("/admin/members", async (c) => {
   );
 });
 
-adminRoutes.post("/admin/members/:id/promote", async (c) => {
+adminRoutes.post("/admin/users/:id/promote", async (c) => {
   const targetId = c.req.param("id");
-  const { sub: memberId } = c.get("jwtPayload");
+  const { sub: userId } = c.get("jwtPayload");
   const locale = getLocale(c);
 
-  const target = await findMemberById(targetId);
+  const target = await findUserById(targetId);
   if (!target) return c.text("Not found", 404);
 
-  await setMemberRole(targetId, "admin");
+  await setUserRole(targetId, "admin");
 
-  const members = await listAllMembers();
+  const users = await listAllUsers();
   return c.html(
-    <AdminMembersList
-      members={members}
-      currentMemberId={memberId}
+    <AdminUsersList
+      users={users}
+      currentUserId={userId}
       locale={locale}
     />,
   );
 });
 
-adminRoutes.post("/admin/members/:id/demote", async (c) => {
+adminRoutes.post("/admin/users/:id/demote", async (c) => {
   const targetId = c.req.param("id");
-  const { sub: memberId } = c.get("jwtPayload");
+  const { sub: userId } = c.get("jwtPayload");
   const locale = getLocale(c);
 
-  const target = await findMemberById(targetId);
+  const target = await findUserById(targetId);
   if (!target) return c.text("Not found", 404);
 
   // Ensure at least one admin remains after the demotion. This also
@@ -78,13 +78,13 @@ adminRoutes.post("/admin/members/:id/demote", async (c) => {
     return c.text("At least one admin must remain", 400);
   }
 
-  await setMemberRole(targetId, "user");
+  await setUserRole(targetId, "user");
 
-  const members = await listAllMembers();
+  const users = await listAllUsers();
   return c.html(
-    <AdminMembersList
-      members={members}
-      currentMemberId={memberId}
+    <AdminUsersList
+      users={users}
+      currentUserId={userId}
       locale={locale}
     />,
   );

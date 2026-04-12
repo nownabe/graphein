@@ -1,11 +1,11 @@
 import type { InferSelectModel } from "drizzle-orm";
-import type { tasks, members } from "../../db/schema";
+import type { tasks, users } from "../../db/schema";
 import { t } from "../../i18n/index";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 
 type Task = InferSelectModel<typeof tasks>;
-type Member = InferSelectModel<typeof members>;
+type User = InferSelectModel<typeof users>;
 
 export function OwnersPartial({
   task,
@@ -13,7 +13,7 @@ export function OwnersPartial({
   locale,
 }: {
   task: Task;
-  owners: Member[];
+  owners: User[];
   locale: string;
 }) {
   return (
@@ -71,7 +71,7 @@ export function OwnerSearchResults({
   locale,
 }: {
   taskId: string;
-  results: Member[];
+  results: User[];
   locale: string;
 }) {
   if (results.length === 0) {
@@ -83,18 +83,18 @@ export function OwnerSearchResults({
   }
   return (
     <ul class="border border-edge rounded-[var(--radius-sm)] bg-page divide-y divide-edge overflow-hidden">
-      {results.map((m) => (
-        <li key={m.id}>
+      {results.map((u) => (
+        <li key={u.id}>
           <button
             type="button"
             hx-post={`/tasks/${taskId}/owners`}
-            hx-vals={JSON.stringify({ member_id: m.id })}
+            hx-vals={JSON.stringify({ user_id: u.id })}
             hx-target="#owners-section"
             hx-swap="outerHTML"
             class="w-full text-left px-3 py-2 text-sm text-ink hover:bg-surface-hover transition-colors cursor-pointer flex items-center justify-between"
           >
-            <span>{m.displayName}</span>
-            <span class="text-xs text-muted">{m.email}</span>
+            <span>{u.displayName}</span>
+            <span class="text-xs text-muted">{u.email}</span>
           </button>
         </li>
       ))}
@@ -108,7 +108,7 @@ function TaskEditContent({
   locale,
 }: {
   task: Task;
-  owners: Member[];
+  owners: User[];
   locale: string;
 }) {
   const deadlineValue = task.deadline
@@ -237,7 +237,7 @@ export function TaskEditPage({
   isAdmin,
 }: {
   task: Task;
-  owners: Member[];
+  owners: User[];
   displayName: string;
   locale: string;
   theme?: string;

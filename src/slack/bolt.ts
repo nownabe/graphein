@@ -6,7 +6,7 @@ import {
   hydrateMentionLabels,
 } from "./helpers";
 import { blocksToMrkdwn } from "./rich-text";
-import { findOrCreateMember, findMemberBySlackUserId } from "../members/service";
+import { findOrCreateUser, findUserBySlackUserId } from "../users/service";
 import { createTask } from "../tasks/service";
 import { generateTaskDetails } from "../llm/gemini";
 import { t } from "../i18n";
@@ -28,8 +28,8 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
   if (shortcut.type !== "message_action") return;
 
   // Look up user's saved locale for i18n
-  const existingMember = await findMemberBySlackUserId(shortcut.user.id);
-  const locale = existingMember?.locale ?? "en";
+  const existingUser = await findUserBySlackUserId(shortcut.user.id);
+  const locale = existingUser?.locale ?? "en";
 
   // Prefer the structured `blocks` data so bold/italic/strike/lists/quotes
   // survive; fall back to plain `text` for legacy messages.
@@ -82,8 +82,8 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
       groupId: string;
       label: string;
       mentionToken: string;
-      memberIds: string[];    // pre-resolved DB member IDs
-      slackUserIds: string[]; // Slack user IDs in this group
+      userIds: string[];       // pre-resolved DB user IDs
+      slackUserIds: string[];  // Slack user IDs in this group
     }
     const groupCandidates: GroupCandidate[] = [];
 
@@ -91,34 +91,34 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
       try {
         const groupHandle = await resolver.usergroup(groupId);
         const usersResult = await client.usergroups.users.list({ usergroup: groupId });
-        const memberIds: string[] = [];
+        const userIds: string[] = [];
         const slackUserIds: string[] = [];
-        for (const userId of usersResult.users ?? []) {
+        for (const slackUid of usersResult.users ?? []) {
           try {
-            const result = await client.users.info({ user: userId });
+            const result = await client.users.info({ user: slackUid });
             if (result.user?.profile?.email) {
-              const member = await findOrCreateMember({
-                slackUserId: userId,
+              const user = await findOrCreateUser({
+                slackUserId: slackUid,
                 email: result.user.profile.email,
                 displayName:
                   result.user.profile.display_name ||
                   result.user.profile.real_name ||
-                  userId,
+                  slackUid,
                 avatarUrl: result.user.profile.image_72 ?? null,
               });
-              memberIds.push(member.id);
-              slackUserIds.push(userId);
+              userIds.push(user.id);
+              slackUserIds.push(slackUid);
             }
           } catch {
             // Skip unresolvable users
           }
         }
-        if (memberIds.length > 0) {
+        if (userIds.length > 0) {
           groupCandidates.push({
             groupId,
             label: `@${groupHandle ?? groupId}`,
             mentionToken: `<!subteam^${groupId}>`,
-            memberIds,
+            userIds,
             slackUserIds,
           });
         }
@@ -152,7 +152,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
 
     // Creator is the person who triggered the shortcut
     const creatorInfo = await client.users.info({ user: shortcut.user.id });
-    const creator = await findOrCreateMember({
+    const creator = await findOrCreateUser({
       slackUserId: shortcut.user.id,
       email: creatorInfo.user?.profile?.email ?? "",
       displayName:
@@ -292,41 +292,41 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
   const assigneeIds: string[] = [];
   const assigneeMentions: string[] = [];
 
-  for (const userId of selectedUserIds) {
+  for (const slackUid of selectedUserIds) {
     try {
-      const result = await client.users.info({ user: userId });
+      const result = await client.users.info({ user: slackUid });
       if (result.user?.profile?.email) {
-        const member = await findOrCreateMember({
-          slackUserId: userId,
+        const user = await findOrCreateUser({
+          slackUserId: slackUid,
           email: result.user.profile.email,
           displayName:
             result.user.profile.display_name ||
             result.user.profile.real_name ||
-            userId,
+            slackUid,
           avatarUrl: result.user.profile.image_72 ?? null,
         });
-        if (!assigneeIds.includes(member.id)) {
-          assigneeIds.push(member.id);
+        if (!assigneeIds.includes(user.id)) {
+          assigneeIds.push(user.id);
         }
       }
     } catch {
       // Skip unresolvable users
     }
-    assigneeMentions.push(`<@${userId}>`);
+    assigneeMentions.push(`<@${slackUid}>`);
   }
 
   // Resolve selected groups from multi_static_select
   const selectedGroupOptions: { value: string }[] =
     view.state.values.groups_block?.groups?.selected_options ?? [];
   const selectedGroupIds = new Set(selectedGroupOptions.map(o => o.value));
-  const groupCandidates: { groupId: string; mentionToken: string; memberIds: string[] }[] =
+  const groupCandidates: { groupId: string; mentionToken: string; userIds: string[] }[] =
     metadata.groupCandidates ?? [];
 
   for (const candidate of groupCandidates) {
     if (!selectedGroupIds.has(candidate.groupId)) continue;
-    for (const memberId of candidate.memberIds) {
-      if (!assigneeIds.includes(memberId)) {
-        assigneeIds.push(memberId);
+    for (const userId of candidate.userIds) {
+      if (!assigneeIds.includes(userId)) {
+        assigneeIds.push(userId);
       }
     }
     assigneeMentions.push(candidate.mentionToken);
