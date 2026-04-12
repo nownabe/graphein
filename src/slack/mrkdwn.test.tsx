@@ -617,4 +617,32 @@ describe("Mrkdwn JSX renderer", () => {
     expect(html).not.toContain("<script>alert(1)</script>");
     expect(html).toContain("&lt;script&gt;");
   });
+
+  it("renders javascript: link as plain text", () => {
+    const html = render("<javascript:alert(1)|click me>");
+    expect(html).not.toContain("href");
+    expect(html).toContain("click me");
+  });
+
+  it("renders data: link as plain text", () => {
+    const html = render("<data:text/html,<script>alert(1)</script>|payload>");
+    expect(html).not.toContain("href");
+    expect(html).toContain("payload");
+  });
+
+  it("renders vbscript: link as plain text", () => {
+    const html = render("<vbscript:MsgBox(1)|click>");
+    expect(html).not.toContain("href");
+    expect(html).toContain("click");
+  });
+
+  it("allows https: links", () => {
+    const html = render("<https://example.com|safe>");
+    expect(html).toContain('href="https://example.com"');
+  });
+
+  it("allows mailto: links", () => {
+    const html = render("<mailto:a@b.com|email>");
+    expect(html).toContain('href="mailto:a@b.com"');
+  });
 });

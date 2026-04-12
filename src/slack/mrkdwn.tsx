@@ -388,6 +388,19 @@ function parseEntity(inner: string): InlineNode | null {
   return null;
 }
 
+// ---------- URL safety ----------
+
+const SAFE_URL_SCHEMES = new Set(["http:", "https:", "mailto:"]);
+
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return SAFE_URL_SCHEMES.has(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 // ---------- Renderer ----------
 
 export interface MrkdwnOptions {
@@ -461,6 +474,9 @@ function renderInlineNode(node: InlineNode, opts: MrkdwnOptions) {
       return <del>{renderInline(node.children, opts)}</del>;
     case "link": {
       const href = /^[a-z][a-z0-9+.-]*:/i.test(node.url) ? node.url : `https://${node.url}`;
+      if (!isSafeUrl(href)) {
+        return <span>{renderInline(node.children, opts)}</span>;
+      }
       return (
         <a
           href={href}
@@ -505,7 +521,7 @@ function renderInlineNode(node: InlineNode, opts: MrkdwnOptions) {
     }
     case "date": {
       const text = node.fallback ?? new Date(node.timestamp * 1000).toISOString();
-      if (node.link) {
+      if (node.link && isSafeUrl(node.link)) {
         return (
           <a
             href={node.link}
