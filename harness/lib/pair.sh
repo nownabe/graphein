@@ -114,21 +114,18 @@ run_generator() {
 
   local gen_log="${pair_dir}/generator-sprint-${sprint}.log"
 
+  set +e
   (
     cd "$worktree_path"
-    claude -p \
+    echo "$user_prompt" | claude -p \
       --append-system-prompt "$prompt" \
-      --permission-mode bypassPermissions \
       --dangerously-skip-permissions \
       --max-budget-usd "$budget" \
       --model "$model" \
-      --allowed-tools "Read,Write,Edit,Bash,Glob,Grep" \
-      --add-dir "$work_dir" \
-      --add-dir "$pair_dir" \
-      "$user_prompt"
-  ) > "$gen_log" 2>&1
-
-  local exit_code=$?
+      --add-dir "$work_dir" "$pair_dir"
+  ) 2>&1 | tee "$gen_log" | prefix_stream "$prefix"
+  local exit_code=${PIPESTATUS[0]}
+  set -e
 
   if [[ $exit_code -ne 0 ]]; then
     log_prefix "$prefix" "Failed (exit ${exit_code}). See ${gen_log}"
@@ -170,20 +167,18 @@ run_evaluator() {
 
   local eval_log="${pair_dir}/evaluator-sprint-${sprint}.log"
 
+  set +e
   (
     cd "$worktree_path"
-    claude -p \
+    echo "Evaluate the implementation against the sprint contract." | claude -p \
       --append-system-prompt "$prompt" \
-      --permission-mode bypassPermissions \
       --dangerously-skip-permissions \
       --max-budget-usd "$budget" \
       --model "$model" \
-      --add-dir "$work_dir" \
-      --add-dir "$pair_dir" \
-      "Evaluate the implementation against the sprint contract."
-  ) > "$eval_log" 2>&1
-
-  local exit_code=$?
+      --add-dir "$work_dir" "$pair_dir"
+  ) 2>&1 | tee "$eval_log" | prefix_stream "$prefix"
+  local exit_code=${PIPESTATUS[0]}
+  set -e
 
   if [[ $exit_code -ne 0 ]]; then
     log_prefix "$prefix" "Failed (exit ${exit_code}). See ${eval_log}"

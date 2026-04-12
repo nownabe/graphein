@@ -86,7 +86,7 @@ init_worktree() {
     git -C "$root" branch -D "$branch_name" 2>/dev/null || true
   fi
 
-  git -C "$root" worktree add -b "$branch_name" "$worktree_path" HEAD
+  git -C "$root" worktree add -b "$branch_name" "$worktree_path" HEAD >&2
   echo "$worktree_path"
 }
 
@@ -103,6 +103,15 @@ cleanup_worktree() {
     git -C "$root" worktree remove --force "$worktree_path" 2>/dev/null || true
   fi
   # Don't delete the branch — it holds the generated code for merging
+}
+
+# Stream stdin to stderr with a colored prefix, one line at a time.
+# Usage: some_command | prefix_stream "team/pair-01/gen"
+prefix_stream() {
+  local prefix="$1"
+  while IFS= read -r line; do
+    echo -e "${CYAN}[${prefix}]${NC} ${line}" >&2
+  done
 }
 
 # Check if a required command exists

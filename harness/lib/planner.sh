@@ -33,16 +33,16 @@ run_planner() {
 
   local planner_log="${work_dir}/planner.log"
 
+  set +e
   claude -p \
     --append-system-prompt "$prompt" \
-    --permission-mode bypassPermissions \
     --dangerously-skip-permissions \
     --max-budget-usd "$budget" \
     --model "$model" \
     "$requirement" \
-    > "$planner_log" 2>&1
-
-  local exit_code=$?
+    2>&1 | tee "$planner_log" | prefix_stream "$prefix"
+  local exit_code=${PIPESTATUS[0]}
+  set -e
 
   if [[ $exit_code -ne 0 ]]; then
     log_prefix "$prefix" "Planner failed (exit code: ${exit_code}). See ${planner_log}"
