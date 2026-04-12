@@ -4,7 +4,7 @@ description: >-
   Create a git commit with a Conventional Commits message.
   Use when the user wants to commit current changes, save progress, or finalize work.
   Automatically creates a feature branch if on main.
-disable-model-invocation: true
+disable-model-invocation: false
 allowed-tools:
   - Bash(git status)
   - Bash(git diff *)
