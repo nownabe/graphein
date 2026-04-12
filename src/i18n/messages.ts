@@ -100,7 +100,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "button.remove": "除外",
 
     // Language switcher
-    "lang.switch": "EN",
+    "lang.switch": "English",
 
     // Theme
     "nav.theme.light": "ライトモード",
