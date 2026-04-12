@@ -16,6 +16,13 @@ const app = new Hono();
 app.use("*", logger());
 app.use("/public/*", serveStatic({ root: "./" }));
 
+// Anti-clickjacking: prevent framing by any origin
+app.use("*", async (c, next) => {
+  await next();
+  c.header("Content-Security-Policy", "frame-ancestors 'none'");
+  c.header("X-Frame-Options", "DENY");
+});
+
 // CSRF protection for all state-changing requests
 app.use("*", csrfMiddleware);
 
