@@ -21,7 +21,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Page titles
     "page.myTasks": "マイタスク",
     "page.ownedTasks": "オーナーのタスク",
-    "page.archived": "アーカイブ済み",
+    "page.archived": "アーカイブ済みタスク",
     "page.editTask": "タスクを編集",
     "page.taskStatus": "完了状態",
     "page.login": "ログイン",
@@ -136,7 +136,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Page titles
     "page.myTasks": "My Tasks",
     "page.ownedTasks": "Owned Tasks",
-    "page.archived": "Archived",
+    "page.archived": "Archived Tasks",
     "page.editTask": "Edit Task",
     "page.taskStatus": "Completion Status",
     "page.login": "Login",
