@@ -16,3 +16,7 @@ backend = "core:bun"
 [[tools.oxfmt]]
 version = "0.44.0"
 backend = "npm:oxfmt"
+
+[[tools.oxlint]]
+version = "1.59.0"
+backend = "npm:oxlint"

@@ -34,6 +34,12 @@ jobs:
               - '.oxfmtrc*'
               - 'mise.toml'
               - 'mise.lock'
+            oxlint:
+              - '**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}'
+              - '.oxlintrc*'
+              - 'oxlint.config.*'
+              - 'mise.toml'
+              - 'mise.lock'
             app:
               - 'src/**'
               - 'package.json'
@@ -59,6 +65,14 @@ jobs:
       contents: read
     uses: ./.github/workflows/reusable-oxfmt.yaml
 
+  oxlint:
+    name: oxlint Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).oxlint_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-oxlint.yaml
+
   app:
     name: App Check
     needs: detect-changes
@@ -73,6 +87,7 @@ jobs:
     needs:
       - detect-changes
       - oxfmt
+      - oxlint
       - github-workflow
       - app
     runs-on: ubuntu-latest
