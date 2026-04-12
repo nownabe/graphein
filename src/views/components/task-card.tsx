@@ -38,10 +38,11 @@ export function TaskCard({
 
   const isOverdue =
     task.deadline && !isDone && new Date(task.deadline) < new Date();
+  const highlightOverdue = isOverdue && !(task.archived && !isAssignee);
 
   const cardBase =
     "group rounded-[var(--radius-lg)] border p-4 transition-all duration-150";
-  const cardState = isOverdue
+  const cardState = highlightOverdue
     ? "bg-[color-mix(in_srgb,var(--color-danger)_6%,var(--color-surface))] border-danger-dim/30"
     : isDone
       ? "bg-surface/50 border-edge/50"
@@ -98,7 +99,7 @@ export function TaskCard({
           <div class="flex items-center gap-3 mt-1.5 text-xs text-secondary">
             {deadlineStr && (
               <span
-                class={`inline-flex items-center gap-1 ${isOverdue ? "text-danger font-semibold" : ""}`}
+                class={`inline-flex items-center gap-1 ${highlightOverdue ? "text-danger font-semibold" : ""}`}
                 title={t(loc, "task.deadline")}
               >
                 {isOverdue ? (
