@@ -59,6 +59,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Task status page
     "taskStatus.progress": "進捗",
+    "taskProgress.done": "完了",
 
     // Links
     "link.archived": "アーカイブ済み",
@@ -174,6 +175,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Task status page
     "taskStatus.progress": "Progress",
+    "taskProgress.done": " done",
 
     // Links
     "link.archived": "Archived",

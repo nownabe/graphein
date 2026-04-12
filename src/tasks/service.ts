@@ -1,4 +1,4 @@
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, inArray } from "drizzle-orm";
 import { db } from "../db/client";
 import { tasks, taskAssignees, taskOwners } from "../db/schema";
 
@@ -56,6 +56,24 @@ export async function getTaskAssignees(taskId: string) {
     with: { member: true },
   });
   return assignments.map((a) => a.member);
+}
+
+export async function getTasksProgress(
+  taskIds: string[],
+): Promise<Map<string, { total: number; done: number }>> {
+  if (taskIds.length === 0) return new Map();
+  const assignments = await db.query.taskAssignees.findMany({
+    where: inArray(taskAssignees.taskId, taskIds),
+    columns: { taskId: true, done: true },
+  });
+  const map = new Map<string, { total: number; done: number }>();
+  for (const a of assignments) {
+    const entry = map.get(a.taskId) ?? { total: 0, done: 0 };
+    entry.total++;
+    if (a.done) entry.done++;
+    map.set(a.taskId, entry);
+  }
+  return map;
 }
 
 export async function listTaskAssigneesWithStatus(taskId: string) {

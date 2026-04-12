@@ -4,7 +4,7 @@ import { t } from "../../i18n/index";
 import type { MrkdwnOptions } from "../../slack/mrkdwn";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
-import { TaskList } from "../components/task-list";
+import { TaskList, type ProgressMap } from "../components/task-list";
 
 type Task = InferSelectModel<typeof tasks> & {
   done: boolean;
@@ -145,6 +145,7 @@ export function HomeContentPartial({
   overdueCount,
   ownedOverdueCount,
   mrkdwnLabels,
+  ownedProgressMap,
 }: {
   assignedTasks: Task[];
   ownedTasks: Task[];
@@ -155,6 +156,7 @@ export function HomeContentPartial({
   overdueCount: number;
   ownedOverdueCount: number;
   mrkdwnLabels?: MrkdwnOptions;
+  ownedProgressMap?: ProgressMap;
 }) {
   const isOwnedView = activeView === "owned";
   return (
@@ -197,6 +199,7 @@ export function HomeContentPartial({
           locale={locale}
           grouped
           mrkdwnLabels={mrkdwnLabels}
+          progressMap={ownedProgressMap}
         />
       ) : (
         <>
@@ -232,6 +235,7 @@ export function HomePage({
   overdueCount,
   ownedOverdueCount,
   mrkdwnLabels,
+  ownedProgressMap,
   isAdmin,
 }: {
   assignedTasks: Task[];
@@ -244,6 +248,7 @@ export function HomePage({
   overdueCount: number;
   ownedOverdueCount: number;
   mrkdwnLabels?: MrkdwnOptions;
+  ownedProgressMap?: ProgressMap;
   isAdmin?: boolean;
 }) {
   const filter = activeFilter ?? "all";
@@ -274,6 +279,7 @@ export function HomePage({
             overdueCount={overdueCount}
             ownedOverdueCount={ownedOverdueCount}
             mrkdwnLabels={mrkdwnLabels}
+            ownedProgressMap={ownedProgressMap}
           />
         </div>
       </main>

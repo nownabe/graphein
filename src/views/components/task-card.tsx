@@ -13,6 +13,7 @@ export function TaskCard({
   showActions,
   locale,
   mrkdwnLabels,
+  progress,
 }: {
   task: Task;
   done?: boolean;
@@ -21,6 +22,7 @@ export function TaskCard({
   showActions?: boolean;
   locale?: string;
   mrkdwnLabels?: MrkdwnOptions;
+  progress?: { total: number; done: number };
 }) {
   const loc = locale ?? "ja";
   const isDone = done ?? false;
@@ -62,6 +64,33 @@ export function TaskCard({
               hx-swap="outerHTML"
               class="mt-0.5"
             />
+          ) : progress && progress.total > 0 ? (
+            <div
+              class="shrink-0 mt-0.5"
+              title={`${Math.round((progress.done / progress.total) * 100)}%${t(loc, "taskProgress.done")} (${progress.done}/${progress.total})`}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18">
+                <circle
+                  cx="9"
+                  cy="9"
+                  r="7"
+                  fill="none"
+                  stroke="var(--color-edge)"
+                  stroke-width="2.5"
+                />
+                <circle
+                  cx="9"
+                  cy="9"
+                  r="7"
+                  fill="none"
+                  stroke={progress.done === progress.total ? "var(--color-success)" : "var(--color-accent)"}
+                  stroke-width="2.5"
+                  stroke-dasharray={`${(progress.done / progress.total) * 44} 44`}
+                  stroke-linecap="round"
+                  transform="rotate(-90 9 9)"
+                />
+              </svg>
+            </div>
           ) : (
             <div class="shrink-0" style="width:1.125rem" />
           )

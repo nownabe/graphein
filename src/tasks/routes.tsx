@@ -17,6 +17,7 @@ import {
   listTaskAssigneesWithStatus,
   addTaskOwner,
   removeTaskOwner,
+  getTasksProgress,
 } from "./service";
 import {
   findMemberById,
@@ -87,12 +88,17 @@ async function buildHomeData(
     isAssignee: false,
   }));
 
+  const ownedProgressMap = await getTasksProgress(
+    allOwnedTasks.map((t) => t.id),
+  );
+
   return {
     assignedTasks,
     ownedTasks,
     counts,
     overdueCount,
     ownedOverdueCount,
+    ownedProgressMap,
   };
 }
 
@@ -113,6 +119,7 @@ taskRoutes.get("/tasks", async (c) => {
     counts,
     overdueCount,
     ownedOverdueCount,
+    ownedProgressMap,
   } = await buildHomeData(memberId, filter, isAdmin);
   const mrkdwnLabels = await buildMrkdwnLabels(
     [...assignedTasks, ...ownedTasks].map((t) => t.description),
@@ -131,6 +138,7 @@ taskRoutes.get("/tasks", async (c) => {
         overdueCount={overdueCount}
         ownedOverdueCount={ownedOverdueCount}
         mrkdwnLabels={mrkdwnLabels}
+        ownedProgressMap={ownedProgressMap}
       />,
     );
   }
@@ -147,6 +155,7 @@ taskRoutes.get("/tasks", async (c) => {
       overdueCount={overdueCount}
       ownedOverdueCount={ownedOverdueCount}
       mrkdwnLabels={mrkdwnLabels}
+      ownedProgressMap={ownedProgressMap}
       isAdmin={isAdmin}
     />,
   );

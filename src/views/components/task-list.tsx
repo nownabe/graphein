@@ -82,16 +82,20 @@ function groupTasksByTime(taskList: Task[], locale: string): TaskGroup[] {
   return groups;
 }
 
+export type ProgressMap = Map<string, { total: number; done: number }>;
+
 function TaskSection({
   group,
   showActions,
   locale,
   mrkdwnLabels,
+  progressMap,
 }: {
   group: TaskGroup;
   showActions?: boolean;
   locale: string;
   mrkdwnLabels?: MrkdwnOptions;
+  progressMap?: ProgressMap;
 }) {
   return (
     <div>
@@ -120,6 +124,7 @@ function TaskSection({
             showActions={showActions}
             locale={locale}
             mrkdwnLabels={mrkdwnLabels}
+            progress={progressMap?.get(task.id)}
           />
         ))}
       </div>
@@ -134,6 +139,7 @@ export function TaskList({
   locale,
   grouped,
   mrkdwnLabels,
+  progressMap,
 }: {
   tasks: Task[];
   showActions?: boolean;
@@ -141,6 +147,7 @@ export function TaskList({
   locale?: string;
   grouped?: boolean;
   mrkdwnLabels?: MrkdwnOptions;
+  progressMap?: ProgressMap;
 }) {
   const loc = locale ?? "ja";
 
@@ -196,6 +203,7 @@ export function TaskList({
             showActions={showActions}
             locale={loc}
             mrkdwnLabels={mrkdwnLabels}
+            progressMap={progressMap}
           />
         ))}
       </div>
@@ -214,6 +222,7 @@ export function TaskList({
           showActions={showActions}
           locale={loc}
           mrkdwnLabels={mrkdwnLabels}
+          progress={progressMap?.get(task.id)}
         />
       ))}
     </div>
