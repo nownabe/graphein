@@ -8,7 +8,7 @@ import taskRoutes from "./tasks/routes.tsx";
 import adminRoutes from "./admin/routes.tsx";
 import { receiver } from "./slack/bolt";
 import { verifyToken } from "./auth/session";
-import { updateMemberLocale } from "./members/service";
+import { updateMemberLocale, updateMemberTheme } from "./members/service";
 
 const app = new Hono();
 
@@ -33,6 +33,28 @@ app.get("/locale/:lang", async (c) => {
     const payload = await verifyToken(token);
     if (payload) {
       await updateMemberLocale(payload.sub, locale);
+    }
+  }
+
+  const referer = c.req.header("Referer") || "/";
+  return c.redirect(referer, 302);
+});
+
+// Theme switching
+app.get("/theme/:mode", async (c) => {
+  const mode = c.req.param("mode");
+  const theme = mode === "light" ? "light" : "dark";
+  setCookie(c, "theme", theme, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "Lax",
+  });
+
+  const token = getCookie(c, "token");
+  if (token) {
+    const payload = await verifyToken(token);
+    if (payload) {
+      await updateMemberTheme(payload.sub, theme);
     }
   }
 

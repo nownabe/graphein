@@ -84,15 +84,17 @@ export function AdminMembersPage({
   currentMemberId,
   displayName,
   locale,
+  theme,
 }: {
   members: Member[];
   currentMemberId: string;
   displayName: string;
   locale: string;
+  theme?: string;
 }) {
   return (
-    <Layout title={t(locale, "admin.members.title")} locale={locale}>
-      <Nav displayName={displayName} locale={locale} isAdmin />
+    <Layout title={t(locale, "admin.members.title")} locale={locale} theme={theme}>
+      <Nav displayName={displayName} locale={locale} theme={theme} isAdmin />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <a
           href="/tasks"

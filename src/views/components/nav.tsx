@@ -3,15 +3,18 @@ import { t } from "../../i18n/index";
 export function Nav({
   displayName,
   locale,
+  theme,
   isAdmin,
 }: {
   displayName: string;
   locale: string;
+  theme?: string;
   isAdmin?: boolean;
 }) {
   const switchLabel = t(locale, "lang.switch");
   const switchHref = locale === "en" ? "/locale/ja" : "/locale/en";
   const initial = displayName.charAt(0).toUpperCase();
+  const isDark = theme !== "light";
 
   return (
     <nav class="sticky top-0 z-10 bg-page/70 backdrop-blur-xl border-b border-edge">
@@ -59,6 +62,36 @@ export function Nav({
           >
             {switchLabel}
           </a>
+          <button
+            type="button"
+            id="theme-toggle"
+            title={t(locale, "nav.theme")}
+            onclick="(function(){var h=document.documentElement;var c=h.getAttribute('data-theme')==='light'?'dark':'light';h.setAttribute('data-theme',c);document.cookie='theme='+c+';path=/;max-age=31536000;samesite=lax';fetch('/theme/'+c);var b=document.getElementById('theme-toggle');b.querySelector('.theme-icon-sun').style.display=c==='dark'?'block':'none';b.querySelector('.theme-icon-moon').style.display=c==='light'?'block':'none'})()"
+            class="text-muted hover:text-secondary transition-colors p-1 rounded-[var(--radius-sm)]"
+          >
+            {/* Sun icon — shown when dark (click to switch to light) */}
+            <svg
+              class="theme-icon-sun w-4 h-4"
+              style={isDark ? "" : "display:none"}
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zM4.222 4.222a1 1 0 011.414 0l.707.707a1 1 0 11-1.414 1.414l-.707-.707a1 1 0 010-1.414zM15.778 4.222a1 1 0 010 1.414l-.707.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM10 7a3 3 0 100 6 3 3 0 000-6zm-7 3a1 1 0 011-1h1a1 1 0 110 2H4a1 1 0 01-1-1zm13 0a1 1 0 011-1h1a1 1 0 110 2h-1a1 1 0 01-1-1zM5.636 14.364a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zm9.435 0a1 1 0 010 1.414l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 0zM10 16a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1z"
+                clip-rule="evenodd"
+              />
+            </svg>
+            {/* Moon icon — shown when light (click to switch to dark) */}
+            <svg
+              class="theme-icon-moon w-4 h-4"
+              style={isDark ? "display:none" : ""}
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
+            </svg>
+          </button>
           <div class="w-px h-4 bg-edge" />
           <div class="flex items-center gap-2">
             <div class="w-7 h-7 rounded-full bg-surface-hover text-secondary flex items-center justify-center text-xs font-semibold shrink-0 border border-edge">

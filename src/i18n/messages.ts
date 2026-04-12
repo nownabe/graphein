@@ -102,6 +102,9 @@ const messages: Record<Locale, Record<string, string>> = {
     // Language switcher
     "lang.switch": "EN",
 
+    // Theme
+    "nav.theme": "テーマ切替",
+
     // Task card
     "task.overdue": "期限切れ",
 
@@ -232,6 +235,9 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Language switcher
     "lang.switch": "日本語",
+
+    // Theme
+    "nav.theme": "Toggle theme",
 
     // Task card
     "task.overdue": "overdue",

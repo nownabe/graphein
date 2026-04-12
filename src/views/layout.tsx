@@ -4,20 +4,29 @@ export function Layout({
   title,
   children,
   locale,
+  theme,
 }: {
   title?: string;
   children: Child;
   locale?: string;
+  theme?: string;
 }) {
   const pageTitle = title ? `${title} | Graphein` : "Graphein";
   const lang = locale === "ja" ? "ja" : "en";
+  const dataTheme = theme === "light" ? "light" : "dark";
   const isDev = process.env.NODE_ENV !== "production";
   return (
-    <html lang={lang}>
+    <html lang={lang} data-theme={dataTheme}>
       <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>{pageTitle}</title>
+        {/* Prevent FOUC: apply theme from cookie before paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var m=document.cookie.match(/(?:^|; )theme=(\\w+)/);if(m)document.documentElement.setAttribute("data-theme",m[1])})();`,
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
           rel="preconnect"

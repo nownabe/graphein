@@ -22,9 +22,15 @@ function getLocale(c: { req: { raw: Request } }): string {
   return cookie === "ja" ? "ja" : "en";
 }
 
+function getTheme(c: { req: { raw: Request } }): string {
+  const cookie = getCookie(c as any, "theme");
+  return cookie === "light" ? "light" : "dark";
+}
+
 adminRoutes.get("/admin/members", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const locale = getLocale(c);
+  const theme = getTheme(c);
   const members = await listAllMembers();
   return c.html(
     <AdminMembersPage
@@ -32,6 +38,7 @@ adminRoutes.get("/admin/members", async (c) => {
       currentMemberId={memberId}
       displayName={displayName}
       locale={locale}
+      theme={theme}
     />,
   );
 });

@@ -17,6 +17,7 @@ export function ArchivedPage({
   tasks,
   displayName,
   locale,
+  theme,
   activeView,
   assignedCount,
   ownedCount,
@@ -26,6 +27,7 @@ export function ArchivedPage({
   tasks: Task[];
   displayName: string;
   locale: string;
+  theme?: string;
   activeView?: "assigned" | "owned";
   assignedCount: number;
   ownedCount: number;
@@ -34,8 +36,8 @@ export function ArchivedPage({
 }) {
   const view = activeView ?? "assigned";
   return (
-    <Layout title={t(locale, "page.archived")} locale={locale}>
-      <Nav displayName={displayName} locale={locale} isAdmin={isAdmin} />
+    <Layout title={t(locale, "page.archived")} locale={locale} theme={theme}>
+      <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-xl font-bold text-ink tracking-tight">

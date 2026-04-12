@@ -229,6 +229,7 @@ export function HomePage({
   ownedTasks,
   displayName,
   locale,
+  theme,
   activeFilter,
   activeView,
   counts,
@@ -242,6 +243,7 @@ export function HomePage({
   ownedTasks: Task[];
   displayName: string;
   locale: string;
+  theme?: string;
   activeFilter?: string;
   activeView?: "assigned" | "owned";
   counts: FilterCounts;
@@ -254,8 +256,8 @@ export function HomePage({
   const filter = activeFilter ?? "all";
   const view = activeView ?? "assigned";
   return (
-    <Layout title={t(locale, "page.myTasks")} locale={locale}>
-      <Nav displayName={displayName} locale={locale} isAdmin={isAdmin} />
+    <Layout title={t(locale, "page.myTasks")} locale={locale} theme={theme}>
+      <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-xl font-bold text-ink tracking-tight">

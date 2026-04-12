@@ -9,7 +9,8 @@ const auth = new Hono();
 
 auth.get("/login", (c) => {
   const locale = getCookie(c, "locale") === "ja" ? "ja" : "en";
-  return c.html(<LoginPage locale={locale} />);
+  const theme = getCookie(c, "theme") === "light" ? "light" : "dark";
+  return c.html(<LoginPage locale={locale} theme={theme} />);
 });
 
 auth.get("/slack", (c) => {
@@ -84,6 +85,13 @@ auth.get("/slack/callback", async (c) => {
 
   // Restore locale preference from DB
   setCookie(c, "locale", member.locale, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+    sameSite: "Lax",
+  });
+
+  // Restore theme preference from DB
+  setCookie(c, "theme", member.theme, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
     sameSite: "Lax",

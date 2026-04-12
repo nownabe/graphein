@@ -45,6 +45,11 @@ function getLocale(c: { req: { raw: Request } }): string {
   return cookie === "ja" ? "ja" : "en";
 }
 
+function getTheme(c: { req: { raw: Request } }): string {
+  const cookie = getCookie(c as any, "theme");
+  return cookie === "light" ? "light" : "dark";
+}
+
 async function buildHomeData(
   memberId: string,
   filter: string,
@@ -110,6 +115,7 @@ taskRoutes.get("/tasks", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
+  const theme = getTheme(c);
   const filter = c.req.query("filter") ?? "all";
   const view = c.req.query("view") === "owned" ? "owned" : "assigned";
 
@@ -149,6 +155,7 @@ taskRoutes.get("/tasks", async (c) => {
       ownedTasks={ownedTasks}
       displayName={displayName}
       locale={locale}
+      theme={theme}
       activeFilter={filter}
       activeView={view}
       counts={counts}
@@ -166,6 +173,7 @@ taskRoutes.get("/tasks/archived", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
+  const theme = getTheme(c);
   const view = c.req.query("view") === "owned" ? "owned" : "assigned";
 
   const assignedArchived = await listArchivedTasksForMember(memberId);
@@ -194,6 +202,7 @@ taskRoutes.get("/tasks/archived", async (c) => {
       tasks={tasksWithFlags}
       displayName={displayName}
       locale={locale}
+      theme={theme}
       activeView={view}
       assignedCount={assignedArchived.length}
       ownedCount={ownedArchived.length}
@@ -209,6 +218,7 @@ taskRoutes.get("/tasks/:id/status", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
+  const theme = getTheme(c);
 
   const task = await getTask(taskId);
   if (!task) return c.notFound();
@@ -224,6 +234,7 @@ taskRoutes.get("/tasks/:id/status", async (c) => {
       assignees={assignees}
       displayName={displayName}
       locale={locale}
+      theme={theme}
       isAdmin={isAdmin}
     />,
   );
@@ -235,6 +246,7 @@ taskRoutes.get("/tasks/:id/edit", async (c) => {
   const { sub: memberId, name: displayName } = c.get("jwtPayload");
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
+  const theme = getTheme(c);
 
   const task = await getTask(taskId);
   if (!task) return c.notFound();
@@ -250,6 +262,7 @@ taskRoutes.get("/tasks/:id/edit", async (c) => {
       owners={owners}
       displayName={displayName}
       locale={locale}
+      theme={theme}
       isAdmin={isAdmin}
     />,
   );

@@ -233,20 +233,23 @@ export function TaskEditPage({
   owners,
   displayName,
   locale,
+  theme,
   isAdmin,
 }: {
   task: Task;
   owners: Member[];
   displayName: string;
   locale: string;
+  theme?: string;
   isAdmin?: boolean;
 }) {
   return (
     <Layout
       title={`${task.title} | ${t(locale, "page.editTask")}`}
       locale={locale}
+      theme={theme}
     >
-      <Nav displayName={displayName} locale={locale} isAdmin={isAdmin} />
+      <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <TaskEditContent task={task} owners={owners} locale={locale} />
     </Layout>
   );

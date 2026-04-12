@@ -83,6 +83,15 @@ export async function setMemberRole(memberId: string, role: MemberRole) {
   return updated;
 }
 
+export async function updateMemberTheme(memberId: string, theme: string) {
+  const [updated] = await db
+    .update(members)
+    .set({ theme, updatedAt: new Date() })
+    .where(eq(members.id, memberId))
+    .returning();
+  return updated;
+}
+
 export async function updateMemberLocale(memberId: string, locale: string) {
   const [updated] = await db
     .update(members)

@@ -25,6 +25,28 @@
   --font-sans: "Plus Jakarta Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
 }
 
+/* Light palette */
+html[data-theme="light"] {
+  --color-page: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f0f0f4;
+  --color-ink: #1a1a2e;
+  --color-secondary: #5c5c72;
+  --color-muted: #9898ac;
+  --color-edge: #dddde5;
+  --color-edge-subtle: #ebebf0;
+  --color-accent: #c98a00;
+  --color-accent-hover: #b07800;
+  --color-accent-dim: #a06800;
+  --color-success: #16a34a;
+  --color-success-dim: #15803d;
+  --color-danger: #dc2626;
+  --color-danger-dim: #b91c1c;
+  --color-glow-accent: rgba(201, 138, 0, 0.10);
+  --color-glow-danger: rgba(220, 38, 38, 0.08);
+  --color-glow-success: rgba(22, 163, 74, 0.08);
+}
+
 /* Base */
 body {
   font-family: var(--font-sans);
@@ -41,7 +63,7 @@ body::before {
   inset: 0;
   z-index: 1;
   pointer-events: none;
-  opacity: 0.03;
+  opacity: var(--noise-opacity, 0.03);
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-repeat: repeat;
   background-size: 256px 256px;
@@ -264,7 +286,14 @@ details[open] summary .disclosure-arrow {
   }
 }
 
-/* Scrollbar — dark */
+html[data-theme="light"] {
+  --noise-opacity: 0.015;
+}
+html[data-theme="light"] .toast {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
 }
