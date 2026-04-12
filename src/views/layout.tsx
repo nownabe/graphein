@@ -5,16 +5,18 @@ export function Layout({
   children,
   locale,
   theme,
+  devMode,
 }: {
   title?: string;
   children: Child;
   locale?: string;
   theme?: string;
+  devMode?: boolean;
 }) {
   const pageTitle = title ? `${title} | Graphein` : "Graphein";
   const lang = locale === "ja" ? "ja" : "en";
   const dataTheme = theme === "light" ? "light" : "dark";
-  const isDev = process.env.NODE_ENV !== "production";
+  const isDev = devMode ?? false;
   return (
     <html lang={lang} data-theme={dataTheme}>
       <head>

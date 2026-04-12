@@ -1,19 +1,8 @@
 import { describe, test, expect } from "bun:test";
 import { Hono } from "hono";
+import { createCsrfMiddleware } from "./csrf";
 
-// Set env vars before importing csrf middleware (which imports env.ts)
-process.env.BASE_URL = "https://app.example.com";
-process.env.DATABASE_URL = "postgres://localhost/test";
-process.env.SLACK_BOT_TOKEN = "xoxb-test";
-process.env.SLACK_SIGNING_SECRET = "test";
-process.env.SLACK_CLIENT_ID = "test";
-process.env.SLACK_CLIENT_SECRET = "test";
-process.env.SLACK_TEAM_ID = "T0001";
-process.env.GEMINI_API_KEY = "test";
-process.env.JWT_SECRET = "test";
-
-// Dynamic import to ensure env vars are set first
-const { csrfMiddleware } = await import("./csrf");
+const csrfMiddleware = createCsrfMiddleware("https://app.example.com");
 
 function createApp() {
   const app = new Hono();

@@ -1,12 +1,16 @@
 import type { Receiver, ReceiverEvent, App as BoltApp } from "@slack/bolt";
 import type { Context } from "hono";
-import { env } from "../env";
 import crypto from "node:crypto";
 
 type EventHandler = (event: ReceiverEvent) => Promise<void>;
 
 export class HonoReceiver implements Receiver {
   private eventHandler: EventHandler | null = null;
+  private signingSecret: string;
+
+  constructor(signingSecret: string) {
+    this.signingSecret = signingSecret;
+  }
 
   init(app: BoltApp): void {
     this.eventHandler = app.processEvent.bind(app);
@@ -69,7 +73,7 @@ export class HonoReceiver implements Receiver {
     if (Number(timestamp) < fiveMinutesAgo) return false;
 
     const sigBasestring = `v0:${timestamp}:${body}`;
-    const hmac = crypto.createHmac("sha256", env.SLACK_SIGNING_SECRET);
+    const hmac = crypto.createHmac("sha256", this.signingSecret);
     hmac.update(sigBasestring);
     const mySignature = `v0=${hmac.digest("hex")}`;
 

@@ -1,5 +1,4 @@
 import { sign, verify } from "hono/jwt";
-import { env } from "../env";
 
 export interface JwtPayload {
   sub: string; // user ID
@@ -9,15 +8,23 @@ export interface JwtPayload {
 
 const EXPIRATION_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-export async function createToken(userId: string, displayName: string): Promise<string> {
-  const now = Math.floor(Date.now() / 1000);
-  return sign({ sub: userId, name: displayName, exp: now + EXPIRATION_SECONDS }, env.JWT_SECRET);
+export interface SessionHelpers {
+  createToken(userId: string, displayName: string): Promise<string>;
+  verifyToken(token: string): Promise<JwtPayload | null>;
 }
 
-export async function verifyToken(token: string): Promise<JwtPayload | null> {
-  try {
-    return (await verify(token, env.JWT_SECRET, "HS256")) as unknown as JwtPayload;
-  } catch {
-    return null;
-  }
+export function createSessionHelpers(jwtSecret: string): SessionHelpers {
+  return {
+    async createToken(userId: string, displayName: string): Promise<string> {
+      const now = Math.floor(Date.now() / 1000);
+      return sign({ sub: userId, name: displayName, exp: now + EXPIRATION_SECONDS }, jwtSecret);
+    },
+    async verifyToken(token: string): Promise<JwtPayload | null> {
+      try {
+        return (await verify(token, jwtSecret, "HS256")) as unknown as JwtPayload;
+      } catch {
+        return null;
+      }
+    },
+  };
 }

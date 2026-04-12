@@ -1,5 +1,4 @@
 import { createMiddleware } from "hono/factory";
-import { env } from "../env";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
@@ -16,40 +15,42 @@ const EXEMPT_PREFIXES = ["/slack/"];
  * Slack webhook endpoints are exempt — they use signing-secret verification
  * via Bolt's built-in request validation.
  */
-export const csrfMiddleware = createMiddleware(async (c, next) => {
-  if (SAFE_METHODS.has(c.req.method)) {
-    return next();
-  }
-
-  const path = new URL(c.req.url).pathname;
-  if (EXEMPT_PREFIXES.some((p) => path.startsWith(p))) {
-    return next();
-  }
-
-  const expectedOrigin = new URL(env.BASE_URL).origin;
-
-  // Prefer Origin header; fall back to Referer
-  const origin = c.req.header("Origin");
-  if (origin) {
-    if (origin !== expectedOrigin) {
-      return c.text("Forbidden", 403);
+export function createCsrfMiddleware(baseUrl: string) {
+  return createMiddleware(async (c, next) => {
+    if (SAFE_METHODS.has(c.req.method)) {
+      return next();
     }
-    return next();
-  }
 
-  const referer = c.req.header("Referer");
-  if (referer) {
-    try {
-      const refererOrigin = new URL(referer).origin;
-      if (refererOrigin !== expectedOrigin) {
+    const path = new URL(c.req.url).pathname;
+    if (EXEMPT_PREFIXES.some((p) => path.startsWith(p))) {
+      return next();
+    }
+
+    const expectedOrigin = new URL(baseUrl).origin;
+
+    // Prefer Origin header; fall back to Referer
+    const origin = c.req.header("Origin");
+    if (origin) {
+      if (origin !== expectedOrigin) {
         return c.text("Forbidden", 403);
       }
       return next();
-    } catch {
-      return c.text("Forbidden", 403);
     }
-  }
 
-  // Neither Origin nor Referer present — reject
-  return c.text("Forbidden", 403);
-});
+    const referer = c.req.header("Referer");
+    if (referer) {
+      try {
+        const refererOrigin = new URL(referer).origin;
+        if (refererOrigin !== expectedOrigin) {
+          return c.text("Forbidden", 403);
+        }
+        return next();
+      } catch {
+        return c.text("Forbidden", 403);
+      }
+    }
+
+    // Neither Origin nor Referer present — reject
+    return c.text("Forbidden", 403);
+  });
+}

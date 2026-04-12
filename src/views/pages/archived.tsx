@@ -23,6 +23,7 @@ export function ArchivedPage({
   ownedCount,
   mrkdwnLabels,
   isAdmin,
+  devMode,
 }: {
   tasks: Task[];
   displayName: string;
@@ -33,10 +34,11 @@ export function ArchivedPage({
   ownedCount: number;
   mrkdwnLabels?: MrkdwnOptions;
   isAdmin?: boolean;
+  devMode?: boolean;
 }) {
   const view = activeView ?? "assigned";
   return (
-    <Layout title={t(locale, "page.archived")} locale={locale} theme={theme}>
+    <Layout title={t(locale, "page.archived")} locale={locale} theme={theme} devMode={devMode}>
       <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div class="flex items-center justify-between mb-6">

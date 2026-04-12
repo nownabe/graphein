@@ -220,6 +220,7 @@ export function HomePage({
   mrkdwnLabels,
   ownedProgressMap,
   isAdmin,
+  devMode,
 }: {
   assignedTasks: Task[];
   ownedTasks: Task[];
@@ -234,11 +235,12 @@ export function HomePage({
   mrkdwnLabels?: MrkdwnOptions;
   ownedProgressMap?: ProgressMap;
   isAdmin?: boolean;
+  devMode?: boolean;
 }) {
   const filter = activeFilter ?? "all";
   const view = activeView ?? "assigned";
   return (
-    <Layout title={t(locale, "page.myTasks")} locale={locale} theme={theme}>
+    <Layout title={t(locale, "page.myTasks")} locale={locale} theme={theme} devMode={devMode}>
       <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div class="flex items-center justify-between mb-6">
