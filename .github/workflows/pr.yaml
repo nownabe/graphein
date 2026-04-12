@@ -24,6 +24,16 @@ jobs:
           files_yaml: |
             github_workflow:
               - '.github/workflows/**'
+            oxfmt:
+              - '**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}'
+              - '**/*.{json,jsonc,json5}'
+              - '**/*.{css,scss,less}'
+              - '**/*.{yaml,yml,toml}'
+              - '**/*.{html,vue,graphql}'
+              - '**/*.{md,mdx}'
+              - '.oxfmtrc*'
+              - 'mise.toml'
+              - 'mise.lock'
           json: true
 
   github-workflow:
@@ -33,6 +43,14 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/reusable-github-workflow.yaml
+
+  oxfmt:
+    name: oxfmt Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).oxfmt_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-oxfmt.yaml
 
   status-check:
     name: Pull Request Status Check
