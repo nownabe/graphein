@@ -4,7 +4,6 @@ import { HonoReceiver } from "./receiver";
 import {
   createSlackLabelResolver,
   hydrateMentionLabels,
-  resolveMentions,
 } from "./helpers";
 import { blocksToMrkdwn } from "./rich-text";
 import { findOrCreateMember, findMemberBySlackUserId } from "../members/service";
@@ -73,71 +72,78 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
       message_ts: messageTs,
     });
 
-    // Resolve mentions to members
-    const mentions = await resolveMentions(client, messageText);
-    const assigneeIds: string[] = [];
+    // Extract and resolve usergroup mentions for multi_static_select
+    const groupMentionIds = [...new Set(
+      [...messageText.matchAll(/<!subteam\^(S[A-Z0-9]+)(?:\|[^>]*)?>/g)].map(m => m[1]),
+    )];
+    const resolver = createSlackLabelResolver(client);
 
-    for (const mention of mentions) {
-      const member = await findOrCreateMember({
-        slackUserId: mention.slackUserId,
-        email: mention.email,
-        displayName: mention.displayName,
-        avatarUrl: null,
-      });
-      assigneeIds.push(member.id);
+    interface GroupCandidate {
+      groupId: string;
+      label: string;
+      mentionToken: string;
+      memberIds: string[];    // pre-resolved DB member IDs
+      slackUserIds: string[]; // Slack user IDs in this group
     }
+    const groupCandidates: GroupCandidate[] = [];
 
-    // Track the "assign target" labels for the confirmation reply. We want to
-    // show the original mention (e.g. the group handle `@frontend`) instead of
-    // expanding it into individual user mentions, so we extract them from the
-    // raw message text rather than from the resolved member list.
-    const assigneeLabels: string[] = [];
-    let fallbackToTriggerUser = assigneeIds.length === 0;
-
-    // If no mentions, assign to the user who triggered the shortcut
-    if (fallbackToTriggerUser) {
-      const triggeredBy = await client.users.info({
-        user: shortcut.user.id,
-      });
-      if (triggeredBy.user?.profile?.email) {
-        const displayName =
-          triggeredBy.user.profile.display_name ||
-          triggeredBy.user.profile.real_name ||
-          shortcut.user.id;
-        const member = await findOrCreateMember({
-          slackUserId: shortcut.user.id,
-          email: triggeredBy.user.profile.email,
-          displayName,
-          avatarUrl: triggeredBy.user.profile.image_72 ?? null,
-        });
-        assigneeIds.push(member.id);
-        assigneeLabels.push(`<@${shortcut.user.id}>`);
-      } else {
-        fallbackToTriggerUser = false;
+    for (const groupId of groupMentionIds) {
+      try {
+        const groupHandle = await resolver.usergroup(groupId);
+        const usersResult = await client.usergroups.users.list({ usergroup: groupId });
+        const memberIds: string[] = [];
+        const slackUserIds: string[] = [];
+        for (const userId of usersResult.users ?? []) {
+          try {
+            const result = await client.users.info({ user: userId });
+            if (result.user?.profile?.email) {
+              const member = await findOrCreateMember({
+                slackUserId: userId,
+                email: result.user.profile.email,
+                displayName:
+                  result.user.profile.display_name ||
+                  result.user.profile.real_name ||
+                  userId,
+                avatarUrl: result.user.profile.image_72 ?? null,
+              });
+              memberIds.push(member.id);
+              slackUserIds.push(userId);
+            }
+          } catch {
+            // Skip unresolvable users
+          }
+        }
+        if (memberIds.length > 0) {
+          groupCandidates.push({
+            groupId,
+            label: `@${groupHandle ?? groupId}`,
+            mentionToken: `<!subteam^${groupId}>`,
+            memberIds,
+            slackUserIds,
+          });
+        }
+      } catch {
+        // Skip unresolvable groups
       }
     }
 
+    // Extract mentioned user IDs for multi_users_select initial value,
+    // excluding users already covered by a selected group
+    const groupUserIds = new Set(groupCandidates.flatMap(g => g.slackUserIds));
+    const userMentionIds = [...new Set(
+      [...messageText.matchAll(/<@(U[A-Z0-9]+)>/g)].map(m => m[1]),
+    )].filter(id => !groupUserIds.has(id));
+    // Default to the triggering user if no individual mentions remain
+    const initialUsers = userMentionIds.length > 0 || groupCandidates.length > 0
+      ? userMentionIds
+      : [shortcut.user.id];
+
     // Hydrate Slack entities (<@U1>, <#C1>, <!subteam^S1>) with display labels
     // so the stored description renders with names instead of raw IDs.
-    const resolver = createSlackLabelResolver(client);
     const hydratedMessageText = await hydrateMentionLabels(
       messageText,
       resolver,
     );
-
-    // Collect mention tokens for the confirmation reply. We keep the original
-    // `<@U1>` / `<!subteam^S1>` form so Slack renders them as real mentions
-    // (and notifies), without expanding a group mention into individual users.
-    if (!fallbackToTriggerUser) {
-      const mentionRe = /<@U[A-Z0-9]+(?:\|[^>]+)?>|<!subteam\^S[A-Z0-9]+(?:\|[^>]+)?>/g;
-      const seen = new Set<string>();
-      for (const m of messageText.matchAll(mentionRe)) {
-        const bareId = m[0].replace(/\|[^>]+>/, ">");
-        if (seen.has(bareId)) continue;
-        seen.add(bareId);
-        assigneeLabels.push(bareId);
-      }
-    }
 
     // Generate title and deadline with Gemini. Use the Slack message's post
     // time as the reference for relative expressions like "tomorrow".
@@ -156,6 +162,39 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
       avatarUrl: creatorInfo.user?.profile?.image_72 ?? null,
     });
 
+    // Build users select block (native Slack user picker)
+    const usersBlock = {
+      type: "input" as const,
+      block_id: "users_block",
+      optional: true,
+      label: { type: "plain_text" as const, text: t(locale, "slack.modal.assigneesLabel") },
+      element: {
+        type: "multi_users_select" as const,
+        action_id: "users",
+        ...(initialUsers.length > 0 ? { initial_users: initialUsers } : {}),
+      },
+    };
+
+    // Build groups select block (only when usergroup mentions exist)
+    const groupOptions = groupCandidates.map(g => ({
+      text: { type: "plain_text" as const, text: g.label },
+      value: g.groupId,
+    }));
+    const groupsBlock = groupOptions.length > 0
+      ? {
+          type: "input" as const,
+          block_id: "groups_block",
+          optional: true,
+          label: { type: "plain_text" as const, text: t(locale, "slack.modal.groupsLabel") },
+          element: {
+            type: "multi_static_select" as const,
+            action_id: "groups",
+            options: groupOptions,
+            initial_options: groupOptions,
+          },
+        }
+      : null;
+
     // Update modal with task details
     await client.views.update({
       view_id: viewId!,
@@ -168,8 +207,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
           messageText: hydratedMessageText,
           permalink: permalinkRes.permalink ?? "",
           createdById: creator.id,
-          assigneeIds,
-          assigneeLabels,
+          groupCandidates,
           locale,
         }),
         title: { type: "plain_text", text: t(locale, "slack.modal.title") },
@@ -199,6 +237,8 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
                 : {}),
             },
           },
+          usersBlock,
+          ...(groupsBlock ? [groupsBlock] : []),
           {
             type: "section",
             text: {
@@ -246,6 +286,52 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
   const deadlineTimestamp =
     view.state.values.deadline_block.deadline.selected_date_time;
 
+  // Resolve selected users from multi_users_select
+  const selectedUserIds: string[] =
+    view.state.values.users_block?.users?.selected_users ?? [];
+  const assigneeIds: string[] = [];
+  const assigneeMentions: string[] = [];
+
+  for (const userId of selectedUserIds) {
+    try {
+      const result = await client.users.info({ user: userId });
+      if (result.user?.profile?.email) {
+        const member = await findOrCreateMember({
+          slackUserId: userId,
+          email: result.user.profile.email,
+          displayName:
+            result.user.profile.display_name ||
+            result.user.profile.real_name ||
+            userId,
+          avatarUrl: result.user.profile.image_72 ?? null,
+        });
+        if (!assigneeIds.includes(member.id)) {
+          assigneeIds.push(member.id);
+        }
+      }
+    } catch {
+      // Skip unresolvable users
+    }
+    assigneeMentions.push(`<@${userId}>`);
+  }
+
+  // Resolve selected groups from multi_static_select
+  const selectedGroupOptions: { value: string }[] =
+    view.state.values.groups_block?.groups?.selected_options ?? [];
+  const selectedGroupIds = new Set(selectedGroupOptions.map(o => o.value));
+  const groupCandidates: { groupId: string; mentionToken: string; memberIds: string[] }[] =
+    metadata.groupCandidates ?? [];
+
+  for (const candidate of groupCandidates) {
+    if (!selectedGroupIds.has(candidate.groupId)) continue;
+    for (const memberId of candidate.memberIds) {
+      if (!assigneeIds.includes(memberId)) {
+        assigneeIds.push(memberId);
+      }
+    }
+    assigneeMentions.push(candidate.mentionToken);
+  }
+
   try {
     const task = await createTask({
       title,
@@ -255,14 +341,13 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
       slackChannelId: metadata.channelId,
       slackPermalink: metadata.permalink,
       createdById: metadata.createdById,
-      assigneeIds: metadata.assigneeIds,
+      assigneeIds,
     });
 
     // Post confirmation message
     try {
       const loc = metadata.locale ?? "en";
-      const labels: string[] = metadata.assigneeLabels ?? [];
-      const who = labels.length > 0 ? labels.join(" ") : t(loc, "slack.reply.fallbackAssignee");
+      const who = assigneeMentions.length > 0 ? assigneeMentions.join(" ") : t(loc, "slack.reply.fallbackAssignee");
       // Slack link labels can't contain `|` or `>`; escape defensively.
       const safeTitle = task.title.replace(/[|>]/g, " ");
       const taskLink = `<${env.BASE_URL}/tasks#task-${task.id}|${safeTitle}>`;
