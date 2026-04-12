@@ -14,18 +14,31 @@ auth.get("/login", (c) => {
 });
 
 auth.get("/slack", (c) => {
+  const state = crypto.randomUUID();
+  setCookie(c, "oauth_state", state, {
+    httpOnly: true,
+    secure: env.BASE_URL.startsWith("https"),
+    sameSite: "Lax",
+    path: "/auth/slack/callback",
+    maxAge: 600, // 10 minutes
+  });
   const params = new URLSearchParams({
     client_id: env.SLACK_CLIENT_ID,
     redirect_uri: `${env.BASE_URL}/auth/slack/callback`,
     scope: "openid,email,profile",
     response_type: "code",
+    state,
   });
   return c.redirect(`https://slack.com/openid/connect/authorize?${params.toString()}`);
 });
 
 auth.get("/slack/callback", async (c) => {
   const code = c.req.query("code");
-  if (!code) {
+  const state = c.req.query("state");
+  const storedState = getCookie(c, "oauth_state");
+  deleteCookie(c, "oauth_state", { path: "/auth/slack/callback" });
+
+  if (!code || !state || !storedState || state !== storedState) {
     return c.redirect("/auth/login");
   }
 
