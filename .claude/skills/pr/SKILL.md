@@ -11,12 +11,12 @@ The change description is: $ARGUMENTS
 
 ## 1. Ensure Feature Branch
 
-- If currently on `main`, create a new branch from the latest `main`:
+- If currently on `main`, create a new branch from the latest `origin/main`:
   ```
-  git pull origin main
-  git switch -c <branch-name>
+  git fetch origin main
+  git switch -c <branch-name> origin/main
   ```
-- Branch name should be short and descriptive (e.g., `add-user-auth`, `fix-task-ordering`).
+- Branch name should use a conventional commit prefix followed by a short descriptive name (e.g., `feat/add-user-auth`, `fix/task-ordering`, `chore/update-deps`).
 - If already on a feature branch, proceed.
 
 ## 2. Check Working Tree
