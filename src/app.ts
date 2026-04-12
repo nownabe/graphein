@@ -9,16 +9,20 @@ import adminRoutes from "./admin/routes.tsx";
 import { receiver } from "./slack/bolt";
 import { verifyToken } from "./auth/session";
 import { updateUserLocale, updateUserTheme } from "./users/service";
+import { csrfMiddleware } from "./auth/csrf";
 
 const app = new Hono();
 
 app.use("*", logger());
 app.use("/public/*", serveStatic({ root: "./" }));
 
+// CSRF protection for all state-changing requests
+app.use("*", csrfMiddleware);
+
 app.get("/healthz", (c) => c.text("ok"));
 
 // Locale switching
-app.get("/locale/:lang", async (c) => {
+app.post("/locale/:lang", async (c) => {
   const lang = c.req.param("lang");
   const locale = lang === "ja" ? "ja" : "en";
   setCookie(c, "locale", locale, {
@@ -36,12 +40,16 @@ app.get("/locale/:lang", async (c) => {
     }
   }
 
-  const referer = c.req.header("Referer") || "/";
-  return c.redirect(referer, 302);
+  // htmx request — return 200 so the client can do a full page reload
+  if (c.req.header("HX-Request")) {
+    c.header("HX-Refresh", "true");
+    return c.body(null, 200);
+  }
+  return c.redirect("/tasks", 302);
 });
 
 // Theme switching
-app.get("/theme/:mode", async (c) => {
+app.post("/theme/:mode", async (c) => {
   const mode = c.req.param("mode");
   const theme = mode === "light" ? "light" : "dark";
   setCookie(c, "theme", theme, {
@@ -58,8 +66,7 @@ app.get("/theme/:mode", async (c) => {
     }
   }
 
-  const referer = c.req.header("Referer") || "/";
-  return c.redirect(referer, 302);
+  return c.body(null, 200);
 });
 
 // Dev hot reload SSE endpoint

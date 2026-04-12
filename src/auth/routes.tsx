@@ -111,9 +111,10 @@ auth.get("/slack/callback", async (c) => {
   return c.redirect("/tasks");
 });
 
-auth.get("/logout", (c) => {
+auth.post("/logout", (c) => {
   deleteCookie(c, "token", { path: "/" });
-  return c.redirect("/auth/login");
+  c.header("HX-Redirect", "/auth/login");
+  return c.body(null, 200);
 });
 
 export default auth;
