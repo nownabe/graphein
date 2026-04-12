@@ -34,6 +34,13 @@ jobs:
               - '.oxfmtrc*'
               - 'mise.toml'
               - 'mise.lock'
+            app:
+              - 'src/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.json'
+              - 'mise.toml'
+              - 'mise.lock'
           json: true
 
   github-workflow:
@@ -52,6 +59,14 @@ jobs:
       contents: read
     uses: ./.github/workflows/reusable-oxfmt.yaml
 
+  app:
+    name: App Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).app_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-app.yaml
+
   status-check:
     name: Pull Request Status Check
     if: always()
@@ -59,6 +74,7 @@ jobs:
       - detect-changes
       - oxfmt
       - github-workflow
+      - app
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
