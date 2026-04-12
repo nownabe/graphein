@@ -18,13 +18,13 @@ jobs:
         with:
           persist-credentials: false
 
-      # Hack to avoid error like https://github.com/nownabe/nabeoyaji.fish/actions/runs/21378412063/job/61611796368#step:3:134
-      # See https://github.com/raven-actions/actionlint/blob/580b34edf3f0039a5691481c6081049971ecd530/action.yml#L207
-      - name: Delete package.json
-        run: rm -f package.json
+      - name: Setup mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2
+        with:
+          install_args: actionlint
 
       - name: Run actionlint
-        uses: raven-actions/actionlint@e01d1ea33dd6a5ed517d95b4c0c357560ac6f518 # v2.1.1
+        run: actionlint
 
   zizmor:
     permissions:
@@ -37,10 +37,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Run zizmor
-        uses: zizmorcore/zizmor-action@135698455da5c3b3e55f73f4419e481ab68cdd95 # v0.4.1
+      - name: Setup mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2
         with:
-          advanced-security: false
+          install_args: zizmor
+
+      - name: Run zizmor
+        run: zizmor .github/workflows/
 
   ghalint:
     permissions:
@@ -53,13 +56,10 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Setup Go
-        uses: actions/setup-go@4b73464bb391d4059bd26b0524d20df3927bd417 # v6.3.0
+      - name: Setup mise
+        uses: jdx/mise-action@c37c93293d6b742fc901e1406b8f764f6fb19dac # v2
         with:
-          go-version: stable
-
-      - name: Install ghalint
-        run: go install github.com/suzuki-shunsuke/ghalint/cmd/ghalint@v1.5.4
+          install_args: "aqua:suzuki-shunsuke/ghalint"
 
       - name: Run ghalint
         run: ghalint run
