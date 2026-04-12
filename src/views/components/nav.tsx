@@ -12,7 +12,7 @@ export function Nav({
   isAdmin?: boolean;
 }) {
   const switchLabel = t(locale, "lang.switch");
-  const switchHref = locale === "en" ? "/locale/ja" : "/locale/en";
+  const switchLocaleUrl = locale === "en" ? "/locale/ja" : "/locale/en";
   const initial = displayName.charAt(0).toUpperCase();
   const isDark = theme !== "light";
 
@@ -103,9 +103,11 @@ export function Nav({
                   {t(locale, "nav.admin")}
                 </a>
               )}
-              <a
-                href={switchHref}
-                class="user-menu-item flex items-center gap-3 px-4 py-2 text-sm text-secondary hover:bg-surface-hover hover:text-ink transition-colors"
+              <button
+                type="button"
+                hx-post={switchLocaleUrl}
+                hx-swap="none"
+                class="user-menu-item w-full flex items-center gap-3 px-4 py-2 text-sm text-secondary hover:bg-surface-hover hover:text-ink transition-colors cursor-pointer"
               >
                 <svg
                   class="w-4 h-4 text-muted"
@@ -120,11 +122,11 @@ export function Nav({
                   <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                 </svg>
                 {switchLabel}
-              </a>
+              </button>
               <button
                 type="button"
                 id="theme-toggle"
-                onclick="(function(){var h=document.documentElement;var c=h.getAttribute('data-theme')==='light'?'dark':'light';h.setAttribute('data-theme',c);document.cookie='theme='+c+';path=/;max-age=31536000;samesite=lax';fetch('/theme/'+c);var b=document.getElementById('theme-toggle');b.querySelector('.theme-icon-sun').style.display=c==='dark'?'flex':'none';b.querySelector('.theme-icon-moon').style.display=c==='light'?'flex':'none';b.querySelector('.theme-label-light').style.display=c==='dark'?'inline':'none';b.querySelector('.theme-label-dark').style.display=c==='light'?'inline':'none'})()"
+                onclick="(function(){var h=document.documentElement;var c=h.getAttribute('data-theme')==='light'?'dark':'light';h.setAttribute('data-theme',c);document.cookie='theme='+c+';path=/;max-age=31536000;samesite=lax';fetch('/theme/'+c,{method:'POST'});var b=document.getElementById('theme-toggle');b.querySelector('.theme-icon-sun').style.display=c==='dark'?'flex':'none';b.querySelector('.theme-icon-moon').style.display=c==='light'?'flex':'none';b.querySelector('.theme-label-light').style.display=c==='dark'?'inline':'none';b.querySelector('.theme-label-dark').style.display=c==='light'?'inline':'none'})()"
                 class="user-menu-item w-full flex items-center gap-3 px-4 py-2 text-sm text-secondary hover:bg-surface-hover hover:text-ink transition-colors cursor-pointer"
               >
                 {/* Sun icon — shown when dark (destination: light) */}
@@ -164,9 +166,11 @@ export function Nav({
             </div>
             {/* Logout */}
             <div class="border-t border-edge py-1">
-              <a
-                href="/auth/logout"
-                class="user-menu-item flex items-center gap-3 px-4 py-2 text-sm text-danger hover:bg-glow-danger transition-colors"
+              <button
+                type="button"
+                hx-post="/auth/logout"
+                hx-swap="none"
+                class="user-menu-item w-full flex items-center gap-3 px-4 py-2 text-sm text-danger hover:bg-glow-danger transition-colors cursor-pointer"
               >
                 <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
                   <path
@@ -181,7 +185,7 @@ export function Nav({
                   />
                 </svg>
                 {t(locale, "nav.logout")}
-              </a>
+              </button>
             </div>
           </div>
         </div>
