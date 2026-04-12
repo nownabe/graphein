@@ -1,6 +1,18 @@
 # Graphein
 
-A web service that converts Slack posts into tasks.
+Graphein converts Slack messages into trackable tasks. Users trigger a message shortcut in Slack, confirm details in a modal, and the task appears in a server-rendered web UI.
+
+The name comes from the Greek word **γραφεῖν** (graphein), meaning "to write" — turning spoken words into written action.
+
+## Tech Stack
+
+- **Runtime**: [Bun](https://bun.sh/)
+- **Framework**: [Hono](https://hono.dev/) with JSX server-side rendering
+- **Database**: PostgreSQL with [Drizzle ORM](https://orm.drizzle.team/)
+- **Styling**: [Tailwind CSS](https://tailwindcss.com/) v4
+- **Interactivity**: [htmx](https://htmx.org/)
+- **Slack**: [Bolt for JavaScript](https://slack.dev/bolt-js/)
+- **LLM**: Gemini 2.0 Flash (title and deadline extraction)
 
 ## Setup
 
@@ -54,7 +66,7 @@ Edit `.env`:
 | `DATABASE_URL`         | PostgreSQL connection URL. The default value works as-is           |
 | `SLACK_BOT_TOKEN`      | OAuth & Permissions → Bot User OAuth Token (`xoxb-...`)            |
 | `SLACK_APP_TOKEN`      | Basic Information → App-Level Tokens (`xapp-...`)                  |
-| `SLACK_SOCKET_MODE`    | `true` for local development                                       |
+| `SLACK_SOCKET_MODE`    | `true` for local development                                      |
 | `SLACK_SIGNING_SECRET` | Basic Information → Signing Secret                                 |
 | `SLACK_CLIENT_ID`      | Basic Information → App Credentials                                |
 | `SLACK_CLIENT_SECRET`  | Basic Information → App Credentials                                |
@@ -82,3 +94,23 @@ bun run dev
 ```
 
 Access the app at `http://localhost:3000`.
+
+## Development
+
+```bash
+# Run dev server with auto-reload
+bun run dev
+
+# Watch and rebuild CSS
+bun run css
+
+# Run tests
+bun test
+
+# Generate a new migration after schema changes
+bun run db:generate
+```
+
+## License
+
+Private
