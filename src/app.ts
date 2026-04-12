@@ -10,6 +10,7 @@ import { receiver } from "./slack/bolt";
 import { verifyToken } from "./auth/session";
 import { updateUserLocale, updateUserTheme } from "./users/service";
 import { csrfMiddleware } from "./auth/csrf";
+import { clickjackingMiddleware } from "./auth/clickjacking";
 
 const app = new Hono();
 
@@ -17,11 +18,7 @@ app.use("*", logger());
 app.use("/public/*", serveStatic({ root: "./" }));
 
 // Anti-clickjacking: prevent framing by any origin
-app.use("*", async (c, next) => {
-  await next();
-  c.header("Content-Security-Policy", "frame-ancestors 'none'");
-  c.header("X-Frame-Options", "DENY");
-});
+app.use("*", clickjackingMiddleware);
 
 // CSRF protection for all state-changing requests
 app.use("*", csrfMiddleware);

@@ -1,25 +1,35 @@
 import { describe, test, expect } from "bun:test";
+import { Hono } from "hono";
+import { clickjackingMiddleware } from "./clickjacking";
 
-// Set env vars before importing app (which imports env.ts)
-process.env.BASE_URL = "https://app.example.com";
-process.env.DATABASE_URL = "postgres://localhost/test";
-process.env.SLACK_BOT_TOKEN = "xoxb-test";
-process.env.SLACK_SIGNING_SECRET = "test";
-process.env.SLACK_CLIENT_ID = "test";
-process.env.SLACK_CLIENT_SECRET = "test";
-process.env.GEMINI_API_KEY = "test";
-process.env.JWT_SECRET = "test";
+function createApp() {
+  const app = new Hono();
+  app.use("*", clickjackingMiddleware);
+  app.get("/page", (c) => c.html("<h1>Hello</h1>"));
+  app.post("/action", (c) => c.text("ok"));
+  return app;
+}
 
-const { default: app } = await import("../app");
+describe("clickjackingMiddleware", () => {
+  const app = createApp();
 
-describe("anti-clickjacking headers", () => {
-  test("response includes Content-Security-Policy frame-ancestors 'none'", async () => {
-    const res = await app.request("/healthz", { method: "GET" });
+  test("sets Content-Security-Policy frame-ancestors 'none' on GET", async () => {
+    const res = await app.request("/page", { method: "GET" });
     expect(res.headers.get("Content-Security-Policy")).toBe("frame-ancestors 'none'");
   });
 
-  test("response includes X-Frame-Options DENY", async () => {
-    const res = await app.request("/healthz", { method: "GET" });
+  test("sets X-Frame-Options DENY on GET", async () => {
+    const res = await app.request("/page", { method: "GET" });
+    expect(res.headers.get("X-Frame-Options")).toBe("DENY");
+  });
+
+  test("sets Content-Security-Policy frame-ancestors 'none' on POST", async () => {
+    const res = await app.request("/action", { method: "POST" });
+    expect(res.headers.get("Content-Security-Policy")).toBe("frame-ancestors 'none'");
+  });
+
+  test("sets X-Frame-Options DENY on POST", async () => {
+    const res = await app.request("/action", { method: "POST" });
     expect(res.headers.get("X-Frame-Options")).toBe("DENY");
   });
 });
