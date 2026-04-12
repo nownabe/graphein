@@ -1,0 +1,20 @@
+# Harness runtime artifacts
+.harness/
+
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+public/styles.css
+
+# Environment
+.env
+.env.local
+
+# Drizzle
+drizzle/meta/
+
+# OS
+.DS_Store
+.playwright-mcp

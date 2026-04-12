@@ -1,0 +1,121 @@
+name: Pull Request Checks
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  detect-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      changes: ${{ toJSON(steps.changes.outputs) }}
+    steps:
+      - name: Detect changed files
+        id: changes
+        uses: tj-actions/changed-files@7dee1b0c1557f278e5c7dc244927139d78c0e22a # v47.0.4
+        with:
+          skip_initial_fetch: true
+          files_yaml: |
+            github_workflow:
+              - '.github/workflows/**'
+            oxfmt:
+              - '**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}'
+              - '**/*.{json,jsonc,json5}'
+              - '**/*.{css,scss,less}'
+              - '**/*.{yaml,yml,toml}'
+              - '**/*.{html,vue,graphql}'
+              - '**/*.{md,mdx}'
+              - '.oxfmtrc*'
+              - 'mise.toml'
+              - 'mise.lock'
+            oxlint:
+              - '**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}'
+              - '.oxlintrc*'
+              - 'oxlint.config.*'
+              - 'mise.toml'
+              - 'mise.lock'
+            db_migration:
+              - 'drizzle/**'
+              - 'src/db/schema.ts'
+              - 'drizzle.config.ts'
+              - 'package.json'
+              - 'bun.lock'
+            app:
+              - 'src/**'
+              - 'package.json'
+              - 'bun.lock'
+              - 'tsconfig.json'
+              - 'mise.toml'
+              - 'mise.lock'
+          json: true
+
+  github-workflow:
+    name: GitHub Workflow Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).github_workflow_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-github-workflow.yaml
+
+  oxfmt:
+    name: oxfmt Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).oxfmt_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-oxfmt.yaml
+
+  oxlint:
+    name: oxlint Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).oxlint_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-oxlint.yaml
+
+  db-migration:
+    name: DB Migration Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).db_migration_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-db-migration.yaml
+
+  app:
+    name: App Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).app_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-app.yaml
+
+  status-check:
+    name: Pull Request Status Check
+    if: always()
+    needs:
+      - detect-changes
+      - oxfmt
+      - oxlint
+      - github-workflow
+      - db-migration
+      - app
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Check job results
+        env:
+          HAS_FAILURE: ${{ contains(needs.*.result, 'failure') }}
+          HAS_CANCELLED: ${{ contains(needs.*.result, 'cancelled') }}
+        run: |
+          if [[ "$HAS_FAILURE" == "true" || "$HAS_CANCELLED" == "true" ]]; then
+            exit 1
+          fi

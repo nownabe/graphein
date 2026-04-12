@@ -1,0 +1,224 @@
+import type { InferSelectModel } from "drizzle-orm";
+import type { tasks } from "../../db/schema";
+import { t } from "../../i18n/index";
+import { Mrkdwn, type MrkdwnOptions } from "../../slack/mrkdwn";
+
+type Task = InferSelectModel<typeof tasks>;
+
+export function TaskCard({
+  task,
+  done,
+  isOwner,
+  isAssignee,
+  showActions,
+  locale,
+  mrkdwnLabels,
+  progress,
+}: {
+  task: Task;
+  done?: boolean;
+  isOwner?: boolean;
+  isAssignee?: boolean;
+  showActions?: boolean;
+  locale?: string;
+  mrkdwnLabels?: MrkdwnOptions;
+  progress?: { total: number; done: number };
+}) {
+  const loc = locale ?? "en";
+  const isDone = done ?? false;
+  const deadlineStr = task.deadline
+    ? (() => {
+        const d = new Date(task.deadline);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, "0");
+        const dd = String(d.getDate()).padStart(2, "0");
+        const hh = String(d.getHours()).padStart(2, "0");
+        const min = String(d.getMinutes()).padStart(2, "0");
+        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
+      })()
+    : null;
+
+  const isOverdue = task.deadline && !isDone && new Date(task.deadline) < new Date();
+  const highlightOverdue = isOverdue && !(task.archived && !isAssignee);
+
+  const cardBase = "group rounded-[var(--radius-lg)] border p-4 transition-all duration-150";
+  const cardState = highlightOverdue
+    ? "bg-[color-mix(in_srgb,var(--color-danger)_6%,var(--color-surface))] border-danger-dim/30"
+    : isDone
+      ? "bg-surface/50 border-edge/50"
+      : "bg-surface border-edge hover:border-muted";
+
+  return (
+    <div id={`task-${task.id}`} class={`${cardBase} ${cardState}`}>
+      <div class="flex items-start gap-3">
+        {showActions &&
+          (isAssignee ? (
+            <input
+              type="checkbox"
+              checked={isDone}
+              aria-label={task.title}
+              hx-patch={`/tasks/${task.id}/done`}
+              hx-target={`#task-${task.id}`}
+              hx-swap="outerHTML"
+              class="mt-0.5"
+            />
+          ) : progress && progress.total > 0 ? (
+            <div
+              class="shrink-0 mt-0.5"
+              title={`${Math.round((progress.done / progress.total) * 100)}%${t(loc, "taskProgress.done")} (${progress.done}/${progress.total})`}
+            >
+              <svg width="18" height="18" viewBox="0 0 18 18">
+                <circle
+                  cx="9"
+                  cy="9"
+                  r="7"
+                  fill="none"
+                  stroke="var(--color-edge)"
+                  stroke-width="2.5"
+                />
+                <circle
+                  cx="9"
+                  cy="9"
+                  r="7"
+                  fill="none"
+                  stroke={
+                    progress.done === progress.total
+                      ? "var(--color-success)"
+                      : "var(--color-accent)"
+                  }
+                  stroke-width="2.5"
+                  stroke-dasharray={`${(progress.done / progress.total) * 44} 44`}
+                  stroke-linecap="round"
+                  transform="rotate(-90 9 9)"
+                />
+              </svg>
+            </div>
+          ) : (
+            <div class="shrink-0" style="width:1.125rem" />
+          ))}
+        <div class="min-w-0 flex-1">
+          {task.description ? (
+            <details>
+              <summary
+                class={`font-medium text-sm leading-snug cursor-pointer select-none ${
+                  isDone ? "line-through text-muted" : "text-ink"
+                }`}
+              >
+                {task.title}
+                <span class="disclosure-arrow text-muted ml-1.5 text-[10px]">&#9654;</span>
+              </summary>
+              <div
+                class={`text-[13px] mt-2 leading-relaxed ${
+                  isDone ? "text-muted" : "text-secondary"
+                }`}
+              >
+                <Mrkdwn text={task.description} options={mrkdwnLabels} />
+              </div>
+            </details>
+          ) : (
+            <h3
+              class={`font-medium text-sm leading-snug ${
+                isDone ? "line-through text-muted" : "text-ink"
+              }`}
+            >
+              {task.title}
+            </h3>
+          )}
+          <div class="flex items-center gap-3 mt-1.5 text-xs text-secondary">
+            {deadlineStr && (
+              <span
+                class={`inline-flex items-center gap-1 ${highlightOverdue ? "text-danger font-semibold" : ""}`}
+                title={t(loc, "task.deadline")}
+              >
+                {isOverdue ? (
+                  <span aria-hidden="true">⚠</span>
+                ) : (
+                  <svg
+                    width="11"
+                    height="11"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    class="shrink-0 opacity-70"
+                    aria-hidden="true"
+                  >
+                    <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3" />
+                    <path
+                      d="M7 4v3.2l2 1.4"
+                      stroke="currentColor"
+                      stroke-width="1.3"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                    />
+                  </svg>
+                )}
+                <span class="sr-only">{t(loc, "task.deadline")}: </span>
+                {deadlineStr}
+                {isOverdue && <span>({t(loc, "task.overdue")})</span>}
+              </span>
+            )}
+            {task.slackPermalink && (
+              <a
+                href={task.slackPermalink}
+                target="_blank"
+                rel="noopener noreferrer"
+                hx-boost="false"
+                class="text-muted hover:text-accent transition-colors inline-flex items-center gap-1"
+              >
+                Slack
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" class="shrink-0">
+                  <path
+                    d="M4.5 2.5h5v5M9.5 2.5L4 8"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  />
+                </svg>
+              </a>
+            )}
+          </div>
+        </div>
+        {showActions && isOwner && (
+          <div class="actions-reveal flex items-center gap-0.5 shrink-0">
+            <a
+              href={`/tasks/${task.id}/status`}
+              class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
+              title={t(loc, "button.status.title")}
+            >
+              {t(loc, "button.status")}
+            </a>
+            <a
+              href={`/tasks/${task.id}/edit`}
+              class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
+              title={t(loc, "button.edit.title")}
+            >
+              {t(loc, "button.edit")}
+            </a>
+            {task.archived ? (
+              <button
+                hx-patch={`/tasks/${task.id}/unarchive`}
+                hx-target={`#task-${task.id}`}
+                hx-swap="outerHTML"
+                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-accent hover:bg-surface-hover transition-colors cursor-pointer"
+                title={t(loc, "button.unarchive.title")}
+              >
+                {t(loc, "button.unarchive")}
+              </button>
+            ) : (
+              <button
+                hx-patch={`/tasks/${task.id}/archive`}
+                hx-target={`#task-${task.id}`}
+                hx-swap="outerHTML"
+                hx-confirm={t(loc, "confirm.archive")}
+                class="text-xs px-2 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-danger hover:bg-[var(--color-glow-danger)] transition-colors cursor-pointer"
+                title={t(loc, "button.archive.title")}
+              >
+                {t(loc, "button.archive")}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

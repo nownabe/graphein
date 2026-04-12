@@ -1,0 +1,380 @@
+@import "tailwindcss";
+
+@theme {
+  /* Dark palette — custom, not Tailwind defaults */
+  --color-page: #0c0c10;
+  --color-surface: #16161e;
+  --color-surface-hover: #1e1e28;
+  --color-ink: #e4e4e9;
+  --color-secondary: #a0a0b4;
+  --color-muted: #6e6e88;
+  --color-edge: #383850;
+  --color-edge-subtle: #2a2a3e;
+  --color-accent: #e5a00d;
+  --color-accent-hover: #f0b429;
+  --color-accent-dim: #b8800a;
+  --color-success: #34d399;
+  --color-success-dim: #059669;
+  --color-danger: #f87171;
+  --color-danger-dim: #b91c1c;
+  --color-glow-accent: rgba(229, 160, 13, 0.12);
+  --color-glow-danger: rgba(248, 113, 113, 0.1);
+  --color-glow-success: rgba(52, 211, 153, 0.1);
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --font-sans: "Plus Jakarta Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", sans-serif;
+}
+
+/* Light palette */
+html[data-theme="light"] {
+  --color-page: #f5f5f7;
+  --color-surface: #ffffff;
+  --color-surface-hover: #f0f0f4;
+  --color-ink: #1a1a2e;
+  --color-secondary: #5c5c72;
+  --color-muted: #9898ac;
+  --color-edge: #dddde5;
+  --color-edge-subtle: #ebebf0;
+  --color-accent: #c98a00;
+  --color-accent-hover: #b07800;
+  --color-accent-dim: #a06800;
+  --color-success: #16a34a;
+  --color-success-dim: #15803d;
+  --color-danger: #dc2626;
+  --color-danger-dim: #b91c1c;
+  --color-glow-accent: rgba(201, 138, 0, 0.1);
+  --color-glow-danger: rgba(220, 38, 38, 0.08);
+  --color-glow-success: rgba(22, 163, 74, 0.08);
+}
+
+/* Base */
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-page);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Noise texture overlay — subtle grain for depth */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  opacity: var(--noise-opacity, 0.03);
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+}
+
+/* Checkbox — relative units, clean */
+input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  border: 1.5px solid var(--color-muted);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  cursor: pointer;
+  transition: all 100ms ease;
+  position: relative;
+  flex-shrink: 0;
+}
+input[type="checkbox"]:hover {
+  border-color: var(--color-secondary);
+  background: var(--color-surface-hover);
+}
+input[type="checkbox"]:checked {
+  background: var(--color-success);
+  border-color: var(--color-success);
+}
+input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 0.3em;
+  height: 0.55em;
+  border: solid var(--color-page);
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+input[type="checkbox"]:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px var(--color-page),
+    0 0 0 4px var(--color-accent);
+}
+
+/* Focus ring — amber glow */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none;
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 3px var(--color-glow-accent) !important;
+}
+
+/* htmx transitions */
+.htmx-request {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 100ms ease;
+  position: relative;
+}
+.htmx-request::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1rem;
+  height: 1rem;
+  margin: -0.5rem 0 0 -0.5rem;
+  border: 2px solid var(--color-edge);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: htmx-spin 600ms linear infinite;
+}
+@keyframes htmx-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.htmx-settling {
+  opacity: 1;
+  transition: opacity 200ms ease-in;
+}
+.htmx-swapping {
+  opacity: 0;
+  transition: opacity 80ms ease-out;
+}
+
+/* Details / disclosure */
+details summary {
+  list-style: none;
+}
+details summary::-webkit-details-marker {
+  display: none;
+}
+details summary .disclosure-arrow {
+  transition: transform 150ms ease;
+  display: inline-block;
+}
+details[open] summary .disclosure-arrow {
+  transform: rotate(90deg);
+}
+
+/* Actions reveal on hover */
+.actions-reveal {
+  opacity: 0;
+  transition: opacity 100ms ease;
+}
+.group:hover .actions-reveal,
+.group:focus-within .actions-reveal {
+  opacity: 1;
+}
+@media (hover: none) {
+  .actions-reveal {
+    opacity: 1;
+  }
+}
+
+/* Toast notification */
+#toast-container {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.toast {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-edge);
+  color: var(--color-ink);
+  font-size: 0.8125rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  animation: toast-in 250ms ease forwards;
+}
+.toast.toast-error {
+  border-color: var(--color-danger-dim);
+  background: color-mix(in srgb, var(--color-danger) 8%, var(--color-surface));
+}
+.toast.toast-success {
+  border-color: var(--color-success-dim);
+  background: color-mix(in srgb, var(--color-success) 8%, var(--color-surface));
+}
+.toast.toast-out {
+  animation: toast-out 200ms ease forwards;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes toast-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* Entrance stagger animation — capped at 500ms total */
+.stagger-in > * {
+  opacity: 0;
+  transform: translateY(6px);
+  animation: stagger-reveal 250ms ease forwards;
+}
+.stagger-in > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger-in > *:nth-child(2) {
+  animation-delay: 30ms;
+}
+.stagger-in > *:nth-child(3) {
+  animation-delay: 60ms;
+}
+.stagger-in > *:nth-child(4) {
+  animation-delay: 90ms;
+}
+.stagger-in > *:nth-child(5) {
+  animation-delay: 120ms;
+}
+.stagger-in > *:nth-child(6) {
+  animation-delay: 150ms;
+}
+.stagger-in > *:nth-child(7) {
+  animation-delay: 180ms;
+}
+.stagger-in > *:nth-child(8) {
+  animation-delay: 210ms;
+}
+.stagger-in > *:nth-child(9) {
+  animation-delay: 240ms;
+}
+.stagger-in > *:nth-child(10) {
+  animation-delay: 270ms;
+}
+.stagger-in > *:nth-child(11) {
+  animation-delay: 300ms;
+}
+.stagger-in > *:nth-child(12) {
+  animation-delay: 330ms;
+}
+.stagger-in > *:nth-child(n + 13) {
+  animation-delay: 350ms;
+}
+@keyframes stagger-reveal {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .stagger-in > * {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+/* Anchor target highlight — pulses when the task card is navigated to via
+   `#task-<id>` so the user can find the freshly-created task. */
+[id^="task-"]:target {
+  animation: task-target-pulse 1.8s ease-out 1;
+  border-color: var(--color-accent) !important;
+  box-shadow:
+    0 0 0 1px var(--color-accent),
+    0 0 24px 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+  scroll-margin-top: 5rem;
+}
+@keyframes task-target-pulse {
+  0% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--color-accent) 60%, transparent),
+      0 0 24px 0 color-mix(in srgb, var(--color-accent) 45%, transparent);
+  }
+  60% {
+    box-shadow:
+      0 0 0 6px color-mix(in srgb, var(--color-accent) 0%, transparent),
+      0 0 24px 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+  100% {
+    box-shadow:
+      0 0 0 1px var(--color-accent),
+      0 0 24px 0 color-mix(in srgb, var(--color-accent) 35%, transparent);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  [id^="task-"]:target {
+    animation: none;
+  }
+}
+
+html[data-theme="light"] {
+  --noise-opacity: 0.015;
+}
+html[data-theme="light"] .toast {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* User menu popover */
+.user-menu {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px) scale(0.97);
+  transform-origin: top right;
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    visibility 0s 150ms;
+  z-index: 50;
+}
+.user-menu.user-menu-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  transition:
+    opacity 150ms ease,
+    transform 150ms ease,
+    visibility 0s 0s;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-edge);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}

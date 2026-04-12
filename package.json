@@ -1,0 +1,31 @@
+{
+  "name": "graphein",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "bun run --watch src/index.ts",
+    "start": "bun run src/index.ts",
+    "db:up": "docker compose up -d db",
+    "db:down": "docker compose down",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "css": "tailwindcss -i src/views/global.css -o public/styles.css --watch",
+    "css:build": "tailwindcss -i src/views/global.css -o public/styles.css --minify",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "@slack/bolt": "^4.2.0",
+    "@slack/web-api": "^7.9.0",
+    "drizzle-orm": "^0.43.0",
+    "hono": "^4.7.0",
+    "postgres": "^3.4.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "@types/bun": "^1.2.0",
+    "drizzle-kit": "^0.31.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.8.0"
+  }
+}
