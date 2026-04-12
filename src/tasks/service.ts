@@ -184,6 +184,12 @@ export function createTaskService(db: Database) {
     return updated;
   }
 
+  async function findTaskBySlackMessage(channelId: string, messageTs: string) {
+    return db.query.tasks.findFirst({
+      where: and(eq(tasks.slackChannelId, channelId), eq(tasks.slackMessageTs, messageTs)),
+    });
+  }
+
   async function createTask(data: {
     title: string;
     description?: string;
@@ -234,6 +240,7 @@ export function createTaskService(db: Database) {
     archiveTask,
     unarchiveTask,
     updateTask,
+    findTaskBySlackMessage,
     createTask,
   };
 }
