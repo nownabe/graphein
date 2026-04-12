@@ -293,6 +293,22 @@ html[data-theme="light"] .toast {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
 }
 
+/* User menu popover */
+.user-menu {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px) scale(0.97);
+  transform-origin: top right;
+  transition: opacity 150ms ease, transform 150ms ease, visibility 0s 150ms;
+  z-index: 50;
+}
+.user-menu.user-menu-open {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+  transition: opacity 150ms ease, transform 150ms ease, visibility 0s 0s;
+}
+
 /* Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
