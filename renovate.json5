@@ -9,6 +9,9 @@
     ":semanticCommits",
   ],
 
+  // Use "deps" as semantic commit type for all Renovate PRs
+  semanticCommitType: "deps",
+
   // Limit concurrent PRs to avoid overwhelming CI and reviewers
   prConcurrentLimit: 5,
 
@@ -35,6 +38,20 @@
   },
 
   packageRules: [
+    // Semantic commit scope per manager
+    {
+      matchManagers: ["npm"],
+      semanticCommitScope: "npm",
+    },
+    {
+      matchManagers: ["github-actions"],
+      semanticCommitScope: "github-actions",
+    },
+    {
+      matchManagers: ["mise"],
+      semanticCommitScope: "mise",
+    },
+
     // Pin all dependencies for reproducible builds
     {
       matchManagers: ["npm"],
