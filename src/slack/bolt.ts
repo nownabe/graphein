@@ -98,6 +98,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
             if (result.user?.profile?.email) {
               const user = await findOrCreateUser({
                 slackUserId: slackUid,
+
                 email: result.user.profile.email,
                 displayName:
                   result.user.profile.display_name || result.user.profile.real_name || slackUid,
