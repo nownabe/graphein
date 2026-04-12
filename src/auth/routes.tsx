@@ -71,14 +71,21 @@ auth.get("/slack/callback", async (c) => {
     email?: string;
     name?: string;
     picture?: string;
+    "https://slack.com/team_id"?: string;
   };
   if (!userData.ok || !userData.sub || !userData.email) {
+    return c.redirect("/auth/login");
+  }
+
+  // Enforce workspace boundary: reject logins from unexpected Slack workspaces
+  if (userData["https://slack.com/team_id"] !== env.SLACK_TEAM_ID) {
     return c.redirect("/auth/login");
   }
 
   // Upsert user
   const user = await findOrCreateUser({
     slackUserId: userData.sub,
+    slackTeamId: userData["https://slack.com/team_id"]!,
     email: userData.email,
     displayName: userData.name ?? userData.email,
     avatarUrl: userData.picture ?? null,

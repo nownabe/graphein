@@ -20,6 +20,7 @@ export const env = {
   SLACK_SIGNING_SECRET: requireEnv("SLACK_SIGNING_SECRET"),
   SLACK_CLIENT_ID: requireEnv("SLACK_CLIENT_ID"),
   SLACK_CLIENT_SECRET: requireEnv("SLACK_CLIENT_SECRET"),
+  SLACK_TEAM_ID: requireEnv("SLACK_TEAM_ID"),
 
   GEMINI_API_KEY: requireEnv("GEMINI_API_KEY"),
 

@@ -6,6 +6,7 @@ export type UserRole = "user" | "admin";
 
 export async function findOrCreateUser(data: {
   slackUserId: string;
+  slackTeamId: string;
   email: string;
   displayName: string;
   avatarUrl: string | null;
@@ -21,6 +22,7 @@ export async function findOrCreateUser(data: {
         email: data.email,
         displayName: data.displayName,
         avatarUrl: data.avatarUrl,
+        slackTeamId: data.slackTeamId,
         updatedAt: new Date(),
       })
       .where(eq(users.id, existing.id))

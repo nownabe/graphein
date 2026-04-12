@@ -98,6 +98,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
             if (result.user?.profile?.email) {
               const user = await findOrCreateUser({
                 slackUserId: slackUid,
+                slackTeamId: env.SLACK_TEAM_ID,
                 email: result.user.profile.email,
                 displayName:
                   result.user.profile.display_name || result.user.profile.real_name || slackUid,
@@ -147,6 +148,7 @@ boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
     const creatorInfo = await client.users.info({ user: shortcut.user.id });
     const creator = await findOrCreateUser({
       slackUserId: shortcut.user.id,
+      slackTeamId: env.SLACK_TEAM_ID,
       email: creatorInfo.user?.profile?.email ?? "",
       displayName:
         creatorInfo.user?.profile?.display_name ||
@@ -289,6 +291,7 @@ boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
       if (result.user?.profile?.email) {
         const user = await findOrCreateUser({
           slackUserId: slackUid,
+          slackTeamId: env.SLACK_TEAM_ID,
           email: result.user.profile.email,
           displayName:
             result.user.profile.display_name || result.user.profile.real_name || slackUid,
