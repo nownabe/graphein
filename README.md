@@ -66,7 +66,7 @@ Edit `.env`:
 | `DATABASE_URL`         | PostgreSQL connection URL. The default value works as-is           |
 | `SLACK_BOT_TOKEN`      | OAuth & Permissions → Bot User OAuth Token (`xoxb-...`)            |
 | `SLACK_APP_TOKEN`      | Basic Information → App-Level Tokens (`xapp-...`)                  |
-| `SLACK_SOCKET_MODE`    | `true` for local development                                      |
+| `SLACK_SOCKET_MODE`    | `true` for local development                                       |
 | `SLACK_SIGNING_SECRET` | Basic Information → Signing Secret                                 |
 | `SLACK_CLIENT_ID`      | Basic Information → App Credentials                                |
 | `SLACK_CLIENT_SECRET`  | Basic Information → App Credentials                                |
@@ -113,4 +113,4 @@ bun run db:generate
 
 ## License
 
-Private
+[Apache License 2.0](LICENSE)
