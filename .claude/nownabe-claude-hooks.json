@@ -1,0 +1,10 @@
+{
+  "preBash": {
+    "forbiddenPatterns": {
+      "npx *": {
+        "reason": "npx is not allowed in this project",
+        "suggestion": "Use bunx instead of npx"
+      }
+    }
+  }
+}
