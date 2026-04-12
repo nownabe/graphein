@@ -45,7 +45,7 @@ app.post("/locale/:lang", async (c) => {
     c.header("HX-Refresh", "true");
     return c.body(null, 200);
   }
-  return c.redirect(c.req.header("Referer") || "/", 302);
+  return c.redirect("/tasks", 302);
 });
 
 // Theme switching
