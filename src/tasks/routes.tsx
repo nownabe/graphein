@@ -75,7 +75,7 @@ export function createTaskRoutes(deps: TaskRoutesDeps) {
       isAssignee: false,
     }));
 
-    const ownedProgressMap = await taskService.getTasksProgress(allOwnedTasks.map((t) => t.id));
+    const ownedProgressMap = await taskService.getTasksProgress(userId);
 
     return {
       assignedTasks,
