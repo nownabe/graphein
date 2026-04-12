@@ -33,7 +33,7 @@ export async function findOrCreateUser(data: {
   // where concurrent first logins could all observe zero users and
   // each receive the admin role.
   const [created] = await db.transaction(async (tx) => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(42)`);
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext('first_user_admin_bootstrap'))`);
     const [{ count }] = await tx.select({ count: sql<number>`count(*)::int` }).from(users);
     const role: UserRole = count === 0 ? "admin" : "user";
     return tx
