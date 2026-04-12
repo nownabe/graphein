@@ -52,13 +52,28 @@ export function createTaskService(db: Database) {
   }
 
   async function getTasksProgress(
-    taskIds: string[],
+    ownerId: string,
   ): Promise<Map<string, { total: number; done: number }>> {
-    if (taskIds.length === 0) return new Map();
-    const assignments = await db.query.taskAssignees.findMany({
-      where: inArray(taskAssignees.taskId, taskIds),
-      columns: { taskId: true, done: true },
-    });
+    const ownedTaskIds = db
+      .select({ taskId: taskOwners.taskId })
+      .from(taskOwners)
+      .where(eq(taskOwners.userId, ownerId));
+
+    const activeTaskIds = db
+      .select({ id: tasks.id })
+      .from(tasks)
+      .where(eq(tasks.archived, false));
+
+    const assignments = await db
+      .select({ taskId: taskAssignees.taskId, done: taskAssignees.done })
+      .from(taskAssignees)
+      .where(
+        and(
+          inArray(taskAssignees.taskId, ownedTaskIds),
+          inArray(taskAssignees.taskId, activeTaskIds),
+        ),
+      );
+
     const map = new Map<string, { total: number; done: number }>();
     for (const a of assignments) {
       const entry = map.get(a.taskId) ?? { total: 0, done: 0 };
