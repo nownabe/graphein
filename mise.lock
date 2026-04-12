@@ -77,6 +77,14 @@ backend = "aqua:suzuki-shunsuke/ghalint"
 "platforms.windows-x64" = { checksum = "sha256:8d32a5ec2623a52a1ee5755131c6c73e5593e22b5795b1918f319c08970073e0", url = "https://github.com/suzuki-shunsuke/ghalint/releases/download/v1.5.4/ghalint_1.5.4_windows_amd64.zip"}
 "platforms.windows-x64-baseline" = { checksum = "sha256:8d32a5ec2623a52a1ee5755131c6c73e5593e22b5795b1918f319c08970073e0", url = "https://github.com/suzuki-shunsuke/ghalint/releases/download/v1.5.4/ghalint_1.5.4_windows_amd64.zip"}
 
+[[tools."npm:oxfmt"]]
+version = "0.44.0"
+backend = "npm:oxfmt"
+
+[[tools."npm:oxlint"]]
+version = "1.59.0"
+backend = "npm:oxlint"
+
 [[tools.oxfmt]]
 version = "0.44.0"
 backend = "npm:oxfmt"
