@@ -1,8 +1,7 @@
 # AGENTS.md
 
 This file provides guidance to Claude Code agents working on this repository.
-See also `CLAUDE.md` for base instructions (commands, definition of done, etc.)
-and `docs/design-principles.md` for UI/UX design guidelines.
+See also `docs/design-principles.md` for UI/UX design guidelines.
 
 ## Project Overview
 
