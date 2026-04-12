@@ -1,10 +1,18 @@
 import { t } from "../../i18n/index";
 import { Layout } from "../layout";
 
-export function LoginPage({ locale, theme }: { locale?: string; theme?: string }) {
+export function LoginPage({
+  locale,
+  theme,
+  devMode,
+}: {
+  locale?: string;
+  theme?: string;
+  devMode?: boolean;
+}) {
   const loc = locale ?? "en";
   return (
-    <Layout title={t(loc, "page.login")} locale={loc} theme={theme}>
+    <Layout title={t(loc, "page.login")} locale={loc} theme={theme} devMode={devMode}>
       <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-page">
         {/* Ambient amber glow */}
         <div

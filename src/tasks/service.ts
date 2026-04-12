@@ -1,204 +1,229 @@
 import { eq, and, desc, inArray } from "drizzle-orm";
-import { db } from "../db/client";
+import type { Database } from "../db/client";
 import { tasks, taskAssignees, taskOwners } from "../db/schema";
 
-export async function listActiveTasksForMember(userId: string) {
-  const assignments = await db.query.taskAssignees.findMany({
-    where: eq(taskAssignees.userId, userId),
-    with: { task: true },
-    orderBy: desc(taskAssignees.assignedAt),
-  });
-  return assignments.filter((a) => !a.task.archived).map((a) => ({ ...a.task, done: a.done }));
-}
-
-export async function listArchivedTasksForMember(userId: string) {
-  const assignments = await db.query.taskAssignees.findMany({
-    where: eq(taskAssignees.userId, userId),
-    with: { task: true },
-    orderBy: desc(taskAssignees.assignedAt),
-  });
-  return assignments.filter((a) => a.task.archived).map((a) => ({ ...a.task, done: a.done }));
-}
-
-export async function listOwnedActiveTasksForMember(userId: string) {
-  const ownerships = await db.query.taskOwners.findMany({
-    where: eq(taskOwners.userId, userId),
-    with: { task: true },
-  });
-  return ownerships.filter((o) => !o.task.archived).map((o) => o.task);
-}
-
-export async function listOwnedArchivedTasksForMember(userId: string) {
-  const ownerships = await db.query.taskOwners.findMany({
-    where: eq(taskOwners.userId, userId),
-    with: { task: true },
-  });
-  return ownerships.filter((o) => o.task.archived).map((o) => o.task);
-}
-
-export async function getTask(taskId: string) {
-  return db.query.tasks.findFirst({
-    where: eq(tasks.id, taskId),
-  });
-}
-
-export async function getTaskAssignees(taskId: string) {
-  const assignments = await db.query.taskAssignees.findMany({
-    where: eq(taskAssignees.taskId, taskId),
-    with: { user: true },
-  });
-  return assignments.map((a) => a.user);
-}
-
-export async function getTasksProgress(
-  taskIds: string[],
-): Promise<Map<string, { total: number; done: number }>> {
-  if (taskIds.length === 0) return new Map();
-  const assignments = await db.query.taskAssignees.findMany({
-    where: inArray(taskAssignees.taskId, taskIds),
-    columns: { taskId: true, done: true },
-  });
-  const map = new Map<string, { total: number; done: number }>();
-  for (const a of assignments) {
-    const entry = map.get(a.taskId) ?? { total: 0, done: 0 };
-    entry.total++;
-    if (a.done) entry.done++;
-    map.set(a.taskId, entry);
-  }
-  return map;
-}
-
-export async function listTaskAssigneesWithStatus(taskId: string) {
-  const assignments = await db.query.taskAssignees.findMany({
-    where: eq(taskAssignees.taskId, taskId),
-    with: { user: true },
-  });
-  return assignments.map((a) => ({
-    displayName: a.user.displayName,
-    done: a.done,
-  }));
-}
-
-export async function isTaskOwner(taskId: string, userId: string) {
-  const ownership = await db.query.taskOwners.findFirst({
-    where: and(eq(taskOwners.taskId, taskId), eq(taskOwners.userId, userId)),
-  });
-  return !!ownership;
-}
-
-export async function isTaskAssignee(taskId: string, userId: string) {
-  const assignment = await db.query.taskAssignees.findFirst({
-    where: and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, userId)),
-  });
-  return !!assignment;
-}
-
-export async function listTaskOwners(taskId: string) {
-  const owners = await db.query.taskOwners.findMany({
-    where: eq(taskOwners.taskId, taskId),
-    with: { user: true },
-  });
-  return owners.map((o) => o.user);
-}
-
-export async function addTaskOwner(taskId: string, userId: string) {
-  await db.insert(taskOwners).values({ taskId, userId }).onConflictDoNothing();
-}
-
-export async function removeTaskOwner(taskId: string, userId: string) {
-  // Count current owners
-  const owners = await db.query.taskOwners.findMany({
-    where: eq(taskOwners.taskId, taskId),
-  });
-  if (owners.length <= 1) {
-    return { error: "cannot_remove_last_owner" as const };
+export function createTaskService(db: Database) {
+  async function listActiveTasksForMember(userId: string) {
+    const assignments = await db.query.taskAssignees.findMany({
+      where: eq(taskAssignees.userId, userId),
+      with: { task: true },
+      orderBy: desc(taskAssignees.assignedAt),
+    });
+    return assignments.filter((a) => !a.task.archived).map((a) => ({ ...a.task, done: a.done }));
   }
 
-  await db
-    .delete(taskOwners)
-    .where(and(eq(taskOwners.taskId, taskId), eq(taskOwners.userId, userId)));
-  return { error: null };
-}
+  async function listArchivedTasksForMember(userId: string) {
+    const assignments = await db.query.taskAssignees.findMany({
+      where: eq(taskAssignees.userId, userId),
+      with: { task: true },
+      orderBy: desc(taskAssignees.assignedAt),
+    });
+    return assignments.filter((a) => a.task.archived).map((a) => ({ ...a.task, done: a.done }));
+  }
 
-export async function toggleAssigneeDone(taskId: string, userId: string) {
-  const assignment = await db.query.taskAssignees.findFirst({
-    where: and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, userId)),
-  });
-  if (!assignment) return null;
+  async function listOwnedActiveTasksForMember(userId: string) {
+    const ownerships = await db.query.taskOwners.findMany({
+      where: eq(taskOwners.userId, userId),
+      with: { task: true },
+    });
+    return ownerships.filter((o) => !o.task.archived).map((o) => o.task);
+  }
 
-  const newDone = !assignment.done;
-  await db
-    .update(taskAssignees)
-    .set({ done: newDone })
-    .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, userId)));
+  async function listOwnedArchivedTasksForMember(userId: string) {
+    const ownerships = await db.query.taskOwners.findMany({
+      where: eq(taskOwners.userId, userId),
+      with: { task: true },
+    });
+    return ownerships.filter((o) => o.task.archived).map((o) => o.task);
+  }
 
-  const task = await getTask(taskId);
-  if (!task) return null;
-  return { ...task, done: newDone };
-}
+  async function getTask(taskId: string) {
+    return db.query.tasks.findFirst({
+      where: eq(tasks.id, taskId),
+    });
+  }
 
-export async function archiveTask(taskId: string) {
-  const [updated] = await db
-    .update(tasks)
-    .set({ archived: true, updatedAt: new Date() })
-    .where(eq(tasks.id, taskId))
-    .returning();
-  return updated;
-}
+  async function getTaskAssignees(taskId: string) {
+    const assignments = await db.query.taskAssignees.findMany({
+      where: eq(taskAssignees.taskId, taskId),
+      with: { user: true },
+    });
+    return assignments.map((a) => a.user);
+  }
 
-export async function unarchiveTask(taskId: string) {
-  const [updated] = await db
-    .update(tasks)
-    .set({ archived: false, updatedAt: new Date() })
-    .where(eq(tasks.id, taskId))
-    .returning();
-  return updated;
-}
+  async function getTasksProgress(
+    taskIds: string[],
+  ): Promise<Map<string, { total: number; done: number }>> {
+    if (taskIds.length === 0) return new Map();
+    const assignments = await db.query.taskAssignees.findMany({
+      where: inArray(taskAssignees.taskId, taskIds),
+      columns: { taskId: true, done: true },
+    });
+    const map = new Map<string, { total: number; done: number }>();
+    for (const a of assignments) {
+      const entry = map.get(a.taskId) ?? { total: 0, done: 0 };
+      entry.total++;
+      if (a.done) entry.done++;
+      map.set(a.taskId, entry);
+    }
+    return map;
+  }
 
-export async function updateTask(
-  taskId: string,
-  data: {
-    title?: string;
-    description?: string | null;
+  async function listTaskAssigneesWithStatus(taskId: string) {
+    const assignments = await db.query.taskAssignees.findMany({
+      where: eq(taskAssignees.taskId, taskId),
+      with: { user: true },
+    });
+    return assignments.map((a) => ({
+      displayName: a.user.displayName,
+      done: a.done,
+    }));
+  }
+
+  async function isTaskOwner(taskId: string, userId: string) {
+    const ownership = await db.query.taskOwners.findFirst({
+      where: and(eq(taskOwners.taskId, taskId), eq(taskOwners.userId, userId)),
+    });
+    return !!ownership;
+  }
+
+  async function isTaskAssignee(taskId: string, userId: string) {
+    const assignment = await db.query.taskAssignees.findFirst({
+      where: and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, userId)),
+    });
+    return !!assignment;
+  }
+
+  async function listTaskOwners(taskId: string) {
+    const owners = await db.query.taskOwners.findMany({
+      where: eq(taskOwners.taskId, taskId),
+      with: { user: true },
+    });
+    return owners.map((o) => o.user);
+  }
+
+  async function addTaskOwner(taskId: string, userId: string) {
+    await db.insert(taskOwners).values({ taskId, userId }).onConflictDoNothing();
+  }
+
+  async function removeTaskOwner(taskId: string, userId: string) {
+    // Count current owners
+    const owners = await db.query.taskOwners.findMany({
+      where: eq(taskOwners.taskId, taskId),
+    });
+    if (owners.length <= 1) {
+      return { error: "cannot_remove_last_owner" as const };
+    }
+
+    await db
+      .delete(taskOwners)
+      .where(and(eq(taskOwners.taskId, taskId), eq(taskOwners.userId, userId)));
+    return { error: null };
+  }
+
+  async function toggleAssigneeDone(taskId: string, userId: string) {
+    const assignment = await db.query.taskAssignees.findFirst({
+      where: and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, userId)),
+    });
+    if (!assignment) return null;
+
+    const newDone = !assignment.done;
+    await db
+      .update(taskAssignees)
+      .set({ done: newDone })
+      .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, userId)));
+
+    const task = await getTask(taskId);
+    if (!task) return null;
+    return { ...task, done: newDone };
+  }
+
+  async function archiveTask(taskId: string) {
+    const [updated] = await db
+      .update(tasks)
+      .set({ archived: true, updatedAt: new Date() })
+      .where(eq(tasks.id, taskId))
+      .returning();
+    return updated;
+  }
+
+  async function unarchiveTask(taskId: string) {
+    const [updated] = await db
+      .update(tasks)
+      .set({ archived: false, updatedAt: new Date() })
+      .where(eq(tasks.id, taskId))
+      .returning();
+    return updated;
+  }
+
+  async function updateTask(
+    taskId: string,
+    data: {
+      title?: string;
+      description?: string | null;
+      deadline?: Date | null;
+    },
+  ) {
+    const [updated] = await db
+      .update(tasks)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(tasks.id, taskId))
+      .returning();
+    return updated;
+  }
+
+  async function createTask(data: {
+    title: string;
+    description?: string;
     deadline?: Date | null;
-  },
-) {
-  const [updated] = await db
-    .update(tasks)
-    .set({ ...data, updatedAt: new Date() })
-    .where(eq(tasks.id, taskId))
-    .returning();
-  return updated;
-}
+    slackMessageTs?: string;
+    slackChannelId?: string;
+    slackPermalink?: string;
+    createdById: string;
+    assigneeIds: string[];
+  }) {
+    const { assigneeIds, ...taskData } = data;
 
-export async function createTask(data: {
-  title: string;
-  description?: string;
-  deadline?: Date | null;
-  slackMessageTs?: string;
-  slackChannelId?: string;
-  slackPermalink?: string;
-  createdById: string;
-  assigneeIds: string[];
-}) {
-  const { assigneeIds, ...taskData } = data;
+    const [task] = await db.insert(tasks).values(taskData).returning();
 
-  const [task] = await db.insert(tasks).values(taskData).returning();
+    // Creator becomes the default owner
+    await db.insert(taskOwners).values({
+      taskId: task.id,
+      userId: data.createdById,
+    });
 
-  // Creator becomes the default owner
-  await db.insert(taskOwners).values({
-    taskId: task.id,
-    userId: data.createdById,
-  });
+    if (assigneeIds.length > 0) {
+      await db.insert(taskAssignees).values(
+        assigneeIds.map((userId) => ({
+          taskId: task.id,
+          userId,
+        })),
+      );
+    }
 
-  if (assigneeIds.length > 0) {
-    await db.insert(taskAssignees).values(
-      assigneeIds.map((userId) => ({
-        taskId: task.id,
-        userId,
-      })),
-    );
+    return task;
   }
 
-  return task;
+  return {
+    listActiveTasksForMember,
+    listArchivedTasksForMember,
+    listOwnedActiveTasksForMember,
+    listOwnedArchivedTasksForMember,
+    getTask,
+    getTaskAssignees,
+    getTasksProgress,
+    listTaskAssigneesWithStatus,
+    isTaskOwner,
+    isTaskAssignee,
+    listTaskOwners,
+    addTaskOwner,
+    removeTaskOwner,
+    toggleAssigneeDone,
+    archiveTask,
+    unarchiveTask,
+    updateTask,
+    createTask,
+  };
 }
+
+export type TaskService = ReturnType<typeof createTaskService>;

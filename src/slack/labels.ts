@@ -6,18 +6,10 @@
 // Channels and usergroups are resolved via the Slack API with an in-memory
 // cache shared across requests.
 
-import { findUsersBySlackUserIds } from "../users/service";
-import { boltApp } from "./bolt";
+import type { App } from "@slack/bolt";
 import { createSlackLabelResolver } from "./helpers";
 import type { MrkdwnOptions } from "./mrkdwn";
-
-let _slackResolver: ReturnType<typeof createSlackLabelResolver> | null = null;
-function slackResolver() {
-  if (!_slackResolver) {
-    _slackResolver = createSlackLabelResolver(boltApp.client);
-  }
-  return _slackResolver;
-}
+import type { UserService } from "../users/service";
 
 export function extractSlackEntityIds(text: string): {
   users: string[];
@@ -37,46 +29,56 @@ export function extractSlackEntityIds(text: string): {
   };
 }
 
-export async function buildMrkdwnLabels(
-  texts: (string | null | undefined)[],
-): Promise<MrkdwnOptions> {
-  const userIds = new Set<string>();
-  const channelIds = new Set<string>();
-  const usergroupIds = new Set<string>();
-
-  for (const t of texts) {
-    if (!t) continue;
-    const ids = extractSlackEntityIds(t);
-    for (const id of ids.users) userIds.add(id);
-    for (const id of ids.channels) channelIds.add(id);
-    for (const id of ids.usergroups) usergroupIds.add(id);
-  }
-
-  const users: Record<string, string> = {};
-  if (userIds.size > 0) {
-    const resolved = await findUsersBySlackUserIds([...userIds]);
-    for (const u of resolved) {
-      users[u.slackUserId] = u.displayName;
+export function createLabelBuilder(boltApp: App, userService: UserService) {
+  let _slackResolver: ReturnType<typeof createSlackLabelResolver> | null = null;
+  function slackResolver() {
+    if (!_slackResolver) {
+      _slackResolver = createSlackLabelResolver(boltApp.client);
     }
+    return _slackResolver;
   }
 
-  const resolver = slackResolver();
+  return async function buildMrkdwnLabels(
+    texts: (string | null | undefined)[],
+  ): Promise<MrkdwnOptions> {
+    const userIds = new Set<string>();
+    const channelIds = new Set<string>();
+    const usergroupIds = new Set<string>();
 
-  const channels: Record<string, string> = {};
-  await Promise.all(
-    [...channelIds].map(async (id) => {
-      const name = await resolver.channel(id);
-      if (name) channels[id] = name;
-    }),
-  );
+    for (const t of texts) {
+      if (!t) continue;
+      const ids = extractSlackEntityIds(t);
+      for (const id of ids.users) userIds.add(id);
+      for (const id of ids.channels) channelIds.add(id);
+      for (const id of ids.usergroups) usergroupIds.add(id);
+    }
 
-  const usergroups: Record<string, string> = {};
-  await Promise.all(
-    [...usergroupIds].map(async (id) => {
-      const name = await resolver.usergroup(id);
-      if (name) usergroups[id] = name;
-    }),
-  );
+    const users: Record<string, string> = {};
+    if (userIds.size > 0) {
+      const resolved = await userService.findUsersBySlackUserIds([...userIds]);
+      for (const u of resolved) {
+        users[u.slackUserId] = u.displayName;
+      }
+    }
 
-  return { users, channels, usergroups };
+    const resolver = slackResolver();
+
+    const channels: Record<string, string> = {};
+    await Promise.all(
+      [...channelIds].map(async (id) => {
+        const name = await resolver.channel(id);
+        if (name) channels[id] = name;
+      }),
+    );
+
+    const usergroups: Record<string, string> = {};
+    await Promise.all(
+      [...usergroupIds].map(async (id) => {
+        const name = await resolver.usergroup(id);
+        if (name) usergroups[id] = name;
+      }),
+    );
+
+    return { users, channels, usergroups };
+  };
 }
