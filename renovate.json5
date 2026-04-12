@@ -1,0 +1,126 @@
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  extends: [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    ":pinDevDependencies",
+    "security:openssf-scorecard",
+    ":dependencyDashboard",
+    ":semanticCommits",
+  ],
+
+  // Use "deps" as semantic commit type for all Renovate PRs
+  semanticCommitType: "deps",
+
+  // Label all Renovate PRs
+  labels: ["deps"],
+
+  // Limit concurrent PRs to avoid overwhelming CI and reviewers
+  prConcurrentLimit: 5,
+
+  // Require manual merge for all PRs by default
+  automerge: false,
+
+  // Wait 7 days after publish before creating PRs to avoid compromised packages
+  minimumReleaseAge: "7 days",
+
+  // Vulnerability fix PRs should be created immediately and prioritized
+  vulnerabilityAlerts: {
+    enabled: true,
+    addLabels: ["deps/security"],
+    schedule: ["at any time"],
+    automerge: true,
+    platformAutomerge: true,
+    assignees: ["nownabe"],
+  },
+
+  // Separate lockfile maintenance
+  lockFileMaintenance: {
+    enabled: true,
+    schedule: ["before 6am on monday"],
+  },
+
+  packageRules: [
+    // Semantic commit scope per manager
+    {
+      matchManagers: ["npm"],
+      semanticCommitScope: "npm",
+    },
+    {
+      matchManagers: ["github-actions"],
+      semanticCommitScope: "github-actions",
+    },
+    {
+      matchManagers: ["mise"],
+      semanticCommitScope: "mise",
+    },
+
+    // Pin all dependencies for reproducible builds
+    {
+      matchManagers: ["npm"],
+      rangeStrategy: "pin",
+    },
+
+    // Group all non-major production dependency updates
+    {
+      matchManagers: ["npm"],
+      matchDepTypes: ["dependencies"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "npm production dependencies (non-major)",
+      schedule: ["before 6am on monday"],
+      automerge: true,
+      platformAutomerge: true,
+    },
+
+    // Group all non-major dev dependency updates
+    {
+      matchManagers: ["npm"],
+      matchDepTypes: ["devDependencies"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "npm dev dependencies (non-major)",
+      schedule: ["before 6am on monday"],
+      automerge: true,
+      platformAutomerge: true,
+    },
+
+    // Major updates get individual PRs for careful review
+    {
+      matchManagers: ["npm"],
+      matchUpdateTypes: ["major"],
+      addLabels: ["deps/major"],
+      schedule: ["before 6am on monday"],
+    },
+
+    // GitHub Actions: group non-major, individual for major
+    {
+      matchManagers: ["github-actions"],
+      matchUpdateTypes: ["minor", "patch", "digest"],
+      groupName: "github actions (non-major)",
+      schedule: ["before 6am on monday"],
+      automerge: true,
+      platformAutomerge: true,
+    },
+    {
+      matchManagers: ["github-actions"],
+      matchUpdateTypes: ["major"],
+      addLabels: ["deps/major"],
+      schedule: ["before 6am on monday"],
+    },
+
+    // mise tool versions
+    {
+      matchManagers: ["mise"],
+      matchUpdateTypes: ["minor", "patch"],
+      groupName: "mise tools (non-major)",
+      schedule: ["before 6am on monday"],
+      automerge: true,
+      platformAutomerge: true,
+    },
+    {
+      matchManagers: ["mise"],
+      matchUpdateTypes: ["major"],
+      addLabels: ["deps/major"],
+      schedule: ["before 6am on monday"],
+    },
+  ],
+}
