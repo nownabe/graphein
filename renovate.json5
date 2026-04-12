@@ -12,6 +12,9 @@
   // Use "deps" as semantic commit type for all Renovate PRs
   semanticCommitType: "deps",
 
+  // Label all Renovate PRs
+  labels: ["deps"],
+
   // Limit concurrent PRs to avoid overwhelming CI and reviewers
   prConcurrentLimit: 5,
 
@@ -24,7 +27,7 @@
   // Vulnerability fix PRs should be created immediately and prioritized
   vulnerabilityAlerts: {
     enabled: true,
-    labels: ["security"],
+    addLabels: ["deps/security"],
     schedule: ["at any time"],
     automerge: true,
     platformAutomerge: true,
@@ -84,7 +87,7 @@
     {
       matchManagers: ["npm"],
       matchUpdateTypes: ["major"],
-      labels: ["major-update"],
+      addLabels: ["deps/major"],
       schedule: ["before 6am on monday"],
     },
 
@@ -100,7 +103,7 @@
     {
       matchManagers: ["github-actions"],
       matchUpdateTypes: ["major"],
-      labels: ["major-update"],
+      addLabels: ["deps/major"],
       schedule: ["before 6am on monday"],
     },
 
@@ -116,7 +119,7 @@
     {
       matchManagers: ["mise"],
       matchUpdateTypes: ["major"],
-      labels: ["major-update"],
+      addLabels: ["deps/major"],
       schedule: ["before 6am on monday"],
     },
   ],
