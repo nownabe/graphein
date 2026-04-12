@@ -4,7 +4,7 @@ import { authMiddleware } from "../auth/middleware";
 import {
   listActiveTasksForMember,
   listArchivedTasksForMember,
-  listOwnedOnlyActiveTasksForMember,
+  listOwnedActiveTasksForMember,
   getTask,
   isTaskOwner,
   isTaskAssignee,
@@ -49,21 +49,20 @@ async function buildHomeData(
   isAdmin: boolean,
 ) {
   const allAssignedTasks = await listActiveTasksForMember(memberId);
-  const ownedOnlyTasks = await listOwnedOnlyActiveTasksForMember(memberId);
+  const allOwnedTasks = await listOwnedActiveTasksForMember(memberId);
 
   const now = new Date();
   const counts: FilterCounts = {
-    all: allAssignedTasks.length + ownedOnlyTasks.length,
-    open:
-      allAssignedTasks.filter((t) => !t.done).length + ownedOnlyTasks.length,
+    all: allAssignedTasks.length,
+    open: allAssignedTasks.filter((t) => !t.done).length,
     done: allAssignedTasks.filter((t) => t.done).length,
   };
-  const overdueCount =
-    allAssignedTasks.filter(
-      (t) => !t.done && t.deadline && new Date(t.deadline) < now,
-    ).length +
-    ownedOnlyTasks.filter((t) => t.deadline && new Date(t.deadline) < now)
-      .length;
+  const overdueCount = allAssignedTasks.filter(
+    (t) => !t.done && t.deadline && new Date(t.deadline) < now,
+  ).length;
+  const ownedOverdueCount = allOwnedTasks.filter(
+    (t) => t.deadline && new Date(t.deadline) < now,
+  ).length;
 
   let filteredAssigned = allAssignedTasks;
   if (filter === "open") {
@@ -72,7 +71,7 @@ async function buildHomeData(
     filteredAssigned = allAssignedTasks.filter((t) => t.done);
   }
 
-  const assignedWithOwnership = await Promise.all(
+  const assignedTasks = await Promise.all(
     filteredAssigned.map(async (t) => ({
       ...t,
       isOwner: isAdmin || (await isTaskOwner(t.id, memberId)),
@@ -80,17 +79,20 @@ async function buildHomeData(
     })),
   );
 
-  const ownedOnlyWithFlags = ownedOnlyTasks.map((t) => ({
+  const ownedTasks = allOwnedTasks.map((t) => ({
     ...t,
     done: false,
     isOwner: true,
     isAssignee: false,
   }));
 
-  const filteredOwnedOnly = filter === "done" ? [] : ownedOnlyWithFlags;
-  const allTasks = [...assignedWithOwnership, ...filteredOwnedOnly];
-
-  return { allTasks, counts, overdueCount };
+  return {
+    assignedTasks,
+    ownedTasks,
+    counts,
+    overdueCount,
+    ownedOverdueCount,
+  };
 }
 
 // Redirect root to the task list
@@ -102,25 +104,31 @@ taskRoutes.get("/tasks", async (c) => {
   const isAdmin = c.get("isAdmin");
   const locale = getLocale(c);
   const filter = c.req.query("filter") ?? "all";
+  const view = c.req.query("view") === "owned" ? "owned" : "assigned";
 
-  const { allTasks, counts, overdueCount } = await buildHomeData(
-    memberId,
-    filter,
-    isAdmin,
-  );
+  const {
+    assignedTasks,
+    ownedTasks,
+    counts,
+    overdueCount,
+    ownedOverdueCount,
+  } = await buildHomeData(memberId, filter, isAdmin);
   const mrkdwnLabels = await buildMrkdwnLabels(
-    allTasks.map((t) => t.description),
+    [...assignedTasks, ...ownedTasks].map((t) => t.description),
   );
 
   // htmx partial request — return summary + tabs + task list
   if (c.req.header("HX-Request") && !c.req.header("HX-Boosted")) {
     return c.html(
       <HomeContentPartial
-        tasks={allTasks}
+        assignedTasks={assignedTasks}
+        ownedTasks={ownedTasks}
         locale={locale}
         activeFilter={filter}
+        activeView={view}
         counts={counts}
         overdueCount={overdueCount}
+        ownedOverdueCount={ownedOverdueCount}
         mrkdwnLabels={mrkdwnLabels}
       />,
     );
@@ -128,12 +136,15 @@ taskRoutes.get("/tasks", async (c) => {
 
   return c.html(
     <HomePage
-      tasks={allTasks}
+      assignedTasks={assignedTasks}
+      ownedTasks={ownedTasks}
       displayName={displayName}
       locale={locale}
       activeFilter={filter}
+      activeView={view}
       counts={counts}
       overdueCount={overdueCount}
+      ownedOverdueCount={ownedOverdueCount}
       mrkdwnLabels={mrkdwnLabels}
       isAdmin={isAdmin}
     />,

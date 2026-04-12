@@ -61,43 +61,124 @@ function StatusFilterTabs({
   );
 }
 
+function ViewTabs({
+  activeView,
+  locale,
+  assignedCount,
+  ownedCount,
+}: {
+  activeView: "assigned" | "owned";
+  locale: string;
+  assignedCount: number;
+  ownedCount: number;
+}) {
+  const tabs: Array<{
+    key: "assigned" | "owned";
+    label: string;
+    count: number;
+  }> = [
+    {
+      key: "assigned",
+      label: t(locale, "view.assigned"),
+      count: assignedCount,
+    },
+    {
+      key: "owned",
+      label: t(locale, "view.owned"),
+      count: ownedCount,
+    },
+  ];
+  return (
+    <div class="flex items-center gap-1 border-b border-edge mb-6">
+      {tabs.map((tab) => {
+        const isActive = tab.key === activeView;
+        const href =
+          tab.key === "assigned" ? "/tasks" : "/tasks?view=owned";
+        return (
+          <button
+            key={tab.key}
+            hx-get={href}
+            hx-target="#home-content"
+            hx-swap="innerHTML"
+            hx-push-url={href}
+            class={`relative px-4 py-2.5 text-sm font-semibold transition-colors ${
+              isActive
+                ? "text-ink"
+                : "text-muted hover:text-secondary"
+            }`}
+          >
+            {tab.label}
+            <span
+              class={`ml-1.5 text-xs tabular-nums ${
+                isActive ? "text-secondary" : "text-muted/60"
+              }`}
+            >
+              {tab.count}
+            </span>
+            {isActive && (
+              <span class="absolute left-0 right-0 -bottom-px h-0.5 bg-accent" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 export function HomeContentPartial({
-  tasks,
+  assignedTasks,
+  ownedTasks,
   locale,
   activeFilter,
+  activeView,
   counts,
   overdueCount,
+  ownedOverdueCount,
   mrkdwnLabels,
 }: {
-  tasks: Task[];
+  assignedTasks: Task[];
+  ownedTasks: Task[];
   locale: string;
   activeFilter: string;
+  activeView: "assigned" | "owned";
   counts: FilterCounts;
   overdueCount: number;
+  ownedOverdueCount: number;
   mrkdwnLabels?: MrkdwnOptions;
 }) {
+  const isOwnedView = activeView === "owned";
   return (
     <>
-      <div class="mb-8">
-        <h1 class="text-xl font-bold text-ink tracking-tight mb-1">
-          {t(locale, "page.myTasks")}
-        </h1>
+      <ViewTabs
+        activeView={activeView}
+        locale={locale}
+        assignedCount={counts.all}
+        ownedCount={ownedTasks.length}
+      />
+      <div class="flex items-center justify-between mb-6">
         <p class="text-sm text-secondary">
-          {counts.open} {t(locale, "summary.open")}
-          {overdueCount > 0 && (
-            <span class="text-danger font-medium">
-              {" "}
-              · {overdueCount} {t(locale, "summary.overdue")}
-            </span>
+          {isOwnedView ? (
+            <>
+              {ownedTasks.length} {t(locale, "summary.owned")}
+              {ownedOverdueCount > 0 && (
+                <span class="text-danger font-medium">
+                  {" "}
+                  · {ownedOverdueCount} {t(locale, "summary.overdue")}
+                </span>
+              )}
+            </>
+          ) : (
+            <>
+              {counts.open} {t(locale, "summary.open")}
+              {overdueCount > 0 && (
+                <span class="text-danger font-medium">
+                  {" "}
+                  · {overdueCount} {t(locale, "summary.overdue")}
+                </span>
+              )}
+            </>
           )}
         </p>
-      </div>
-      <div class="flex items-center justify-between mb-6">
-        <StatusFilterTabs
-          activeFilter={activeFilter}
-          locale={locale}
-          counts={counts}
-        />
         <a
           href="/tasks/archived"
           class="text-xs text-muted hover:text-accent transition-colors"
@@ -105,49 +186,79 @@ export function HomeContentPartial({
           {t(locale, "link.archived")}
         </a>
       </div>
-      <TaskList
-        tasks={tasks}
-        showActions
-        emptyMessage={t(locale, "empty.tasks")}
-        locale={locale}
-        grouped
-        mrkdwnLabels={mrkdwnLabels}
-      />
+      {isOwnedView ? (
+        <TaskList
+          tasks={ownedTasks}
+          showActions
+          emptyMessage={t(locale, "empty.owned")}
+          locale={locale}
+          grouped
+          mrkdwnLabels={mrkdwnLabels}
+        />
+      ) : (
+        <>
+          <div class="mb-6">
+            <StatusFilterTabs
+              activeFilter={activeFilter}
+              locale={locale}
+              counts={counts}
+            />
+          </div>
+          <TaskList
+            tasks={assignedTasks}
+            showActions
+            emptyMessage={t(locale, "empty.tasks")}
+            locale={locale}
+            grouped
+            mrkdwnLabels={mrkdwnLabels}
+          />
+        </>
+      )}
     </>
   );
 }
 
 export function HomePage({
-  tasks,
+  assignedTasks,
+  ownedTasks,
   displayName,
   locale,
   activeFilter,
+  activeView,
   counts,
   overdueCount,
+  ownedOverdueCount,
   mrkdwnLabels,
   isAdmin,
 }: {
-  tasks: Task[];
+  assignedTasks: Task[];
+  ownedTasks: Task[];
   displayName: string;
   locale: string;
   activeFilter?: string;
+  activeView?: "assigned" | "owned";
   counts: FilterCounts;
   overdueCount: number;
+  ownedOverdueCount: number;
   mrkdwnLabels?: MrkdwnOptions;
   isAdmin?: boolean;
 }) {
   const filter = activeFilter ?? "all";
+  const view = activeView ?? "assigned";
   return (
     <Layout title={t(locale, "page.myTasks")} locale={locale}>
       <Nav displayName={displayName} locale={locale} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div id="home-content">
           <HomeContentPartial
-            tasks={tasks}
+            assignedTasks={assignedTasks}
+            ownedTasks={ownedTasks}
             locale={locale}
             activeFilter={filter}
+            activeView={view}
             counts={counts}
             overdueCount={overdueCount}
+            ownedOverdueCount={ownedOverdueCount}
             mrkdwnLabels={mrkdwnLabels}
           />
         </div>

@@ -20,6 +20,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Page titles
     "page.myTasks": "マイタスク",
+    "page.ownedTasks": "オーナーのタスク",
     "page.archived": "アーカイブ済み",
     "page.editTask": "タスクを編集",
     "page.taskStatus": "完了状態",
@@ -60,7 +61,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "taskStatus.progress": "進捗",
 
     // Links
-    "link.archived": "アーカイブ済み →",
+    "link.archived": "アーカイブ済み",
     "link.backToMyTasks": "マイタスクに戻る",
 
     // Empty states
@@ -78,6 +79,11 @@ const messages: Record<Locale, Record<string, string>> = {
     "filter.all": "すべて",
     "filter.open": "未完了",
     "filter.done": "完了",
+
+    // View tabs
+    "view.assigned": "担当",
+    "view.owned": "オーナー",
+    "empty.owned": "オーナーになっているタスクはありません",
 
     // Confirm dialogs
     "confirm.archive": "このタスクをアーカイブしますか？",
@@ -107,6 +113,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Summary
     "summary.open": "件が未完了",
     "summary.overdue": "件が期限切れ",
+    "summary.owned": "件",
   },
   en: {
     // Nav
@@ -127,6 +134,7 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Page titles
     "page.myTasks": "My Tasks",
+    "page.ownedTasks": "Owned Tasks",
     "page.archived": "Archived",
     "page.editTask": "Edit Task",
     "page.taskStatus": "Completion Status",
@@ -167,7 +175,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "taskStatus.progress": "Progress",
 
     // Links
-    "link.archived": "Archived →",
+    "link.archived": "Archived",
     "link.backToMyTasks": "Back to My Tasks",
 
     // Empty states
@@ -185,6 +193,11 @@ const messages: Record<Locale, Record<string, string>> = {
     "filter.all": "All",
     "filter.open": "Open",
     "filter.done": "Done",
+
+    // View tabs
+    "view.assigned": "Assigned",
+    "view.owned": "Owned",
+    "empty.owned": "No tasks owned",
 
     // Confirm dialogs
     "confirm.archive": "Are you sure you want to archive this task?",
@@ -214,6 +227,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Summary
     "summary.open": "open",
     "summary.overdue": "overdue",
+    "summary.owned": "total",
   },
 };
 
