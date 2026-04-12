@@ -41,6 +41,12 @@ jobs:
               - 'oxlint.config.*'
               - 'mise.toml'
               - 'mise.lock'
+            db_migration:
+              - 'drizzle/**'
+              - 'src/db/schema.ts'
+              - 'drizzle.config.ts'
+              - 'package.json'
+              - 'bun.lock'
             app:
               - 'src/**'
               - 'package.json'
@@ -74,6 +80,14 @@ jobs:
       contents: read
     uses: ./.github/workflows/reusable-oxlint.yaml
 
+  db-migration:
+    name: DB Migration Check
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).db_migration_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-db-migration.yaml
+
   app:
     name: App Check
     needs: detect-changes
@@ -90,6 +104,7 @@ jobs:
       - oxfmt
       - oxlint
       - github-workflow
+      - db-migration
       - app
     runs-on: ubuntu-latest
     timeout-minutes: 5
