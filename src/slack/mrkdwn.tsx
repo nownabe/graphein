@@ -66,10 +66,7 @@ export type BlockNode =
 const WORD = /[A-Za-z0-9_]/;
 
 function decodeEntities(s: string): string {
-  return s
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
+  return s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
 }
 
 type ListLine = { indent: number; ordered: boolean; text: string };
@@ -128,10 +125,7 @@ export function parseMrkdwn(input: string): BlockNode[] {
         // `1. a / 2. b / - c / - d` renders as two adjacent lists.
         if (listBuf.length > 0) {
           const baseIndent = Math.min(...listBuf.map((l) => l.indent));
-          if (
-            listLine.indent === baseIndent &&
-            listLine.ordered !== listBuf[0]!.ordered
-          ) {
+          if (listLine.indent === baseIndent && listLine.ordered !== listBuf[0]!.ordered) {
             flushList();
           }
         }
@@ -193,9 +187,7 @@ function buildListTree(lines: ListLine[]): ListBlock {
   };
 
   // Stack of (listBlock, indent)
-  const stack: { list: ListBlock; indent: number }[] = [
-    { list: root, indent: minIndent },
-  ];
+  const stack: { list: ListBlock; indent: number }[] = [{ list: root, indent: minIndent }];
 
   for (const line of lines) {
     // Pop until we find a list whose indent is <= this line's indent.
@@ -209,8 +201,7 @@ function buildListTree(lines: ListLine[]): ListBlock {
       const parentItems = top.list.items;
       const parent =
         parentItems[parentItems.length - 1] ??
-        (parentItems.push({ inlines: [], children: [] }),
-        parentItems[parentItems.length - 1]!);
+        (parentItems.push({ inlines: [], children: [] }), parentItems[parentItems.length - 1]!);
       const nested: ListBlock = {
         type: "list",
         ordered: line.ordered,
@@ -234,9 +225,7 @@ function stripQuotePrefix(line: string): string | null {
   return m ? m[1] : null;
 }
 
-function splitCodeBlocks(
-  src: string,
-): { type: "text" | "codeblock"; value: string }[] {
+function splitCodeBlocks(src: string): { type: "text" | "codeblock"; value: string }[] {
   const parts: { type: "text" | "codeblock"; value: string }[] = [];
   const re = /```([\s\S]*?)```/g;
   let last = 0;
@@ -384,12 +373,7 @@ function parseEntity(inner: string): InlineNode | null {
   }
   if (body.startsWith("!")) {
     const name = body.slice(1);
-    if (
-      name === "here" ||
-      name === "channel" ||
-      name === "everyone" ||
-      name === "group"
-    ) {
+    if (name === "here" || name === "channel" || name === "everyone" || name === "group") {
       return { type: "broadcast", name, label };
     }
     return null;
@@ -412,20 +396,10 @@ export interface MrkdwnOptions {
   usergroups?: Record<string, string>;
 }
 
-export function Mrkdwn({
-  text,
-  options,
-}: {
-  text: string;
-  options?: MrkdwnOptions;
-}) {
+export function Mrkdwn({ text, options }: { text: string; options?: MrkdwnOptions }) {
   const blocks = parseMrkdwn(text);
   const opts = options ?? {};
-  return (
-    <div class="mrkdwn space-y-2">
-      {blocks.map((b) => renderBlock(b, opts))}
-    </div>
-  );
+  return <div class="mrkdwn space-y-2">{blocks.map((b) => renderBlock(b, opts))}</div>;
 }
 
 function renderBlock(block: BlockNode, opts: MrkdwnOptions) {
@@ -444,9 +418,7 @@ function renderBlock(block: BlockNode, opts: MrkdwnOptions) {
       );
     case "paragraph":
       return (
-        <p class="whitespace-pre-wrap leading-relaxed">
-          {renderInline(block.children, opts)}
-        </p>
+        <p class="whitespace-pre-wrap leading-relaxed">{renderInline(block.children, opts)}</p>
       );
     case "list":
       return renderList(block, opts);
@@ -461,13 +433,9 @@ function renderList(list: ListBlock, opts: MrkdwnOptions) {
     </li>
   ));
   return list.ordered ? (
-    <ol class="list-decimal pl-5 space-y-0.5 marker:text-muted">
-      {itemNodes}
-    </ol>
+    <ol class="list-decimal pl-5 space-y-0.5 marker:text-muted">{itemNodes}</ol>
   ) : (
-    <ul class="list-disc pl-5 space-y-0.5 marker:text-muted">
-      {itemNodes}
-    </ul>
+    <ul class="list-disc pl-5 space-y-0.5 marker:text-muted">{itemNodes}</ul>
   );
 }
 
@@ -492,9 +460,7 @@ function renderInlineNode(node: InlineNode, opts: MrkdwnOptions) {
     case "strike":
       return <del>{renderInline(node.children, opts)}</del>;
     case "link": {
-      const href = /^[a-z][a-z0-9+.-]*:/i.test(node.url)
-        ? node.url
-        : `https://${node.url}`;
+      const href = /^[a-z][a-z0-9+.-]*:/i.test(node.url) ? node.url : `https://${node.url}`;
       return (
         <a
           href={href}
@@ -538,8 +504,7 @@ function renderInlineNode(node: InlineNode, opts: MrkdwnOptions) {
       );
     }
     case "date": {
-      const text =
-        node.fallback ?? new Date(node.timestamp * 1000).toISOString();
+      const text = node.fallback ?? new Date(node.timestamp * 1000).toISOString();
       if (node.link) {
         return (
           <a

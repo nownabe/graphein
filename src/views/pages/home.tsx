@@ -41,17 +41,11 @@ function StatusFilterTabs({
             hx-swap="innerHTML"
             hx-push-url={`/tasks?filter=${tab.key}`}
             class={`px-3 py-1.5 text-xs font-semibold rounded-[6px] transition-all cursor-pointer ${
-              isActive
-                ? "bg-accent text-page"
-                : "text-muted hover:text-secondary"
+              isActive ? "bg-accent text-page" : "text-muted hover:text-secondary"
             }`}
           >
             {tab.label}
-            <span
-              class={`ml-1 tabular-nums ${
-                isActive ? "text-page/70" : "text-muted/60"
-              }`}
-            >
+            <span class={`ml-1 tabular-nums ${isActive ? "text-page/70" : "text-muted/60"}`}>
               {tab.count}
             </span>
           </button>
@@ -96,8 +90,7 @@ export function ViewTabs({
     <div class="flex items-center gap-1 border-b border-edge mb-6">
       {tabs.map((tab) => {
         const isActive = tab.key === activeView;
-        const href =
-          tab.key === "assigned" ? baseUrl : `${baseUrl}?view=owned`;
+        const href = tab.key === "assigned" ? baseUrl : `${baseUrl}?view=owned`;
         const htmxProps = htmxTarget
           ? {
               "hx-get": href,
@@ -107,14 +100,9 @@ export function ViewTabs({
             }
           : {};
         return isActive ? (
-          <span
-            key={tab.key}
-            class="relative px-4 py-2.5 text-sm font-semibold text-ink"
-          >
+          <span key={tab.key} class="relative px-4 py-2.5 text-sm font-semibold text-ink">
             {tab.label}
-            <span class="ml-1.5 text-xs tabular-nums text-secondary">
-              {tab.count}
-            </span>
+            <span class="ml-1.5 text-xs tabular-nums text-secondary">{tab.count}</span>
             <span class="absolute left-0 right-0 -bottom-px h-0.5 bg-accent" />
           </span>
         ) : (
@@ -125,9 +113,7 @@ export function ViewTabs({
             class="relative px-4 py-2.5 text-sm font-semibold text-muted hover:text-secondary transition-colors"
           >
             {tab.label}
-            <span class="ml-1.5 text-xs tabular-nums text-muted/60">
-              {tab.count}
-            </span>
+            <span class="ml-1.5 text-xs tabular-nums text-muted/60">{tab.count}</span>
           </a>
         );
       })}
@@ -204,11 +190,7 @@ export function HomeContentPartial({
       ) : (
         <>
           <div class="mb-6">
-            <StatusFilterTabs
-              activeFilter={activeFilter}
-              locale={locale}
-              counts={counts}
-            />
+            <StatusFilterTabs activeFilter={activeFilter} locale={locale} counts={counts} />
           </div>
           <TaskList
             tasks={assignedTasks}
@@ -260,13 +242,8 @@ export function HomePage({
       <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-xl font-bold text-ink tracking-tight">
-            {t(locale, "page.myTasks")}
-          </h1>
-          <a
-            href="/tasks/archived"
-            class="text-xs text-muted hover:text-accent transition-colors"
-          >
+          <h1 class="text-xl font-bold text-ink tracking-tight">{t(locale, "page.myTasks")}</h1>
+          <a href="/tasks/archived" class="text-xs text-muted hover:text-accent transition-colors">
             {t(locale, "link.archived")}
           </a>
         </div>

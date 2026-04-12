@@ -12,27 +12,27 @@ Principles for keeping Graphein's UI/UX consistent. Refer to this document when 
 
 ### Text Hierarchy
 
-| Level | Variable | Usage |
-|-------|----------|-------|
-| Primary | `text-ink` | Body text, titles, content the user should read first |
-| Secondary | `text-secondary` | Supporting info, metadata, descriptions |
-| Muted | `text-muted` | Labels, inactive tabs, least prominent elements |
+| Level     | Variable         | Usage                                                 |
+| --------- | ---------------- | ----------------------------------------------------- |
+| Primary   | `text-ink`       | Body text, titles, content the user should read first |
+| Secondary | `text-secondary` | Supporting info, metadata, descriptions               |
+| Muted     | `text-muted`     | Labels, inactive tabs, least prominent elements       |
 
 ### Background Hierarchy
 
-| Level | Variable | Usage |
-|-------|----------|-------|
-| Base | `bg-page` | Full-page background |
-| Surface | `bg-surface` | Elevated surfaces such as cards and panels |
-| Surface hover | `bg-surface-hover` | Hover and interaction states |
+| Level         | Variable           | Usage                                      |
+| ------------- | ------------------ | ------------------------------------------ |
+| Base          | `bg-page`          | Full-page background                       |
+| Surface       | `bg-surface`       | Elevated surfaces such as cards and panels |
+| Surface hover | `bg-surface-hover` | Hover and interaction states               |
 
 ### Semantic Colors
 
-| Meaning | Variable | Usage |
-|---------|----------|-------|
-| Accent | `--color-accent` | CTA buttons, focus rings, brand elements |
-| Success | `--color-success` | Completion states, progress bars |
-| Danger | `--color-danger` | Destructive actions, overdue warnings |
+| Meaning | Variable          | Usage                                    |
+| ------- | ----------------- | ---------------------------------------- |
+| Accent  | `--color-accent`  | CTA buttons, focus rings, brand elements |
+| Success | `--color-success` | Completion states, progress bars         |
+| Danger  | `--color-danger`  | Destructive actions, overdue warnings    |
 
 **Glow variants** (`--color-glow-*`) are used as hover backgrounds to avoid overpowering the semantic color.
 
@@ -66,11 +66,11 @@ Principles for keeping Graphein's UI/UX consistent. Refer to this document when 
 
 ### Buttons
 
-| Type | Style | Usage |
-|------|-------|-------|
-| Primary | `bg-accent text-page font-semibold` | Main CTAs (save, login) |
-| Secondary | `text-muted hover:text-ink hover:bg-surface-hover` | Card actions (edit, status) |
-| Danger | `text-muted hover:text-danger hover:bg-glow-danger` | Destructive actions (archive) |
+| Type      | Style                                               | Usage                         |
+| --------- | --------------------------------------------------- | ----------------------------- |
+| Primary   | `bg-accent text-page font-semibold`                 | Main CTAs (save, login)       |
+| Secondary | `text-muted hover:text-ink hover:bg-surface-hover`  | Card actions (edit, status)   |
+| Danger    | `text-muted hover:text-danger hover:bg-glow-danger` | Destructive actions (archive) |
 
 - Size: `text-xs px-2 py-1.5` (on cards) / `text-sm px-6 py-2.5` (on pages)
 - Border radius: `rounded-[var(--radius-sm)]` (8px)

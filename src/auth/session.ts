@@ -9,15 +9,9 @@ export interface JwtPayload {
 
 const EXPIRATION_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
-export async function createToken(
-  userId: string,
-  displayName: string,
-): Promise<string> {
+export async function createToken(userId: string, displayName: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  return sign(
-    { sub: userId, name: displayName, exp: now + EXPIRATION_SECONDS },
-    env.JWT_SECRET,
-  );
+  return sign({ sub: userId, name: displayName, exp: now + EXPIRATION_SECONDS }, env.JWT_SECRET);
 }
 
 export async function verifyToken(token: string): Promise<JwtPayload | null> {

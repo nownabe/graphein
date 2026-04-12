@@ -28,6 +28,7 @@ Ensure the specification is detailed enough that an engineer with no prior conte
 Decompose the specification into **{{NUM_PAIRS}} independent, parallelizable units of work**. Each unit becomes a sprint contract.
 
 Rules for decomposition:
+
 - Each contract MUST be implementable independently without depending on another contract's output
 - If two pieces of work have dependencies, put them in the SAME contract
 - Aim for roughly equal effort across contracts
@@ -52,11 +53,12 @@ Each criterion MUST be independently testable and specific enough that pass/fail
 
 - [ ] Criterion 1: [specific, observable, testable behavior]
 - [ ] Criterion 2: [specific, observable, testable behavior]
-...
+      ...
 
 ## Verification Methods
 
 For each criterion, specify HOW it will be verified:
+
 - **Manual UI test**: Interact with the UI (click, type, navigate) and verify behavior
 - **API test**: Call the endpoint and check the response
 - **Code inspection**: Read the source code to verify implementation

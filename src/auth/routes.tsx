@@ -20,9 +20,7 @@ auth.get("/slack", (c) => {
     scope: "openid,email,profile",
     response_type: "code",
   });
-  return c.redirect(
-    `https://slack.com/openid/connect/authorize?${params.toString()}`,
-  );
+  return c.redirect(`https://slack.com/openid/connect/authorize?${params.toString()}`);
 });
 
 auth.get("/slack/callback", async (c) => {

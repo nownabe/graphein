@@ -8,9 +8,7 @@ export async function listActiveTasksForMember(userId: string) {
     with: { task: true },
     orderBy: desc(taskAssignees.assignedAt),
   });
-  return assignments
-    .filter((a) => !a.task.archived)
-    .map((a) => ({ ...a.task, done: a.done }));
+  return assignments.filter((a) => !a.task.archived).map((a) => ({ ...a.task, done: a.done }));
 }
 
 export async function listArchivedTasksForMember(userId: string) {
@@ -19,9 +17,7 @@ export async function listArchivedTasksForMember(userId: string) {
     with: { task: true },
     orderBy: desc(taskAssignees.assignedAt),
   });
-  return assignments
-    .filter((a) => a.task.archived)
-    .map((a) => ({ ...a.task, done: a.done }));
+  return assignments.filter((a) => a.task.archived).map((a) => ({ ...a.task, done: a.done }));
 }
 
 export async function listOwnedActiveTasksForMember(userId: string) {
@@ -29,9 +25,7 @@ export async function listOwnedActiveTasksForMember(userId: string) {
     where: eq(taskOwners.userId, userId),
     with: { task: true },
   });
-  return ownerships
-    .filter((o) => !o.task.archived)
-    .map((o) => o.task);
+  return ownerships.filter((o) => !o.task.archived).map((o) => o.task);
 }
 
 export async function listOwnedArchivedTasksForMember(userId: string) {
@@ -39,9 +33,7 @@ export async function listOwnedArchivedTasksForMember(userId: string) {
     where: eq(taskOwners.userId, userId),
     with: { task: true },
   });
-  return ownerships
-    .filter((o) => o.task.archived)
-    .map((o) => o.task);
+  return ownerships.filter((o) => o.task.archived).map((o) => o.task);
 }
 
 export async function getTask(taskId: string) {
@@ -89,20 +81,14 @@ export async function listTaskAssigneesWithStatus(taskId: string) {
 
 export async function isTaskOwner(taskId: string, userId: string) {
   const ownership = await db.query.taskOwners.findFirst({
-    where: and(
-      eq(taskOwners.taskId, taskId),
-      eq(taskOwners.userId, userId),
-    ),
+    where: and(eq(taskOwners.taskId, taskId), eq(taskOwners.userId, userId)),
   });
   return !!ownership;
 }
 
 export async function isTaskAssignee(taskId: string, userId: string) {
   const assignment = await db.query.taskAssignees.findFirst({
-    where: and(
-      eq(taskAssignees.taskId, taskId),
-      eq(taskAssignees.userId, userId),
-    ),
+    where: and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, userId)),
   });
   return !!assignment;
 }
@@ -116,10 +102,7 @@ export async function listTaskOwners(taskId: string) {
 }
 
 export async function addTaskOwner(taskId: string, userId: string) {
-  await db
-    .insert(taskOwners)
-    .values({ taskId, userId })
-    .onConflictDoNothing();
+  await db.insert(taskOwners).values({ taskId, userId }).onConflictDoNothing();
 }
 
 export async function removeTaskOwner(taskId: string, userId: string) {
@@ -133,18 +116,13 @@ export async function removeTaskOwner(taskId: string, userId: string) {
 
   await db
     .delete(taskOwners)
-    .where(
-      and(eq(taskOwners.taskId, taskId), eq(taskOwners.userId, userId)),
-    );
+    .where(and(eq(taskOwners.taskId, taskId), eq(taskOwners.userId, userId)));
   return { error: null };
 }
 
 export async function toggleAssigneeDone(taskId: string, userId: string) {
   const assignment = await db.query.taskAssignees.findFirst({
-    where: and(
-      eq(taskAssignees.taskId, taskId),
-      eq(taskAssignees.userId, userId),
-    ),
+    where: and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, userId)),
   });
   if (!assignment) return null;
 
@@ -152,12 +130,7 @@ export async function toggleAssigneeDone(taskId: string, userId: string) {
   await db
     .update(taskAssignees)
     .set({ done: newDone })
-    .where(
-      and(
-        eq(taskAssignees.taskId, taskId),
-        eq(taskAssignees.userId, userId),
-      ),
-    );
+    .where(and(eq(taskAssignees.taskId, taskId), eq(taskAssignees.userId, userId)));
 
   const task = await getTask(taskId);
   if (!task) return null;

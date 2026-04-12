@@ -25,23 +25,12 @@ export async function hydrateMentionLabels(
 
   for (const m of text.matchAll(/<@(U[A-Z0-9]+)>/g)) userIds.add(m[1]);
   for (const m of text.matchAll(/<#(C[A-Z0-9]+)>/g)) channelIds.add(m[1]);
-  for (const m of text.matchAll(/<!subteam\^(S[A-Z0-9]+)>/g))
-    usergroupIds.add(m[1]);
+  for (const m of text.matchAll(/<!subteam\^(S[A-Z0-9]+)>/g)) usergroupIds.add(m[1]);
 
   const [userEntries, channelEntries, usergroupEntries] = await Promise.all([
-    Promise.all(
-      [...userIds].map(async (id) => [id, await resolver.user(id)] as const),
-    ),
-    Promise.all(
-      [...channelIds].map(
-        async (id) => [id, await resolver.channel(id)] as const,
-      ),
-    ),
-    Promise.all(
-      [...usergroupIds].map(
-        async (id) => [id, await resolver.usergroup(id)] as const,
-      ),
-    ),
+    Promise.all([...userIds].map(async (id) => [id, await resolver.user(id)] as const)),
+    Promise.all([...channelIds].map(async (id) => [id, await resolver.channel(id)] as const)),
+    Promise.all([...usergroupIds].map(async (id) => [id, await resolver.usergroup(id)] as const)),
   ]);
 
   const users = new Map(userEntries);
@@ -66,9 +55,7 @@ export async function hydrateMentionLabels(
 // Adapter that wraps a Slack WebClient as a MentionLabelResolver. Results are
 // memoized per-instance so repeated lookups in the same call only hit the API
 // once.
-export function createSlackLabelResolver(
-  client: WebClient,
-): MentionLabelResolver {
+export function createSlackLabelResolver(client: WebClient): MentionLabelResolver {
   const userCache = new Map<string, string | undefined>();
   const channelCache = new Map<string, string | undefined>();
   let usergroupIndex: Map<string, string> | null = null;
@@ -132,10 +119,7 @@ function extractUsergroupMentions(text: string): string[] {
   });
 }
 
-export async function resolveMentions(
-  client: WebClient,
-  text: string,
-): Promise<SlackMention[]> {
+export async function resolveMentions(client: WebClient, text: string): Promise<SlackMention[]> {
   const userIds = new Set<string>();
   const mentions: SlackMention[] = [];
 
@@ -166,10 +150,7 @@ export async function resolveMentions(
         mentions.push({
           slackUserId: userId,
           email: result.user.profile.email,
-          displayName:
-            result.user.profile.display_name ||
-            result.user.profile.real_name ||
-            userId,
+          displayName: result.user.profile.display_name || result.user.profile.real_name || userId,
         });
       }
     } catch {

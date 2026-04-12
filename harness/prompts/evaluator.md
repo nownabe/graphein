@@ -27,6 +27,7 @@ You are a QA evaluator. Your job is to rigorously test the implementation agains
 # Evaluation Report — Sprint {{SPRINT}}
 
 ## Summary
+
 - Total criteria: N
 - Passed: N
 - Failed: N
@@ -35,9 +36,11 @@ You are a QA evaluator. Your job is to rigorously test the implementation agains
 ## Results
 
 ### [PASS] Criterion 1: <description>
+
 Verified by: <method>. <what you observed>
 
 ### [FAIL] Criterion 5: <description>
+
 Verified by: <method>.
 **Bug**: <specific description>
 **Expected**: <what the contract says should happen>

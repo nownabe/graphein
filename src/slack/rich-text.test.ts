@@ -9,9 +9,7 @@ describe("blocksToMrkdwn", () => {
   });
 
   test("returns null when blocks contain no rich_text", () => {
-    expect(
-      blocksToMrkdwn([{ type: "section", text: { type: "mrkdwn", text: "x" } }]),
-    ).toBeNull();
+    expect(blocksToMrkdwn([{ type: "section", text: { type: "mrkdwn", text: "x" } }])).toBeNull();
   });
 
   test("renders a plain section as-is", () => {
@@ -60,9 +58,7 @@ describe("blocksToMrkdwn", () => {
         elements: [
           {
             type: "rich_text_section",
-            elements: [
-              { type: "text", text: " bold ", style: { bold: true } },
-            ],
+            elements: [{ type: "text", text: " bold ", style: { bold: true } }],
           },
         ],
       },
@@ -197,9 +193,7 @@ describe("blocksToMrkdwn", () => {
         elements: [
           {
             type: "rich_text_section",
-            elements: [
-              { type: "text", text: "Title", style: { bold: true } },
-            ],
+            elements: [{ type: "text", text: "Title", style: { bold: true } }],
           },
           {
             type: "rich_text_list",

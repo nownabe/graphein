@@ -21,9 +21,7 @@ export function OwnersPartial({
       id="owners-section"
       class="mt-8 bg-surface border border-edge rounded-[var(--radius-lg)] p-6"
     >
-      <h2 class="text-sm font-semibold text-ink mb-5">
-        {t(locale, "owners.title")}
-      </h2>
+      <h2 class="text-sm font-semibold text-ink mb-5">{t(locale, "owners.title")}</h2>
 
       <ul class="space-y-1 mb-5">
         {owners.map((owner) => (
@@ -75,11 +73,7 @@ export function OwnerSearchResults({
   locale: string;
 }) {
   if (results.length === 0) {
-    return (
-      <p class="text-xs text-muted px-3 py-2">
-        {t(locale, "owners.searchNoResults")}
-      </p>
-    );
+    return <p class="text-xs text-muted px-3 py-2">{t(locale, "owners.searchNoResults")}</p>;
   }
   return (
     <ul class="border border-edge rounded-[var(--radius-sm)] bg-page divide-y divide-edge overflow-hidden">
@@ -102,15 +96,7 @@ export function OwnerSearchResults({
   );
 }
 
-function TaskEditContent({
-  task,
-  owners,
-  locale,
-}: {
-  task: Task;
-  owners: User[];
-  locale: string;
-}) {
+function TaskEditContent({ task, owners, locale }: { task: Task; owners: User[]; locale: string }) {
   const deadlineValue = task.deadline
     ? (() => {
         const d = new Date(task.deadline);
@@ -129,13 +115,7 @@ function TaskEditContent({
         href="/tasks"
         class="text-xs text-muted hover:text-accent transition-colors mb-4 inline-flex items-center gap-1"
       >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 14 14"
-          fill="none"
-          class="shrink-0"
-        >
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0">
           <path
             d="M8.5 3.5L5 7l3.5 3.5"
             stroke="currentColor"
@@ -147,9 +127,7 @@ function TaskEditContent({
         {t(locale, "link.backToMyTasks")}
       </a>
       <div class="mb-8">
-        <h1 class="text-xl font-bold text-ink tracking-tight mb-1">
-          {task.title}
-        </h1>
+        <h1 class="text-xl font-bold text-ink tracking-tight mb-1">{task.title}</h1>
         <p class="text-sm text-secondary">{t(locale, "page.editTask")}</p>
       </div>
 
@@ -187,7 +165,9 @@ function TaskEditContent({
             name="description"
             rows={4}
             class="block w-full rounded-[var(--radius-sm)] border border-edge bg-page px-4 py-2.5 text-sm text-ink placeholder:text-muted transition-colors"
-          >{task.description ?? ""}</textarea>
+          >
+            {task.description ?? ""}
+          </textarea>
         </div>
 
         <div>
@@ -244,11 +224,7 @@ export function TaskEditPage({
   isAdmin?: boolean;
 }) {
   return (
-    <Layout
-      title={`${task.title} | ${t(locale, "page.editTask")}`}
-      locale={locale}
-      theme={theme}
-    >
+    <Layout title={`${task.title} | ${t(locale, "page.editTask")}`} locale={locale} theme={theme}>
       <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <TaskEditContent task={task} owners={owners} locale={locale} />
     </Layout>

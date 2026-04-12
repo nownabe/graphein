@@ -155,13 +155,7 @@ export function TaskList({
     return (
       <div class="text-center py-20">
         <div class="w-14 h-14 rounded-[var(--radius-lg)] bg-surface border border-edge flex items-center justify-center mx-auto mb-4">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            class="text-muted"
-          >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" class="text-muted">
             <path
               d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"
               stroke="currentColor"

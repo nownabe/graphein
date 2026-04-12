@@ -12,10 +12,7 @@ import { db } from "../src/db/client";
 import { tasks } from "../src/db/schema";
 import { boltApp } from "../src/slack/bolt";
 import { blocksToMrkdwn } from "../src/slack/rich-text";
-import {
-  createSlackLabelResolver,
-  hydrateMentionLabels,
-} from "../src/slack/helpers";
+import { createSlackLabelResolver, hydrateMentionLabels } from "../src/slack/helpers";
 
 async function main() {
   const candidates = await db
@@ -27,9 +24,7 @@ async function main() {
       messageTs: tasks.slackMessageTs,
     })
     .from(tasks)
-    .where(
-      and(isNotNull(tasks.slackChannelId), isNotNull(tasks.slackMessageTs)),
-    );
+    .where(and(isNotNull(tasks.slackChannelId), isNotNull(tasks.slackMessageTs)));
 
   console.log(`Found ${candidates.length} task(s) with Slack references`);
   const resolver = createSlackLabelResolver(boltApp.client);
@@ -56,9 +51,7 @@ async function main() {
         continue;
       }
 
-      const fromBlocks = blocksToMrkdwn(
-        (msg as { blocks?: unknown }).blocks,
-      );
+      const fromBlocks = blocksToMrkdwn((msg as { blocks?: unknown }).blocks);
       const raw = fromBlocks ?? msg.text ?? "";
       if (!raw) {
         console.log(`  [skip] ${t.title}: empty message`);
@@ -86,9 +79,7 @@ async function main() {
     }
   }
 
-  console.log(
-    `\nDone. updated=${updated} skipped=${skipped} failed=${failed}`,
-  );
+  console.log(`\nDone. updated=${updated} skipped=${skipped} failed=${failed}`);
   process.exit(0);
 }
 

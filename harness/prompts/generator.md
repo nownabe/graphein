@@ -30,12 +30,15 @@ Write a brief status report to `{{PAIR_DIR}}/generator-done.md`:
 # Generator Report — Sprint {{SPRINT}}
 
 ## What I Implemented
+
 - [list of what you built/changed]
 
 ## How to Run
+
 - [commands to start/test the implementation]
 
 ## Notes for Evaluator
+
 - [anything the evaluator should know]
 ```
 

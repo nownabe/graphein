@@ -1,11 +1,4 @@
-import {
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-  boolean,
-  primaryKey,
-} from "drizzle-orm/pg-core";
+import { pgTable, text, timestamp, uuid, boolean, primaryKey } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -17,12 +10,8 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"),
   locale: text("locale").notNull().default("en"),
   theme: text("theme").notNull().default("dark"),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const tasks = pgTable("tasks", {
@@ -37,12 +26,8 @@ export const tasks = pgTable("tasks", {
   createdById: uuid("created_by_id")
     .notNull()
     .references(() => users.id),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const taskAssignees = pgTable(
@@ -55,9 +40,7 @@ export const taskAssignees = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     done: boolean("done").notNull().default(false),
-    assignedAt: timestamp("assigned_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.taskId, t.userId] })],
 );
@@ -71,9 +54,7 @@ export const taskOwners = pgTable(
     userId: uuid("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    assignedAt: timestamp("assigned_at", { withTimezone: true })
-      .notNull()
-      .defaultNow(),
+    assignedAt: timestamp("assigned_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.taskId, t.userId] })],
 );

@@ -29,9 +29,7 @@ export async function findOrCreateUser(data: {
   }
 
   // First registered user becomes admin automatically.
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(users);
+  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(users);
   const role: UserRole = count === 0 ? "admin" : "user";
 
   const [created] = await db

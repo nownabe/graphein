@@ -26,18 +26,11 @@ export function AdminUsersList({
         const isSelf = u.id === currentUserId;
         const isLastAdmin = isAdmin && adminCount <= 1;
         return (
-          <li
-            key={u.id}
-            class="flex items-center gap-3 px-5 py-4"
-          >
+          <li key={u.id} class="flex items-center gap-3 px-5 py-4">
             <div class="min-w-0 flex-1">
               <div class="text-sm font-medium text-ink truncate">
                 {u.displayName}
-                {isSelf && (
-                  <span class="text-xs text-muted ml-2">
-                    ({t(locale, "admin.you")})
-                  </span>
-                )}
+                {isSelf && <span class="text-xs text-muted ml-2">({t(locale, "admin.you")})</span>}
               </div>
               <div class="text-xs text-muted truncate">{u.email}</div>
             </div>
@@ -100,15 +93,9 @@ export function AdminUsersPage({
           <h1 class="text-xl font-bold text-ink tracking-tight mb-1">
             {t(locale, "admin.users.title")}
           </h1>
-          <p class="text-sm text-secondary">
-            {t(locale, "admin.users.description")}
-          </p>
+          <p class="text-sm text-secondary">{t(locale, "admin.users.description")}</p>
         </div>
-        <AdminUsersList
-          users={allUsers}
-          currentUserId={currentUserId}
-          locale={locale}
-        />
+        <AdminUsersList users={allUsers} currentUserId={currentUserId} locale={locale} />
       </main>
     </Layout>
   );

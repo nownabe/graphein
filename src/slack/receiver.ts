@@ -62,11 +62,7 @@ export class HonoReceiver implements Receiver {
     return c.text("ok", 200);
   }
 
-  private verifySignature(
-    body: string,
-    timestamp: string,
-    signature: string,
-  ): boolean {
+  private verifySignature(body: string, timestamp: string, signature: string): boolean {
     if (!timestamp || !signature) return false;
 
     const fiveMinutesAgo = Math.floor(Date.now() / 1000) - 60 * 5;
@@ -78,10 +74,7 @@ export class HonoReceiver implements Receiver {
     const mySignature = `v0=${hmac.digest("hex")}`;
 
     try {
-      return crypto.timingSafeEqual(
-        Buffer.from(mySignature),
-        Buffer.from(signature),
-      );
+      return crypto.timingSafeEqual(Buffer.from(mySignature), Buffer.from(signature));
     } catch {
       return false;
     }

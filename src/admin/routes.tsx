@@ -1,16 +1,8 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import { authMiddleware, adminMiddleware } from "../auth/middleware";
-import {
-  listAllUsers,
-  setUserRole,
-  countAdminsExcluding,
-  findUserById,
-} from "../users/service";
-import {
-  AdminUsersPage,
-  AdminUsersList,
-} from "../views/pages/admin-users.tsx";
+import { listAllUsers, setUserRole, countAdminsExcluding, findUserById } from "../users/service";
+import { AdminUsersPage, AdminUsersList } from "../views/pages/admin-users.tsx";
 
 const adminRoutes = new Hono();
 
@@ -54,13 +46,7 @@ adminRoutes.post("/admin/users/:id/promote", async (c) => {
   await setUserRole(targetId, "admin");
 
   const users = await listAllUsers();
-  return c.html(
-    <AdminUsersList
-      users={users}
-      currentUserId={userId}
-      locale={locale}
-    />,
-  );
+  return c.html(<AdminUsersList users={users} currentUserId={userId} locale={locale} />);
 });
 
 adminRoutes.post("/admin/users/:id/demote", async (c) => {
@@ -81,13 +67,7 @@ adminRoutes.post("/admin/users/:id/demote", async (c) => {
   await setUserRole(targetId, "user");
 
   const users = await listAllUsers();
-  return c.html(
-    <AdminUsersList
-      users={users}
-      currentUserId={userId}
-      locale={locale}
-    />,
-  );
+  return c.html(<AdminUsersList users={users} currentUserId={userId} locale={locale} />);
 });
 
 export default adminRoutes;

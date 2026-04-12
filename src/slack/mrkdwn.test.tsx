@@ -39,9 +39,7 @@ describe("parseMrkdwn - inline formatting", () => {
     expect(parseMrkdwn("*bold*")).toEqual([
       {
         type: "paragraph",
-        children: [
-          { type: "bold", children: [{ type: "text", value: "bold" }] },
-        ],
+        children: [{ type: "bold", children: [{ type: "text", value: "bold" }] }],
       },
     ]);
   });
@@ -50,9 +48,7 @@ describe("parseMrkdwn - inline formatting", () => {
     expect(parseMrkdwn("_italic_")).toEqual([
       {
         type: "paragraph",
-        children: [
-          { type: "italic", children: [{ type: "text", value: "italic" }] },
-        ],
+        children: [{ type: "italic", children: [{ type: "text", value: "italic" }] }],
       },
     ]);
   });
@@ -61,9 +57,7 @@ describe("parseMrkdwn - inline formatting", () => {
     expect(parseMrkdwn("~gone~")).toEqual([
       {
         type: "paragraph",
-        children: [
-          { type: "strike", children: [{ type: "text", value: "gone" }] },
-        ],
+        children: [{ type: "strike", children: [{ type: "text", value: "gone" }] }],
       },
     ]);
   });
@@ -224,9 +218,7 @@ describe("parseMrkdwn - lists", () => {
   });
 
   it("parses nested lists based on indent", () => {
-    const blocks = parseMrkdwn(
-      "1. first\n    a. nested one\n    b. nested two\n2. second",
-    );
+    const blocks = parseMrkdwn("1. first\n    a. nested one\n    b. nested two\n2. second");
     expect(blocks).toEqual([
       {
         type: "list",
@@ -459,9 +451,7 @@ describe("parseMrkdwn - entities", () => {
   });
 
   it("parses date entity with fallback", () => {
-    expect(
-      parseMrkdwn("<!date^1700000000^{date_short}|Nov 14, 2023>"),
-    ).toEqual([
+    expect(parseMrkdwn("<!date^1700000000^{date_short}|Nov 14, 2023>")).toEqual([
       {
         type: "paragraph",
         children: [
@@ -478,24 +468,22 @@ describe("parseMrkdwn - entities", () => {
   });
 
   it("parses date entity with link and fallback", () => {
-    expect(
-      parseMrkdwn(
-        "<!date^1700000000^{date_short}^https://example.com|Nov 14, 2023>",
-      ),
-    ).toEqual([
-      {
-        type: "paragraph",
-        children: [
-          {
-            type: "date",
-            timestamp: 1700000000,
-            format: "{date_short}",
-            link: "https://example.com",
-            fallback: "Nov 14, 2023",
-          },
-        ],
-      },
-    ]);
+    expect(parseMrkdwn("<!date^1700000000^{date_short}^https://example.com|Nov 14, 2023>")).toEqual(
+      [
+        {
+          type: "paragraph",
+          children: [
+            {
+              type: "date",
+              timestamp: 1700000000,
+              format: "{date_short}",
+              link: "https://example.com",
+              fallback: "Nov 14, 2023",
+            },
+          ],
+        },
+      ],
+    );
   });
 
   it("treats unknown angle-bracket content as literal text", () => {
@@ -547,9 +535,7 @@ describe("parseMrkdwn - complex combinations", () => {
     expect(blocks[0].type).toBe("paragraph");
     expect(blocks[1].type).toBe("quote");
     // Paragraph should contain user, bold, date, link, usergroup
-    const types = (blocks[0] as { children: { type: string }[] }).children.map(
-      (c) => c.type,
-    );
+    const types = (blocks[0] as { children: { type: string }[] }).children.map((c) => c.type);
     expect(types).toContain("user");
     expect(types).toContain("bold");
     expect(types).toContain("date");

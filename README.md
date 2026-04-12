@@ -49,18 +49,18 @@ cp .env.example .env
 
 Edit `.env`:
 
-| Variable | Description |
-|---|---|
-| `DATABASE_URL` | PostgreSQL connection URL. The default value works as-is |
-| `SLACK_BOT_TOKEN` | OAuth & Permissions → Bot User OAuth Token (`xoxb-...`) |
-| `SLACK_APP_TOKEN` | Basic Information → App-Level Tokens (`xapp-...`) |
-| `SLACK_SOCKET_MODE` | `true` for local development |
-| `SLACK_SIGNING_SECRET` | Basic Information → Signing Secret |
-| `SLACK_CLIENT_ID` | Basic Information → App Credentials |
-| `SLACK_CLIENT_SECRET` | Basic Information → App Credentials |
-| `GEMINI_API_KEY` | Generate at [Google AI Studio](https://aistudio.google.com/apikey) |
-| `JWT_SECRET` | Any secret key (e.g., `openssl rand -hex 32`) |
-| `BASE_URL` | `http://localhost:3000` |
+| Variable               | Description                                                        |
+| ---------------------- | ------------------------------------------------------------------ |
+| `DATABASE_URL`         | PostgreSQL connection URL. The default value works as-is           |
+| `SLACK_BOT_TOKEN`      | OAuth & Permissions → Bot User OAuth Token (`xoxb-...`)            |
+| `SLACK_APP_TOKEN`      | Basic Information → App-Level Tokens (`xapp-...`)                  |
+| `SLACK_SOCKET_MODE`    | `true` for local development                                       |
+| `SLACK_SIGNING_SECRET` | Basic Information → Signing Secret                                 |
+| `SLACK_CLIENT_ID`      | Basic Information → App Credentials                                |
+| `SLACK_CLIENT_SECRET`  | Basic Information → App Credentials                                |
+| `GEMINI_API_KEY`       | Generate at [Google AI Studio](https://aistudio.google.com/apikey) |
+| `JWT_SECRET`           | Any secret key (e.g., `openssl rand -hex 32`)                      |
+| `BASE_URL`             | `http://localhost:3000`                                            |
 
 ### 3. Run
 

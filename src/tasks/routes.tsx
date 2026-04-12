@@ -19,20 +19,12 @@ import {
   removeTaskOwner,
   getTasksProgress,
 } from "./service";
-import {
-  findUserById,
-  findUserBySlackUserId,
-  searchUsersByName,
-} from "../users/service";
+import { findUserById, findUserBySlackUserId, searchUsersByName } from "../users/service";
 import { buildMrkdwnLabels } from "../slack/labels";
 import { HomePage, HomeContentPartial } from "../views/pages/home";
 import type { FilterCounts } from "../views/pages/home";
 import { ArchivedPage } from "../views/pages/archived.tsx";
-import {
-  TaskEditPage,
-  OwnersPartial,
-  OwnerSearchResults,
-} from "../views/pages/task-detail.tsx";
+import { TaskEditPage, OwnersPartial, OwnerSearchResults } from "../views/pages/task-detail.tsx";
 import { TaskStatusPage } from "../views/pages/task-status.tsx";
 import { TaskCard } from "../views/components/task-card.tsx";
 
@@ -50,11 +42,7 @@ function getTheme(c: { req: { raw: Request } }): string {
   return cookie === "light" ? "light" : "dark";
 }
 
-async function buildHomeData(
-  userId: string,
-  filter: string,
-  isAdmin: boolean,
-) {
+async function buildHomeData(userId: string, filter: string, isAdmin: boolean) {
   const allAssignedTasks = await listActiveTasksForMember(userId);
   const allOwnedTasks = await listOwnedActiveTasksForMember(userId);
 
@@ -93,9 +81,7 @@ async function buildHomeData(
     isAssignee: false,
   }));
 
-  const ownedProgressMap = await getTasksProgress(
-    allOwnedTasks.map((t) => t.id),
-  );
+  const ownedProgressMap = await getTasksProgress(allOwnedTasks.map((t) => t.id));
 
   return {
     assignedTasks,
@@ -119,14 +105,8 @@ taskRoutes.get("/tasks", async (c) => {
   const filter = c.req.query("filter") ?? "all";
   const view = c.req.query("view") === "owned" ? "owned" : "assigned";
 
-  const {
-    assignedTasks,
-    ownedTasks,
-    counts,
-    overdueCount,
-    ownedOverdueCount,
-    ownedProgressMap,
-  } = await buildHomeData(userId, filter, isAdmin);
+  const { assignedTasks, ownedTasks, counts, overdueCount, ownedOverdueCount, ownedProgressMap } =
+    await buildHomeData(userId, filter, isAdmin);
   const mrkdwnLabels = await buildMrkdwnLabels(
     [...assignedTasks, ...ownedTasks].map((t) => t.description),
   );
@@ -179,24 +159,23 @@ taskRoutes.get("/tasks/archived", async (c) => {
   const assignedArchived = await listArchivedTasksForMember(userId);
   const ownedArchived = await listOwnedArchivedTasksForMember(userId);
 
-  const tasksWithFlags = view === "owned"
-    ? ownedArchived.map((t) => ({
-        ...t,
-        done: false,
-        isOwner: true,
-        isAssignee: false,
-      }))
-    : await Promise.all(
-        assignedArchived.map(async (t) => ({
+  const tasksWithFlags =
+    view === "owned"
+      ? ownedArchived.map((t) => ({
           ...t,
-          isOwner: isAdmin || (await isTaskOwner(t.id, userId)),
-          isAssignee: true,
-        })),
-      );
+          done: false,
+          isOwner: true,
+          isAssignee: false,
+        }))
+      : await Promise.all(
+          assignedArchived.map(async (t) => ({
+            ...t,
+            isOwner: isAdmin || (await isTaskOwner(t.id, userId)),
+            isAssignee: true,
+          })),
+        );
 
-  const mrkdwnLabels = await buildMrkdwnLabels(
-    tasksWithFlags.map((t) => t.description),
-  );
+  const mrkdwnLabels = await buildMrkdwnLabels(tasksWithFlags.map((t) => t.description));
   return c.html(
     <ArchivedPage
       tasks={tasksWithFlags}
@@ -361,9 +340,7 @@ taskRoutes.get("/tasks/:id/owners/search", async (c) => {
     excludeIds: currentOwners.map((o) => o.id),
   });
 
-  return c.html(
-    <OwnerSearchResults taskId={taskId} results={results} locale={locale} />,
-  );
+  return c.html(<OwnerSearchResults taskId={taskId} results={results} locale={locale} />);
 });
 
 // Add task owner (owner or admin)
@@ -398,9 +375,7 @@ taskRoutes.post("/tasks/:id/owners", async (c) => {
   if (!task) return c.notFound();
   const owners = await listTaskOwners(taskId);
 
-  return c.html(
-    <OwnersPartial task={task} owners={owners} locale={locale} />,
-  );
+  return c.html(<OwnersPartial task={task} owners={owners} locale={locale} />);
 });
 
 // Remove task owner (owner or admin)
@@ -420,9 +395,7 @@ taskRoutes.delete("/tasks/:id/owners/:userId", async (c) => {
   if (!task) return c.notFound();
   const owners = await listTaskOwners(taskId);
 
-  return c.html(
-    <OwnersPartial task={task} owners={owners} locale={locale} />,
-  );
+  return c.html(<OwnersPartial task={task} owners={owners} locale={locale} />);
 });
 
 export default taskRoutes;

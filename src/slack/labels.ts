@@ -27,12 +27,9 @@ export function extractSlackEntityIds(text: string): {
   const users = new Set<string>();
   const channels = new Set<string>();
   const usergroups = new Set<string>();
-  for (const m of text.matchAll(/<@(U[A-Z0-9]+)(?:\|[^>]*)?>/g))
-    users.add(m[1]);
-  for (const m of text.matchAll(/<#(C[A-Z0-9]+)(?:\|[^>]*)?>/g))
-    channels.add(m[1]);
-  for (const m of text.matchAll(/<!subteam\^(S[A-Z0-9]+)(?:\|[^>]*)?>/g))
-    usergroups.add(m[1]);
+  for (const m of text.matchAll(/<@(U[A-Z0-9]+)(?:\|[^>]*)?>/g)) users.add(m[1]);
+  for (const m of text.matchAll(/<#(C[A-Z0-9]+)(?:\|[^>]*)?>/g)) channels.add(m[1]);
+  for (const m of text.matchAll(/<!subteam\^(S[A-Z0-9]+)(?:\|[^>]*)?>/g)) usergroups.add(m[1]);
   return {
     users: [...users],
     channels: [...channels],

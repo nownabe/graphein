@@ -82,9 +82,7 @@ function renderRichText(elements: RichEl[]): string {
       }
       case "rich_text_preformatted": {
         const inner = el.elements
-          .map((e) =>
-            e.type === "text" ? e.text : e.type === "link" ? e.url : "",
-          )
+          .map((e) => (e.type === "text" ? e.text : e.type === "link" ? e.url : ""))
           .join("");
         out.push("```\n" + inner + "\n```");
         break;

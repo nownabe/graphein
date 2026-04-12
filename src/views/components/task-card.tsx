@@ -38,12 +38,10 @@ export function TaskCard({
       })()
     : null;
 
-  const isOverdue =
-    task.deadline && !isDone && new Date(task.deadline) < new Date();
+  const isOverdue = task.deadline && !isDone && new Date(task.deadline) < new Date();
   const highlightOverdue = isOverdue && !(task.archived && !isAssignee);
 
-  const cardBase =
-    "group rounded-[var(--radius-lg)] border p-4 transition-all duration-150";
+  const cardBase = "group rounded-[var(--radius-lg)] border p-4 transition-all duration-150";
   const cardState = highlightOverdue
     ? "bg-[color-mix(in_srgb,var(--color-danger)_6%,var(--color-surface))] border-danger-dim/30"
     : isDone
@@ -53,8 +51,8 @@ export function TaskCard({
   return (
     <div id={`task-${task.id}`} class={`${cardBase} ${cardState}`}>
       <div class="flex items-start gap-3">
-        {showActions && (
-          isAssignee ? (
+        {showActions &&
+          (isAssignee ? (
             <input
               type="checkbox"
               checked={isDone}
@@ -83,7 +81,11 @@ export function TaskCard({
                   cy="9"
                   r="7"
                   fill="none"
-                  stroke={progress.done === progress.total ? "var(--color-success)" : "var(--color-accent)"}
+                  stroke={
+                    progress.done === progress.total
+                      ? "var(--color-success)"
+                      : "var(--color-accent)"
+                  }
                   stroke-width="2.5"
                   stroke-dasharray={`${(progress.done / progress.total) * 44} 44`}
                   stroke-linecap="round"
@@ -93,8 +95,7 @@ export function TaskCard({
             </div>
           ) : (
             <div class="shrink-0" style="width:1.125rem" />
-          )
-        )}
+          ))}
         <div class="min-w-0 flex-1">
           {task.description ? (
             <details>
@@ -104,9 +105,7 @@ export function TaskCard({
                 }`}
               >
                 {task.title}
-                <span class="disclosure-arrow text-muted ml-1.5 text-[10px]">
-                  &#9654;
-                </span>
+                <span class="disclosure-arrow text-muted ml-1.5 text-[10px]">&#9654;</span>
               </summary>
               <div
                 class={`text-[13px] mt-2 leading-relaxed ${
@@ -142,13 +141,7 @@ export function TaskCard({
                     class="shrink-0 opacity-70"
                     aria-hidden="true"
                   >
-                    <circle
-                      cx="7"
-                      cy="7"
-                      r="5.5"
-                      stroke="currentColor"
-                      stroke-width="1.3"
-                    />
+                    <circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.3" />
                     <path
                       d="M7 4v3.2l2 1.4"
                       stroke="currentColor"
@@ -160,9 +153,7 @@ export function TaskCard({
                 )}
                 <span class="sr-only">{t(loc, "task.deadline")}: </span>
                 {deadlineStr}
-                {isOverdue && (
-                  <span>({t(loc, "task.overdue")})</span>
-                )}
+                {isOverdue && <span>({t(loc, "task.overdue")})</span>}
               </span>
             )}
             {task.slackPermalink && (
@@ -174,13 +165,7 @@ export function TaskCard({
                 class="text-muted hover:text-accent transition-colors inline-flex items-center gap-1"
               >
                 Slack
-                <svg
-                  width="10"
-                  height="10"
-                  viewBox="0 0 12 12"
-                  fill="none"
-                  class="shrink-0"
-                >
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none" class="shrink-0">
                   <path
                     d="M4.5 2.5h5v5M9.5 2.5L4 8"
                     stroke="currentColor"

@@ -67,8 +67,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "link.backToOwnedTasks": "オーナータスクに戻る",
 
     // Empty states
-    "empty.tasks":
-      "タスクはまだありません。\nSlack のメンションからタスクが自動で作成されます。",
+    "empty.tasks": "タスクはまだありません。\nSlack のメンションからタスクが自動で作成されます。",
     "empty.archived": "アーカイブ済みのタスクはありません",
     "empty.default": "タスクはありません",
 
@@ -202,8 +201,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "link.backToOwnedTasks": "Back to Owned Tasks",
 
     // Empty states
-    "empty.tasks":
-      "No tasks yet.\nTasks are created automatically from Slack mentions.",
+    "empty.tasks": "No tasks yet.\nTasks are created automatically from Slack mentions.",
     "empty.archived": "No archived tasks",
     "empty.default": "No tasks",
 

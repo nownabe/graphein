@@ -60,10 +60,7 @@ describe("hydrateMentionLabels", () => {
 
   it("leaves mentions untouched when the resolver returns undefined", async () => {
     const resolver = makeResolver({});
-    const out = await hydrateMentionLabels(
-      "<@U1> <#C1> <!subteam^S1>",
-      resolver,
-    );
+    const out = await hydrateMentionLabels("<@U1> <#C1> <!subteam^S1>", resolver);
     expect(out).toBe("<@U1> <#C1> <!subteam^S1>");
   });
 
@@ -73,8 +70,7 @@ describe("hydrateMentionLabels", () => {
       channels: { C1: "general" },
       usergroups: { S1: "fe" },
     });
-    const input =
-      "<@U1> and <@U1> in <#C1> and <#C1>, cc <!subteam^S1> <!subteam^S1>";
+    const input = "<@U1> and <@U1> in <#C1> and <#C1>, cc <!subteam^S1> <!subteam^S1>";
     const out = await hydrateMentionLabels(input, resolver);
     expect(out).toBe(
       "<@U1|alice> and <@U1|alice> in <#C1|general> and <#C1|general>, cc <!subteam^S1|fe> <!subteam^S1|fe>",
@@ -100,8 +96,6 @@ describe("hydrateMentionLabels", () => {
 
   it("returns the input unchanged when there are no entities", async () => {
     const resolver = makeResolver({});
-    expect(await hydrateMentionLabels("plain text", resolver)).toBe(
-      "plain text",
-    );
+    expect(await hydrateMentionLabels("plain text", resolver)).toBe("plain text");
   });
 });

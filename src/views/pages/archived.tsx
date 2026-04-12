@@ -40,13 +40,8 @@ export function ArchivedPage({
       <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-xl font-bold text-ink tracking-tight">
-            {t(locale, "page.archived")}
-          </h1>
-          <a
-            href="/tasks"
-            class="text-xs text-muted hover:text-accent transition-colors"
-          >
+          <h1 class="text-xl font-bold text-ink tracking-tight">{t(locale, "page.archived")}</h1>
+          <a href="/tasks" class="text-xs text-muted hover:text-accent transition-colors">
             {t(locale, "link.backToMyTasks")}
           </a>
         </div>

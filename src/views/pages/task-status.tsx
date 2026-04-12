@@ -25,24 +25,14 @@ export function TaskStatusPage({
   const doneCount = assignees.filter((a) => a.done).length;
 
   return (
-    <Layout
-      title={`${task.title} | ${t(locale, "page.taskStatus")}`}
-      locale={locale}
-      theme={theme}
-    >
+    <Layout title={`${task.title} | ${t(locale, "page.taskStatus")}`} locale={locale} theme={theme}>
       <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <a
           href="/tasks"
           class="text-xs text-muted hover:text-accent transition-colors mb-4 inline-flex items-center gap-1"
         >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 14 14"
-            fill="none"
-            class="shrink-0"
-          >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="shrink-0">
             <path
               d="M8.5 3.5L5 7l3.5 3.5"
               stroke="currentColor"
@@ -54,12 +44,8 @@ export function TaskStatusPage({
           {t(locale, "link.backToMyTasks")}
         </a>
         <div class="mb-8">
-          <h1 class="text-xl font-bold text-ink tracking-tight mb-1">
-            {task.title}
-          </h1>
-          <p class="text-sm text-secondary">
-            {t(locale, "page.taskStatus")}
-          </p>
+          <h1 class="text-xl font-bold text-ink tracking-tight mb-1">{task.title}</h1>
+          <p class="text-sm text-secondary">{t(locale, "page.taskStatus")}</p>
         </div>
 
         {assignees.length > 0 && (
@@ -77,8 +63,7 @@ export function TaskStatusPage({
               />
             </div>
             <p class="text-xs text-secondary tabular-nums">
-              {doneCount}/{assignees.length}{" "}
-              {t(locale, "taskStatus.progress").toLowerCase()}
+              {doneCount}/{assignees.length} {t(locale, "taskStatus.progress").toLowerCase()}
             </p>
           </div>
         )}
@@ -96,21 +81,13 @@ export function TaskStatusPage({
                 >
                   {a.done ? "\u2713" : ""}
                 </span>
-                <span
-                  class={`text-sm ${
-                    a.done ? "text-secondary" : "text-ink font-medium"
-                  }`}
-                >
+                <span class={`text-sm ${a.done ? "text-secondary" : "text-ink font-medium"}`}>
                   {a.displayName}
                 </span>
                 <span
-                  class={`ml-auto text-xs font-semibold ${
-                    a.done ? "text-success" : "text-muted"
-                  }`}
+                  class={`ml-auto text-xs font-semibold ${a.done ? "text-success" : "text-muted"}`}
                 >
-                  {a.done
-                    ? t(locale, "status.done")
-                    : t(locale, "status.open")}
+                  {a.done ? t(locale, "status.done") : t(locale, "status.open")}
                 </span>
               </li>
             ))}

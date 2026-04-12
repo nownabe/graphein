@@ -21,13 +21,7 @@ export function Nav({
       <div class="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
         <a href="/tasks" class="flex items-center gap-2.5 group">
           <div class="w-7 h-7 rounded-[var(--radius-sm)] bg-accent flex items-center justify-center">
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              class="text-page"
-            >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="text-page">
               <path
                 d="M2 11.5V3.5C2 2.67 2.67 2 3.5 2h3L8 3.5h2.5c.83 0 1.5.67 1.5 1.5v6.5c0 .83-.67 1.5-1.5 1.5h-7C2.67 13 2 12.33 2 11.5z"
                 stroke="currentColor"
@@ -57,11 +51,17 @@ export function Nav({
             <div class="w-7 h-7 rounded-full bg-surface-hover text-secondary flex items-center justify-center text-xs font-semibold shrink-0 border border-edge">
               {initial}
             </div>
-            <span class="text-sm text-secondary hidden sm:inline">
-              {displayName}
-            </span>
-            <svg class="w-3.5 h-3.5 text-muted hidden sm:block" viewBox="0 0 20 20" fill="currentColor">
-              <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd" />
+            <span class="text-sm text-secondary hidden sm:inline">{displayName}</span>
+            <svg
+              class="w-3.5 h-3.5 text-muted hidden sm:block"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+            >
+              <path
+                fill-rule="evenodd"
+                d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                clip-rule="evenodd"
+              />
             </svg>
           </button>
           <div
@@ -75,9 +75,7 @@ export function Nav({
                   {initial}
                 </div>
                 <div class="min-w-0">
-                  <div class="text-sm font-medium text-ink truncate">
-                    {displayName}
-                  </div>
+                  <div class="text-sm font-medium text-ink truncate">{displayName}</div>
                 </div>
               </div>
             </div>
@@ -88,7 +86,15 @@ export function Nav({
                   href="/admin/users"
                   class="user-menu-item flex items-center gap-3 px-4 py-2 text-sm text-secondary hover:bg-surface-hover hover:text-ink transition-colors"
                 >
-                  <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <svg
+                    class="w-4 h-4 text-muted"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
                     <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                     <circle cx="9" cy="7" r="4" />
                     <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
@@ -101,7 +107,15 @@ export function Nav({
                 href={switchHref}
                 class="user-menu-item flex items-center gap-3 px-4 py-2 text-sm text-secondary hover:bg-surface-hover hover:text-ink transition-colors"
               >
-                <svg class="w-4 h-4 text-muted" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <svg
+                  class="w-4 h-4 text-muted"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
                   <circle cx="12" cy="12" r="10" />
                   <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
                 </svg>
@@ -136,16 +150,16 @@ export function Nav({
                   class="theme-icon-moon w-4 h-4 items-center justify-center"
                   style={isDark ? "display:none" : "display:flex"}
                 >
-                  <svg
-                    class="w-4 h-4 text-muted"
-                    viewBox="0 0 20 20"
-                    fill="currentColor"
-                  >
+                  <svg class="w-4 h-4 text-muted" viewBox="0 0 20 20" fill="currentColor">
                     <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                   </svg>
                 </span>
-                <span class="theme-label-light" style={isDark ? "" : "display:none"}>{t(locale, "nav.theme.light")}</span>
-                <span class="theme-label-dark" style={isDark ? "display:none" : ""}>{t(locale, "nav.theme.dark")}</span>
+                <span class="theme-label-light" style={isDark ? "" : "display:none"}>
+                  {t(locale, "nav.theme.light")}
+                </span>
+                <span class="theme-label-dark" style={isDark ? "display:none" : ""}>
+                  {t(locale, "nav.theme.dark")}
+                </span>
               </button>
             </div>
             {/* Logout */}
@@ -155,8 +169,16 @@ export function Nav({
                 class="user-menu-item flex items-center gap-3 px-4 py-2 text-sm text-danger hover:bg-glow-danger transition-colors"
               >
                 <svg class="w-4 h-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fill-rule="evenodd" d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z" clip-rule="evenodd" />
-                  <path fill-rule="evenodd" d="M19 10a.75.75 0 00-.75-.75H8.704l1.048-.943a.75.75 0 10-1.004-1.114l-2.5 2.25a.75.75 0 000 1.114l2.5 2.25a.75.75 0 101.004-1.114l-1.048-.943h9.546A.75.75 0 0019 10z" clip-rule="evenodd" />
+                  <path
+                    fill-rule="evenodd"
+                    d="M3 4.25A2.25 2.25 0 015.25 2h5.5A2.25 2.25 0 0113 4.25v2a.75.75 0 01-1.5 0v-2a.75.75 0 00-.75-.75h-5.5a.75.75 0 00-.75.75v11.5c0 .414.336.75.75.75h5.5a.75.75 0 00.75-.75v-2a.75.75 0 011.5 0v2A2.25 2.25 0 0110.75 18h-5.5A2.25 2.25 0 013 15.75V4.25z"
+                    clip-rule="evenodd"
+                  />
+                  <path
+                    fill-rule="evenodd"
+                    d="M19 10a.75.75 0 00-.75-.75H8.704l1.048-.943a.75.75 0 10-1.004-1.114l-2.5 2.25a.75.75 0 000 1.114l2.5 2.25a.75.75 0 101.004-1.114l-1.048-.943h9.546A.75.75 0 0019 10z"
+                    clip-rule="evenodd"
+                  />
                 </svg>
                 {t(locale, "nav.logout")}
               </a>

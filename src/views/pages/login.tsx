@@ -18,13 +18,7 @@ export function LoginPage({ locale, theme }: { locale?: string; theme?: string }
         />
         <div class="relative text-center stagger-in">
           <div class="w-16 h-16 rounded-[var(--radius-lg)] bg-accent flex items-center justify-center mx-auto mb-8">
-            <svg
-              width="28"
-              height="28"
-              viewBox="0 0 14 14"
-              fill="none"
-              class="text-page"
-            >
+            <svg width="28" height="28" viewBox="0 0 14 14" fill="none" class="text-page">
               <path
                 d="M2 11.5V3.5C2 2.67 2.67 2 3.5 2h3L8 3.5h2.5c.83 0 1.5.67 1.5 1.5v6.5c0 .83-.67 1.5-1.5 1.5h-7C2.67 13 2 12.33 2 11.5z"
                 stroke="currentColor"
@@ -40,12 +34,8 @@ export function LoginPage({ locale, theme }: { locale?: string; theme?: string }
               />
             </svg>
           </div>
-          <h1 class="text-4xl font-extrabold text-ink tracking-tight mb-2">
-            Graphein
-          </h1>
-          <p class="text-secondary text-sm mb-10 max-w-xs mx-auto">
-            {t(loc, "login.description")}
-          </p>
+          <h1 class="text-4xl font-extrabold text-ink tracking-tight mb-2">Graphein</h1>
+          <p class="text-secondary text-sm mb-10 max-w-xs mx-auto">{t(loc, "login.description")}</p>
           <a
             href="/auth/slack"
             hx-boost="false"
