@@ -4,7 +4,6 @@ import { relations } from "drizzle-orm";
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
   slackUserId: text("slack_user_id").notNull().unique(),
-  slackTeamId: text("slack_team_id"),
   email: text("email").notNull(),
   displayName: text("display_name").notNull(),
   avatarUrl: text("avatar_url"),

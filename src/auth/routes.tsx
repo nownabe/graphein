@@ -85,7 +85,6 @@ auth.get("/slack/callback", async (c) => {
   // Upsert user
   const user = await findOrCreateUser({
     slackUserId: userData.sub,
-    slackTeamId: userData["https://slack.com/team_id"]!,
     email: userData.email,
     displayName: userData.name ?? userData.email,
     avatarUrl: userData.picture ?? null,
