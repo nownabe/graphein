@@ -131,6 +131,9 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.modal.assigneesLabel": "アサインするユーザー",
     "slack.modal.groupsLabel": "アサインするグループ",
     "slack.modal.originalMessage": "元のメッセージ:",
+    "slack.modal.duplicate":
+      "このメッセージからすでにタスクが作成されています: *{taskLink}*",
+    "slack.modal.duplicateSubmit": "作成する",
     "slack.modal.error": "タスクの作成中にエラーが発生しました。もう一度お試しください。",
     "slack.reply.assigned": "タスク *{taskLink}* を {who} に割り当てました",
     "slack.reply.fallbackAssignee": "担当者",
@@ -265,6 +268,9 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.modal.assigneesLabel": "Assign to users",
     "slack.modal.groupsLabel": "Assign to groups",
     "slack.modal.originalMessage": "Original message:",
+    "slack.modal.duplicate":
+      "A task has already been created from this message: *{taskLink}*",
+    "slack.modal.duplicateSubmit": "Create anyway",
     "slack.modal.error": "An error occurred while creating the task. Please try again.",
     "slack.reply.assigned": "Assigned task *{taskLink}* to {who}",
     "slack.reply.fallbackAssignee": "the assignee",
