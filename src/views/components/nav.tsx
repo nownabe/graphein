@@ -110,11 +110,10 @@ export function Nav({
               <button
                 type="button"
                 id="theme-toggle"
-                title={t(locale, "nav.theme")}
-                onclick="(function(){var h=document.documentElement;var c=h.getAttribute('data-theme')==='light'?'dark':'light';h.setAttribute('data-theme',c);document.cookie='theme='+c+';path=/;max-age=31536000;samesite=lax';fetch('/theme/'+c);var b=document.getElementById('theme-toggle');b.querySelector('.theme-icon-sun').style.display=c==='dark'?'flex':'none';b.querySelector('.theme-icon-moon').style.display=c==='light'?'flex':'none'})()"
+                onclick="(function(){var h=document.documentElement;var c=h.getAttribute('data-theme')==='light'?'dark':'light';h.setAttribute('data-theme',c);document.cookie='theme='+c+';path=/;max-age=31536000;samesite=lax';fetch('/theme/'+c);var b=document.getElementById('theme-toggle');b.querySelector('.theme-icon-sun').style.display=c==='dark'?'flex':'none';b.querySelector('.theme-icon-moon').style.display=c==='light'?'flex':'none';b.querySelector('.theme-label-light').style.display=c==='dark'?'inline':'none';b.querySelector('.theme-label-dark').style.display=c==='light'?'inline':'none'})()"
                 class="user-menu-item w-full flex items-center gap-3 px-4 py-2 text-sm text-secondary hover:bg-surface-hover hover:text-ink transition-colors cursor-pointer"
               >
-                {/* Sun icon — shown when dark */}
+                {/* Sun icon — shown when dark (destination: light) */}
                 <span
                   class="theme-icon-sun w-4 h-4 items-center justify-center"
                   style={isDark ? "display:flex" : "display:none"}
@@ -132,7 +131,7 @@ export function Nav({
                     <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
                   </svg>
                 </span>
-                {/* Moon icon — shown when light */}
+                {/* Moon icon — shown when light (destination: dark) */}
                 <span
                   class="theme-icon-moon w-4 h-4 items-center justify-center"
                   style={isDark ? "display:none" : "display:flex"}
@@ -145,7 +144,8 @@ export function Nav({
                     <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z" />
                   </svg>
                 </span>
-                {t(locale, "nav.theme")}
+                <span class="theme-label-light" style={isDark ? "" : "display:none"}>{t(locale, "nav.theme.light")}</span>
+                <span class="theme-label-dark" style={isDark ? "display:none" : ""}>{t(locale, "nav.theme.dark")}</span>
               </button>
             </div>
             {/* Logout */}
