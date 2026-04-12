@@ -59,10 +59,7 @@ export function createTaskService(db: Database) {
       .from(taskOwners)
       .where(eq(taskOwners.userId, ownerId));
 
-    const activeTaskIds = db
-      .select({ id: tasks.id })
-      .from(tasks)
-      .where(eq(tasks.archived, false));
+    const activeTaskIds = db.select({ id: tasks.id }).from(tasks).where(eq(tasks.archived, false));
 
     const assignments = await db
       .select({ taskId: taskAssignees.taskId, done: taskAssignees.done })
