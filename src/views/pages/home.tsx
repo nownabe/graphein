@@ -40,7 +40,7 @@ function StatusFilterTabs({
             hx-target="#home-content"
             hx-swap="innerHTML"
             hx-push-url={`/tasks?filter=${tab.key}`}
-            class={`px-3 py-1.5 text-xs font-semibold rounded-[6px] transition-all ${
+            class={`px-3 py-1.5 text-xs font-semibold rounded-[6px] transition-all cursor-pointer ${
               isActive
                 ? "bg-accent text-page"
                 : "text-muted hover:text-secondary"
