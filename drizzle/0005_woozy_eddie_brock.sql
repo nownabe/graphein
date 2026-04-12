@@ -1,1 +1,0 @@
-ALTER TABLE "members" ADD COLUMN "locale" text DEFAULT 'ja' NOT NULL;

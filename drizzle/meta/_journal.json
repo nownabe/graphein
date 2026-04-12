@@ -5,64 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1775399088931,
-      "tag": "0000_flaky_lila_cheney",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1775569939878,
-      "tag": "0001_long_odin",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1775750400000,
-      "tag": "0002_assignee_done_status",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1775836800000,
-      "tag": "0003_task_owners",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1775925983192,
-      "tag": "0004_thick_terror",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1775966768122,
-      "tag": "0005_woozy_eddie_brock",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1775967390809,
-      "tag": "0006_oval_sage",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1775970821099,
-      "tag": "0007_abandoned_iron_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1776144000000,
-      "tag": "0008_rename_members_to_users",
+      "when": 1775978322071,
+      "tag": "0000_initial_schema",
       "breakpoints": true
     }
   ]

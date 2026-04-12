@@ -1,1 +1,0 @@
-ALTER TABLE "members" ALTER COLUMN "locale" SET DEFAULT 'en';

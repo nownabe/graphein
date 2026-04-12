@@ -1,1 +1,0 @@
-ALTER TABLE "members" ADD COLUMN "theme" text DEFAULT 'dark' NOT NULL;
