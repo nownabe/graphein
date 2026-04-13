@@ -1,3 +1,6 @@
 [install]
 # Wait 7 days after publish before installing to avoid compromised packages
 minimumReleaseAge = 604800
+
+[test]
+root = "./src"
