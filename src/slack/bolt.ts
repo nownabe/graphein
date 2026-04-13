@@ -1,10 +1,16 @@
 import { App } from "@slack/bolt";
 import type { WebClient } from "@slack/web-api";
 import { HonoReceiver } from "./receiver";
-import { createSlackLabelResolver, hydrateMentionLabels } from "./helpers";
+import {
+  createSlackLabelResolver,
+  hydrateMentionLabels,
+  extractUserMentions,
+  extractUsergroupMentions,
+} from "./helpers";
 import { blocksToMrkdwn } from "./rich-text";
 import type { UserService } from "../users/service";
 import type { TaskService } from "../tasks/service";
+import type { SnippetService } from "../snippets/service";
 import type { GeminiClient } from "../llm/gemini";
 import { t } from "../i18n";
 import type { Locale } from "../i18n/messages";
@@ -20,11 +26,12 @@ export interface BoltConfig {
 export interface BoltDeps {
   userService: UserService;
   taskService: TaskService;
+  snippetService: SnippetService;
   geminiClient: GeminiClient;
 }
 
 export function createBolt(config: BoltConfig, deps: BoltDeps) {
-  const { userService, taskService, geminiClient } = deps;
+  const { userService, taskService, snippetService, geminiClient } = deps;
 
   const receiver = config.slackSocketMode ? undefined : new HonoReceiver(config.slackSigningSecret);
 
@@ -505,6 +512,154 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       } catch (ephemeralErr) {
         console.error("Failed to send ephemeral error message:", ephemeralErr);
       }
+    }
+  });
+
+  // Message event listener for snippet capture
+  boltApp.message(async ({ message, client }) => {
+    try {
+      // Skip non-standard messages (edits, deletes, bot messages, etc.)
+      if (message.subtype) return;
+      if (!("text" in message)) return;
+      if (!("user" in message) || !message.user) return;
+      if (!("channel" in message) || !message.channel) return;
+
+      const channelId = message.channel;
+      const messageTs = message.ts;
+
+      // Check if this channel is monitored
+      const isMonitored = await snippetService.isSnippetChannel(channelId);
+      if (!isMonitored) {
+        console.debug(`[snippet] Ignoring message in non-monitored channel ${channelId}`);
+        return;
+      }
+
+      // Extract message text
+      const messageText =
+        blocksToMrkdwn((message as { blocks?: unknown }).blocks) ?? message.text ?? "";
+
+      // Extract mentions
+      const userMentionIds = [...new Set(extractUserMentions(messageText))];
+      const usergroupMentionIds = [...new Set(extractUsergroupMentions(messageText))];
+
+      // Skip if no mentions found
+      if (userMentionIds.length === 0 && usergroupMentionIds.length === 0) {
+        console.debug(
+          `[snippet] No mentions found in message ${messageTs} in channel ${channelId}`,
+        );
+        return;
+      }
+
+      console.log(
+        `[snippet] Processing message ${messageTs} in channel ${channelId} (users: ${userMentionIds.join(",")}, groups: ${usergroupMentionIds.join(",")})`,
+      );
+
+      // Check for duplicate
+      const existing = await snippetService.findSnippetBySlackMessage(channelId, messageTs);
+      if (existing) {
+        console.debug(`[snippet] Duplicate message ${messageTs} in channel ${channelId}, skipping`);
+        return;
+      }
+
+      // Hydrate mention labels
+      const resolver = createSlackLabelResolver(client);
+      const hydratedText = await hydrateMentionLabels(messageText, resolver);
+
+      // Resolve mentioned users
+      const mentionedDbUserIds: string[] = [];
+      for (const slackUid of userMentionIds) {
+        try {
+          const result = await client.users.info({ user: slackUid });
+          if (result.user?.profile?.email) {
+            const user = await userService.findOrCreateUser({
+              slackUserId: slackUid,
+              email: result.user.profile.email,
+              displayName:
+                result.user.profile.display_name || result.user.profile.real_name || slackUid,
+              avatarUrl: result.user.profile.image_72 ?? null,
+            });
+            mentionedDbUserIds.push(user.id);
+          }
+        } catch {
+          // Skip unresolvable users
+        }
+      }
+
+      // Resolve mentioned usergroups
+      const mentionedDbUsergroupIds: string[] = [];
+      for (const groupId of usergroupMentionIds) {
+        try {
+          const groupHandle = await resolver.usergroup(groupId);
+          // Fetch group name from Slack API
+          let groupName = groupHandle ?? groupId;
+          try {
+            const groupsRes = await client.usergroups.list({ include_disabled: false });
+            const group = (groupsRes.usergroups ?? []).find((g) => g.id === groupId);
+            if (group) {
+              groupName = group.name ?? groupName;
+            }
+          } catch {
+            // Use handle as fallback
+          }
+          const usergroup = await snippetService.findOrCreateUsergroup(
+            groupId,
+            groupName,
+            groupHandle ?? undefined,
+          );
+          mentionedDbUsergroupIds.push(usergroup.id);
+        } catch {
+          // Skip unresolvable groups
+        }
+      }
+
+      // Resolve message author
+      const authorInfo = await client.users.info({ user: message.user });
+      const author = await userService.findOrCreateUser({
+        slackUserId: message.user,
+        email: authorInfo.user?.profile?.email ?? "",
+        displayName:
+          authorInfo.user?.profile?.display_name ||
+          authorInfo.user?.profile?.real_name ||
+          message.user,
+        avatarUrl: authorInfo.user?.profile?.image_72 ?? null,
+      });
+
+      // Get permalink
+      let permalink: string | undefined;
+      try {
+        const permalinkRes = await client.chat.getPermalink({
+          channel: channelId,
+          message_ts: messageTs,
+        });
+        permalink = permalinkRes.permalink ?? undefined;
+      } catch {
+        // Non-critical
+      }
+
+      // Convert message_ts to Date
+      const postedAt = new Date(Number(messageTs.split(".")[0]) * 1000);
+
+      // Create snippet (returns null if duplicate due to DB unique constraint)
+      const created = await snippetService.createSnippet({
+        content: hydratedText,
+        postedAt,
+        slackMessageTs: messageTs,
+        slackChannelId: channelId,
+        slackPermalink: permalink,
+        postedById: author.id,
+        mentionedUserIds: mentionedDbUserIds,
+        mentionedUsergroupIds: mentionedDbUsergroupIds,
+      });
+
+      if (created) {
+        console.log(`[snippet] Created snippet for message ${messageTs} in channel ${channelId}`);
+      } else {
+        console.debug(
+          `[snippet] Duplicate message ${messageTs} in channel ${channelId} (conflict), skipped`,
+        );
+      }
+    } catch (err) {
+      console.error("[snippet] Error in snippet message handler:", err);
     }
   });
 

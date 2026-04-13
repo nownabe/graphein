@@ -3,6 +3,7 @@ import type { users } from "../../db/schema";
 import { t } from "../../i18n/index";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
+import { AdminTabs } from "../components/admin-tabs";
 
 type User = InferSelectModel<typeof users>;
 
@@ -91,6 +92,7 @@ export function AdminUsersPage({
     <Layout title={t(locale, "admin.users.title")} locale={locale} theme={theme} devMode={devMode}>
       <Nav displayName={displayName} locale={locale} theme={theme} isAdmin />
       <main class="max-w-3xl mx-auto px-6 py-10">
+        <AdminTabs current="users" locale={locale} />
         <div class="mb-8">
           <h1 class="text-xl font-bold text-ink tracking-tight mb-1">
             {t(locale, "admin.users.title")}

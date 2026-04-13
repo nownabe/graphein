@@ -1,4 +1,13 @@
-import { pgTable, text, timestamp, uuid, boolean, primaryKey } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  boolean,
+  primaryKey,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -59,11 +68,80 @@ export const taskOwners = pgTable(
   (t) => [primaryKey({ columns: [t.taskId, t.userId] })],
 );
 
+// Usergroups — Slack usergroups as first-class entities
+export const usergroups = pgTable("usergroups", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  slackUsergroupId: text("slack_usergroup_id").notNull().unique(),
+  name: text("name").notNull(),
+  handle: text("handle"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Snippet channels — admin-configured channels to monitor
+export const snippetChannels = pgTable("snippet_channels", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  slackChannelId: text("slack_channel_id").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Snippets — daily report records
+export const snippets = pgTable(
+  "snippets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    content: text("content").notNull(),
+    postedAt: timestamp("posted_at", { withTimezone: true }).notNull(),
+    slackMessageTs: text("slack_message_ts"),
+    slackChannelId: text("slack_channel_id"),
+    slackPermalink: text("slack_permalink"),
+    postedById: uuid("posted_by_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("snippets_posted_at_idx").on(t.postedAt),
+    uniqueIndex("snippets_slack_message_unique").on(t.slackChannelId, t.slackMessageTs),
+  ],
+);
+
+// Snippet mentioned users — junction for user mention filtering
+export const snippetMentionedUsers = pgTable(
+  "snippet_mentioned_users",
+  {
+    snippetId: uuid("snippet_id")
+      .notNull()
+      .references(() => snippets.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.snippetId, t.userId] })],
+);
+
+// Snippet mentioned usergroups — junction for usergroup mention filtering
+export const snippetMentionedUsergroups = pgTable(
+  "snippet_mentioned_usergroups",
+  {
+    snippetId: uuid("snippet_id")
+      .notNull()
+      .references(() => snippets.id, { onDelete: "cascade" }),
+    usergroupId: uuid("usergroup_id")
+      .notNull()
+      .references(() => usergroups.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.snippetId, t.usergroupId] })],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   createdTasks: many(tasks),
   assignments: many(taskAssignees),
   ownedTasks: many(taskOwners),
+  snippets: many(snippets),
+  snippetMentions: many(snippetMentionedUsers),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -96,3 +174,41 @@ export const taskOwnersRelations = relations(taskOwners, ({ one }) => ({
     references: [users.id],
   }),
 }));
+
+export const usergroupsRelations = relations(usergroups, ({ many }) => ({
+  snippetMentions: many(snippetMentionedUsergroups),
+}));
+
+export const snippetsRelations = relations(snippets, ({ one, many }) => ({
+  postedBy: one(users, {
+    fields: [snippets.postedById],
+    references: [users.id],
+  }),
+  mentionedUsers: many(snippetMentionedUsers),
+  mentionedUsergroups: many(snippetMentionedUsergroups),
+}));
+
+export const snippetMentionedUsersRelations = relations(snippetMentionedUsers, ({ one }) => ({
+  snippet: one(snippets, {
+    fields: [snippetMentionedUsers.snippetId],
+    references: [snippets.id],
+  }),
+  user: one(users, {
+    fields: [snippetMentionedUsers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const snippetMentionedUsergroupsRelations = relations(
+  snippetMentionedUsergroups,
+  ({ one }) => ({
+    snippet: one(snippets, {
+      fields: [snippetMentionedUsergroups.snippetId],
+      references: [snippets.id],
+    }),
+    usergroup: one(usergroups, {
+      fields: [snippetMentionedUsergroups.usergroupId],
+      references: [usergroups.id],
+    }),
+  }),
+);

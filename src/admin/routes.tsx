@@ -2,17 +2,23 @@ import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
 import type { UserService } from "../users/service";
+import type { SnippetService } from "../snippets/service";
 import { AdminUsersPage, AdminUsersList } from "../views/pages/admin-users.tsx";
+import {
+  AdminSnippetChannelsPage,
+  AdminSnippetChannelsList,
+} from "../views/pages/admin-snippet-channels.tsx";
 
 export interface AdminRoutesDeps {
   authMiddleware: MiddlewareHandler;
   adminMiddleware: MiddlewareHandler;
   userService: UserService;
+  snippetService: SnippetService;
   devMode: boolean;
 }
 
 export function createAdminRoutes(deps: AdminRoutesDeps) {
-  const { authMiddleware, adminMiddleware, userService, devMode } = deps;
+  const { authMiddleware, adminMiddleware, userService, snippetService, devMode } = deps;
   const adminRoutes = new Hono();
 
   adminRoutes.use("/admin/*", authMiddleware);
@@ -78,6 +84,43 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
 
     const users = await userService.listAllUsers();
     return c.html(<AdminUsersList users={users} currentUserId={userId} locale={locale} />);
+  });
+
+  // Snippet channel management
+  adminRoutes.get("/admin/snippet-channels", async (c) => {
+    const { name: displayName } = c.get("jwtPayload");
+    const locale = getLocale(c);
+    const theme = getTheme(c);
+    const channels = await snippetService.listSnippetChannels();
+    return c.html(
+      <AdminSnippetChannelsPage
+        channels={channels}
+        displayName={displayName}
+        locale={locale}
+        theme={theme}
+        devMode={devMode}
+      />,
+    );
+  });
+
+  adminRoutes.post("/admin/snippet-channels", async (c) => {
+    const locale = getLocale(c);
+    const body = await c.req.parseBody();
+    const slackChannelId = (body.slack_channel_id as string)?.trim();
+    if (!slackChannelId) return c.text("Bad Request", 400);
+
+    await snippetService.addSnippetChannel(slackChannelId);
+    const channels = await snippetService.listSnippetChannels();
+    return c.html(<AdminSnippetChannelsList channels={channels} locale={locale} />);
+  });
+
+  adminRoutes.delete("/admin/snippet-channels/:id", async (c) => {
+    const id = c.req.param("id");
+    const locale = getLocale(c);
+
+    await snippetService.removeSnippetChannel(id);
+    const channels = await snippetService.listSnippetChannels();
+    return c.html(<AdminSnippetChannelsList channels={channels} locale={locale} />);
   });
 
   return adminRoutes;
