@@ -18,7 +18,7 @@ export function Nav({
 
   return (
     <nav class="sticky top-0 z-10 bg-page/70 backdrop-blur-xl border-b border-edge">
-      <div class="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="max-w-3xl mx-auto px-6 h-16 flex items-center gap-6">
         <a href="/tasks" class="flex items-center gap-2.5 group">
           <div class="w-7 h-7 rounded-[var(--radius-sm)] bg-accent flex items-center justify-center">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" class="text-page">
@@ -41,6 +41,13 @@ export function Nav({
             Graphein
           </span>
         </a>
+        <a
+          href="/snippets"
+          class="text-sm font-medium text-secondary hover:text-ink transition-colors"
+        >
+          {t(locale, "nav.snippets")}
+        </a>
+        <div class="flex-1" />
         <div class="relative">
           <button
             type="button"

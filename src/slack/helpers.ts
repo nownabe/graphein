@@ -105,13 +105,13 @@ export function createSlackLabelResolver(client: WebClient): MentionLabelResolve
 }
 
 // Extract user mentions like <@U12345> from message text
-function extractUserMentions(text: string): string[] {
+export function extractUserMentions(text: string): string[] {
   const matches = text.match(/<@(U[A-Z0-9]+)>/g) ?? [];
   return matches.map((m) => m.replace(/<@|>/g, ""));
 }
 
 // Extract usergroup mentions like <!subteam^S12345> from message text
-function extractUsergroupMentions(text: string): string[] {
+export function extractUsergroupMentions(text: string): string[] {
   const matches = text.match(/<!subteam\^(S[A-Z0-9]+)(?:\|[^>]*)?>/g) ?? [];
   return matches.map((m) => {
     const match = m.match(/<!subteam\^(S[A-Z0-9]+)/);

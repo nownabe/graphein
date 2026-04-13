@@ -2,6 +2,7 @@ import { createHonoApp } from "./app";
 import { createDb } from "./db/client";
 import { createUserService } from "./users/service";
 import { createTaskService } from "./tasks/service";
+import { createSnippetService } from "./snippets/service";
 import { createSessionHelpers } from "./auth/session";
 import { createGeminiClient } from "./llm/gemini";
 import { createBolt } from "./slack/bolt";
@@ -19,11 +20,13 @@ const port = Number(process.env.PORT ?? "3000");
 const devMode = process.env.NODE_ENV !== "production";
 const slackSocketMode = process.env.SLACK_SOCKET_MODE === "true";
 const baseUrl = requireEnv("BASE_URL");
+const snippetTimezone = process.env.SNIPPET_TIMEZONE ?? "Asia/Tokyo";
 
 // Create core services
 const db = createDb(requireEnv("DATABASE_URL"));
 const userService = createUserService(db);
 const taskService = createTaskService(db);
+const snippetService = createSnippetService(db);
 const session = createSessionHelpers(requireEnv("JWT_SECRET"));
 
 // Create Bolt app and Slack label builder
@@ -36,7 +39,7 @@ const { boltApp, receiver } = createBolt(
     slackAppToken: process.env.SLACK_APP_TOKEN ?? "",
     baseUrl,
   },
-  { userService, taskService, geminiClient },
+  { userService, taskService, snippetService, geminiClient },
 );
 const buildMrkdwnLabels = createLabelBuilder(boltApp, userService);
 
@@ -50,8 +53,10 @@ const app = createHonoApp({
   session,
   userService,
   taskService,
+  snippetService,
   buildMrkdwnLabels,
   slackReceiver: receiver ?? undefined,
+  snippetTimezone,
 });
 
 // Start Bolt (Socket Mode connects via WebSocket, HTTP mode is no-op)

@@ -17,6 +17,8 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.confirm.demote": "このユーザーを管理者から外しますか？",
     "admin.cannotRemoveLastAdmin": "管理者は少なくとも1人必要です",
     "admin.you": "あなた",
+    "admin.tab.users": "ユーザー",
+    "admin.tab.snippetChannels": "日報チャンネル",
 
     // Page titles
     "page.myTasks": "マイタスク",
@@ -136,6 +138,31 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.modal.error": "タスクの作成中にエラーが発生しました。もう一度お試しください。",
     "slack.reply.assigned": "タスク *{taskLink}* を {who} に割り当てました",
     "slack.reply.fallbackAssignee": "担当者",
+
+    // Snippets
+    "nav.snippets": "日報",
+    "page.snippets": "日報",
+    "snippets.period.day": "日",
+    "snippets.period.week": "週",
+    "snippets.period.month": "月",
+    "snippets.period.quarter": "四半期",
+    "snippets.period.year": "年",
+    "snippets.filter.postedBy": "投稿者",
+    "snippets.filter.mentionedUser": "メンションされたユーザー",
+    "snippets.filter.mentionedUsergroup": "メンションされたグループ",
+    "snippets.filter.all": "すべて",
+    "snippets.empty": "この期間に日報はありません",
+    "snippets.prev": "前へ",
+    "snippets.next": "次へ",
+
+    // Admin snippet channels
+    "admin.snippetChannels.title": "日報チャンネル管理",
+    "admin.snippetChannels.description": "日報を自動取得するSlackチャンネルを設定します。",
+    "admin.snippetChannels.add": "チャンネルを追加",
+    "admin.snippetChannels.placeholder": "Slack チャンネル ID",
+    "admin.snippetChannels.remove": "削除",
+    "admin.snippetChannels.empty": "チャンネルが設定されていません",
+    "admin.snippetChannels.confirmRemove": "このチャンネルを削除しますか？",
   },
   en: {
     // Nav
@@ -153,6 +180,8 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.confirm.demote": "Remove admin role from this user?",
     "admin.cannotRemoveLastAdmin": "At least one admin must remain",
     "admin.you": "you",
+    "admin.tab.users": "Users",
+    "admin.tab.snippetChannels": "Snippet Channels",
 
     // Page titles
     "page.myTasks": "My Tasks",
@@ -272,6 +301,31 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.modal.error": "An error occurred while creating the task. Please try again.",
     "slack.reply.assigned": "Assigned task *{taskLink}* to {who}",
     "slack.reply.fallbackAssignee": "the assignee",
+
+    // Snippets
+    "nav.snippets": "Snippets",
+    "page.snippets": "Snippets",
+    "snippets.period.day": "Day",
+    "snippets.period.week": "Week",
+    "snippets.period.month": "Month",
+    "snippets.period.quarter": "Quarter",
+    "snippets.period.year": "Year",
+    "snippets.filter.postedBy": "Posted by",
+    "snippets.filter.mentionedUser": "Mentioned user",
+    "snippets.filter.mentionedUsergroup": "Mentioned group",
+    "snippets.filter.all": "All",
+    "snippets.empty": "No snippets for this period",
+    "snippets.prev": "Previous",
+    "snippets.next": "Next",
+
+    // Admin snippet channels
+    "admin.snippetChannels.title": "Snippet Channels",
+    "admin.snippetChannels.description": "Configure Slack channels to automatically capture daily reports.",
+    "admin.snippetChannels.add": "Add channel",
+    "admin.snippetChannels.placeholder": "Slack Channel ID",
+    "admin.snippetChannels.remove": "Remove",
+    "admin.snippetChannels.empty": "No channels configured",
+    "admin.snippetChannels.confirmRemove": "Remove this channel?",
   },
 };
 
