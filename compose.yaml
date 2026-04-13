@@ -10,5 +10,14 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
 
+  db-test:
+    image: postgres:17
+    ports:
+      - "15433:5432"
+    environment:
+      POSTGRES_USER: graphein_test
+      POSTGRES_PASSWORD: graphein_test
+      POSTGRES_DB: graphein_test
+
 volumes:
   pgdata:

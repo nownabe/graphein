@@ -49,8 +49,10 @@ jobs:
               - 'bun.lock'
             app:
               - 'src/**'
+              - 'test/**'
               - 'package.json'
               - 'bun.lock'
+              - 'bunfig.toml'
               - 'tsconfig.json'
               - 'mise.toml'
               - 'mise.lock'
