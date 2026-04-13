@@ -12,10 +12,10 @@
     "css": "tailwindcss -i src/views/global.css -o public/styles.css --watch",
     "css:build": "tailwindcss -i src/views/global.css -o public/styles.css --minify",
     "test": "bun test",
-    "test:integration": "bun test --test-root ./test --preload ./test/setup.ts integration",
+    "test:integration": "bun test --test-root ./test --preload ./test/setup.ts --max-concurrency 1 integration",
     "typecheck": "tsc --noEmit",
     "check:all": "bun run check:app && bun run check:format && bun run check:lint && bun run check:workflows",
-    "check:app": "bun run typecheck && bun run test && bun run css:build",
+    "check:app": "bun run typecheck && bun run test && bun run test:integration && bun run css:build",
     "check:format": "oxfmt --check",
     "check:lint": "oxlint --deny-warnings",
     "check:workflows": "actionlint && ghalint run && zizmor .github/workflows/"

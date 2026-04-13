@@ -12,6 +12,20 @@ jobs:
       contents: read
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: graphein_test
+          POSTGRES_PASSWORD: graphein_test
+          POSTGRES_DB: graphein_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U graphein_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -31,6 +45,11 @@ jobs:
 
       - name: Test
         run: bun test
+
+      - name: Integration test
+        run: bun run test:integration
+        env:
+          TEST_DATABASE_URL: postgres://graphein_test:graphein_test@localhost:5432/graphein_test
 
       - name: Build CSS
         run: bun run css:build
