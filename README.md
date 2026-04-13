@@ -104,8 +104,14 @@ bun run dev
 # Watch and rebuild CSS
 bun run css
 
-# Run tests
+# Run unit tests
 bun test
+
+# Run integration tests (requires db-test running)
+bun run test:integration
+
+# Run all checks (typecheck, tests, format, lint, workflows)
+bun run check:all
 
 # Generate a new migration after schema changes
 bun run db:generate
