@@ -55,7 +55,7 @@ export function createHonoApp(config: HonoAppConfig) {
     snippetService,
     userService,
     buildMrkdwnLabels: config.buildMrkdwnLabels,
-    snippetTimezone: config.snippetTimezone,
+    timezone: config.timezone,
     devMode: config.devMode,
   });
 

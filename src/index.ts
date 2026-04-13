@@ -20,7 +20,7 @@ const port = Number(process.env.PORT ?? "3000");
 const devMode = process.env.NODE_ENV !== "production";
 const slackSocketMode = process.env.SLACK_SOCKET_MODE === "true";
 const baseUrl = requireEnv("BASE_URL");
-const snippetTimezone = process.env.SNIPPET_TIMEZONE ?? "UTC";
+const timezone = process.env.APP_TIMEZONE ?? "UTC";
 
 // Create core services
 const db = createDb(requireEnv("DATABASE_URL"));
@@ -56,7 +56,7 @@ const app = createHonoApp({
   snippetService,
   buildMrkdwnLabels,
   slackReceiver: receiver ?? undefined,
-  snippetTimezone,
+  timezone,
 });
 
 // Start Bolt (Socket Mode connects via WebSocket, HTTP mode is no-op)
