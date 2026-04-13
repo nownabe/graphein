@@ -19,21 +19,15 @@ export interface SnippetRoutesDeps {
   snippetService: SnippetService;
   userService: UserService;
   buildMrkdwnLabels: BuildMrkdwnLabels;
-  snippetTimezone: string;
+  timezone: string;
   devMode: boolean;
 }
 
 const VALID_PERIODS = new Set<PeriodType>(["day", "week", "month", "quarter", "year"]);
 
 export function createSnippetRoutes(deps: SnippetRoutesDeps) {
-  const {
-    authMiddleware,
-    snippetService,
-    userService,
-    buildMrkdwnLabels,
-    snippetTimezone,
-    devMode,
-  } = deps;
+  const { authMiddleware, snippetService, userService, buildMrkdwnLabels, timezone, devMode } =
+    deps;
   const snippetRoutes = new Hono();
 
   snippetRoutes.use("*", authMiddleware);
@@ -60,7 +54,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       : "week";
 
     const dateParam = c.req.query("date");
-    const anchor = dateParam ? parseDateInTimezone(dateParam, snippetTimezone) : new Date();
+    const anchor = dateParam ? parseDateInTimezone(dateParam, timezone) : new Date();
     if (isNaN(anchor.getTime())) {
       return c.redirect("/snippets");
     }
@@ -73,19 +67,19 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     const userParam = c.req.query("user");
     const usergroupParam = c.req.query("usergroup");
 
-    const { start: periodStart, end: periodEnd } = computePeriod(period, anchor, snippetTimezone);
+    const { start: periodStart, end: periodEnd } = computePeriod(period, anchor, timezone);
     const periodLabel = formatPeriodLabel(
       period,
       { start: periodStart, end: periodEnd },
-      snippetTimezone,
+      timezone,
       locale,
     );
 
-    const prevAnchor = navigatePeriod(period, anchor, snippetTimezone, "prev");
-    const nextAnchor = navigatePeriod(period, anchor, snippetTimezone, "next");
-    const prevDate = formatDateInTimezone(prevAnchor, snippetTimezone);
-    const nextDate = formatDateInTimezone(nextAnchor, snippetTimezone);
-    const currentDate = formatDateInTimezone(anchor, snippetTimezone);
+    const prevAnchor = navigatePeriod(period, anchor, timezone, "prev");
+    const nextAnchor = navigatePeriod(period, anchor, timezone, "next");
+    const prevDate = formatDateInTimezone(prevAnchor, timezone);
+    const nextDate = formatDateInTimezone(nextAnchor, timezone);
+    const currentDate = formatDateInTimezone(anchor, timezone);
 
     const { snippets: snippetList, total } = await snippetService.listSnippets({
       postedById: postedByParam || undefined,

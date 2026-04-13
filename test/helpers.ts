@@ -41,7 +41,7 @@ export function createTestApp() {
     taskService,
     snippetService,
     buildMrkdwnLabels: async () => ({ users: {}, channels: {}, usergroups: {} }),
-    snippetTimezone: "Asia/Tokyo",
+    timezone: "Asia/Tokyo",
   });
 
   return { app, db, userService, taskService, snippetService };

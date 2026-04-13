@@ -7,10 +7,6 @@ import type { HonoReceiver } from "./slack/receiver";
 
 export type BuildMrkdwnLabels = (texts: (string | null | undefined)[]) => Promise<MrkdwnOptions>;
 
-export interface AppConfig {
-  snippetTimezone: string;
-}
-
 export interface HonoAppConfig {
   devMode: boolean;
   baseUrl: string;
@@ -23,5 +19,5 @@ export interface HonoAppConfig {
   snippetService: SnippetService;
   buildMrkdwnLabels: BuildMrkdwnLabels;
   slackReceiver?: HonoReceiver;
-  snippetTimezone: string;
+  timezone: string;
 }
