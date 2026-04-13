@@ -38,12 +38,10 @@ interface SnippetsPageProps {
 function PeriodTabs({
   activePeriod,
   locale,
-  currentDate,
   buildUrl,
 }: {
   activePeriod: PeriodType;
   locale: string;
-  currentDate: string;
   buildUrl: (params: Record<string, string>) => string;
 }) {
   const periods: { key: PeriodType; label: string }[] = [
@@ -85,14 +83,12 @@ function FilterSelect({
   options,
   activeValue,
   allLabel,
-  buildUrl,
 }: {
   name: string;
   label: string;
   options: FilterOption[];
   activeValue?: string;
   allLabel: string;
-  buildUrl: (params: Record<string, string>) => string;
 }) {
   if (options.length === 0) return null;
   return (
@@ -153,12 +149,7 @@ export function SnippetsContentPartial({
   return (
     <>
       <div class="mb-6">
-        <PeriodTabs
-          activePeriod={period}
-          locale={locale}
-          currentDate={currentDate}
-          buildUrl={buildUrl}
-        />
+        <PeriodTabs activePeriod={period} locale={locale} buildUrl={buildUrl} />
       </div>
 
       <div class="flex items-center justify-between mb-6">
@@ -198,7 +189,6 @@ export function SnippetsContentPartial({
           options={posters}
           activeValue={activePostedBy}
           allLabel={t(locale, "snippets.filter.all")}
-          buildUrl={buildUrl}
         />
         <FilterSelect
           name="user"
@@ -206,7 +196,6 @@ export function SnippetsContentPartial({
           options={mentionedUsers}
           activeValue={activeMentionedUser}
           allLabel={t(locale, "snippets.filter.all")}
-          buildUrl={buildUrl}
         />
         <FilterSelect
           name="usergroup"
@@ -214,7 +203,6 @@ export function SnippetsContentPartial({
           options={mentionedUsergroups}
           activeValue={activeMentionedUsergroup}
           allLabel={t(locale, "snippets.filter.all")}
-          buildUrl={buildUrl}
         />
       </div>
 

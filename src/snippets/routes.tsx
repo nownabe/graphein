@@ -42,7 +42,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
   }
 
   snippetRoutes.get("/snippets", async (c) => {
-    const { sub: userId, name: displayName } = c.get("jwtPayload");
+    const { name: displayName } = c.get("jwtPayload");
     const isAdmin = c.get("isAdmin");
     const locale = getLocale(c);
     const theme = getTheme(c);

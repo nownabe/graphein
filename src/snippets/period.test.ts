@@ -1,11 +1,7 @@
 import { describe, expect, it } from "bun:test";
-import { computePeriod, navigatePeriod, formatPeriodLabel } from "./period";
+import { computePeriod, navigatePeriod } from "./period";
 
 const TZ = "Asia/Tokyo"; // UTC+9
-
-function toTzDate(isoStr: string): Date {
-  return new Date(isoStr);
-}
 
 function formatInTz(date: Date, tz: string): string {
   return new Intl.DateTimeFormat("en-CA", {

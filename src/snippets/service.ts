@@ -1,4 +1,4 @@
-import { eq, and, desc, gte, lt, sql, count as drizzleCount } from "drizzle-orm";
+import { eq, and, desc, gte, lt, sql } from "drizzle-orm";
 import type { Database } from "../db/client";
 import {
   snippets,

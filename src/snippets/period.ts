@@ -197,13 +197,6 @@ export function formatPeriodLabel(
     case "month":
       return fmt(period.start, { year: "numeric", month: "long" });
     case "quarter": {
-      const q = Math.ceil(
-        (new Date(
-          fmt(period.start, { year: "numeric", month: "2-digit", day: "2-digit" }),
-        ).getMonth() +
-          1) /
-          3,
-      );
       const monthNum = Number(
         new Intl.DateTimeFormat("en-CA", { timeZone: timezone, month: "2-digit" }).format(
           period.start,
