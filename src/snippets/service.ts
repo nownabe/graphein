@@ -93,18 +93,14 @@ export function createSnippetService(db: Database) {
         .select({ snippetId: snippetMentionedUsers.snippetId })
         .from(snippetMentionedUsers)
         .where(eq(snippetMentionedUsers.userId, filters.mentionedUserId));
-      conditions.push(
-        sql`${snippets.id} IN (${mentionedSnippetIds})`,
-      );
+      conditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
     }
     if (filters.mentionedUsergroupId) {
       const mentionedSnippetIds = db
         .select({ snippetId: snippetMentionedUsergroups.snippetId })
         .from(snippetMentionedUsergroups)
         .where(eq(snippetMentionedUsergroups.usergroupId, filters.mentionedUsergroupId));
-      conditions.push(
-        sql`${snippets.id} IN (${mentionedSnippetIds})`,
-      );
+      conditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -268,11 +264,7 @@ export function createSnippetService(db: Database) {
     return rows;
   }
 
-  async function findOrCreateUsergroup(
-    slackUsergroupId: string,
-    name: string,
-    handle?: string,
-  ) {
+  async function findOrCreateUsergroup(slackUsergroupId: string, name: string, handle?: string) {
     const existing = await db.query.usergroups.findFirst({
       where: eq(usergroups.slackUsergroupId, slackUsergroupId),
     });

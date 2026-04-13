@@ -276,9 +276,7 @@ export function SnippetsPage(props: SnippetsPageProps) {
       <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div class="mb-6">
-          <h1 class="text-xl font-bold text-ink tracking-tight">
-            {t(locale, "page.snippets")}
-          </h1>
+          <h1 class="text-xl font-bold text-ink tracking-tight">{t(locale, "page.snippets")}</h1>
         </div>
         <div id="snippets-content">
           <SnippetsContentPartial {...contentProps} locale={locale} />

@@ -36,9 +36,7 @@ export function SnippetCard({
           </div>
         )}
         <div class="min-w-0 flex-1">
-          <div class="text-sm font-medium text-ink truncate">
-            {snippet.poster.displayName}
-          </div>
+          <div class="text-sm font-medium text-ink truncate">{snippet.poster.displayName}</div>
           <div class="text-xs text-muted">{dateStr}</div>
         </div>
         {snippet.slackPermalink && (

@@ -85,10 +85,7 @@ function addDays(
   };
 }
 
-function localToUtc(
-  d: { year: number; month: number; day: number },
-  timezone: string,
-): Date {
+function localToUtc(d: { year: number; month: number; day: number }, timezone: string): Date {
   // Create a date string and parse it in the target timezone
   const dateStr = `${d.year}-${String(d.month).padStart(2, "0")}-${String(d.day).padStart(2, "0")}T00:00:00`;
   // Use a formatter to find the UTC offset for this local time
@@ -120,14 +117,7 @@ function localToUtc(
   );
 
   // The difference between what we wanted and what we got is the offset
-  const wantedMs = new Date(
-    d.year,
-    d.month - 1,
-    d.day,
-    0,
-    0,
-    0,
-  ).getTime();
+  const wantedMs = new Date(d.year, d.month - 1, d.day, 0, 0, 0).getTime();
   const gotMs = new Date(
     fParts.year,
     fParts.month - 1,

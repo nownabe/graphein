@@ -19,7 +19,14 @@ export interface SnippetRoutesDeps {
 const VALID_PERIODS = new Set<PeriodType>(["day", "week", "month", "quarter", "year"]);
 
 export function createSnippetRoutes(deps: SnippetRoutesDeps) {
-  const { authMiddleware, snippetService, userService, buildMrkdwnLabels, snippetTimezone, devMode } = deps;
+  const {
+    authMiddleware,
+    snippetService,
+    userService,
+    buildMrkdwnLabels,
+    snippetTimezone,
+    devMode,
+  } = deps;
   const snippetRoutes = new Hono();
 
   snippetRoutes.use("*", authMiddleware);
@@ -60,7 +67,12 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     const usergroupParam = c.req.query("usergroup");
 
     const { start: periodStart, end: periodEnd } = computePeriod(period, anchor, snippetTimezone);
-    const periodLabel = formatPeriodLabel(period, { start: periodStart, end: periodEnd }, snippetTimezone, locale);
+    const periodLabel = formatPeriodLabel(
+      period,
+      { start: periodStart, end: periodEnd },
+      snippetTimezone,
+      locale,
+    );
 
     const prevAnchor = navigatePeriod(period, anchor, snippetTimezone, "prev");
     const nextAnchor = navigatePeriod(period, anchor, snippetTimezone, "next");

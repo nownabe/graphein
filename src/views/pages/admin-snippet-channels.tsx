@@ -91,9 +91,7 @@ export function AdminSnippetChannelsPage({
           <h1 class="text-xl font-bold text-ink tracking-tight mb-1">
             {t(locale, "admin.snippetChannels.title")}
           </h1>
-          <p class="text-sm text-secondary">
-            {t(locale, "admin.snippetChannels.description")}
-          </p>
+          <p class="text-sm text-secondary">{t(locale, "admin.snippetChannels.description")}</p>
         </div>
         <AdminSnippetChannelsList channels={channels} locale={locale} />
       </main>

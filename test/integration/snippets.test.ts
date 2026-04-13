@@ -59,11 +59,7 @@ describe("GET /snippets", () => {
       mentionedUsergroupIds: [],
     });
 
-    const res = await authRequest(
-      app,
-      user1.id,
-      `/snippets?period=month&postedBy=${user1.id}`,
-    );
+    const res = await authRequest(app, user1.id, `/snippets?period=month&postedBy=${user1.id}`);
     const html = await res.text();
     expect(html).toContain("Report from user1");
     expect(html).not.toContain("Report from user2");
@@ -88,11 +84,7 @@ describe("GET /snippets", () => {
       mentionedUsergroupIds: [],
     });
 
-    const res = await authRequest(
-      app,
-      user1.id,
-      `/snippets?period=month&user=${user1.id}`,
-    );
+    const res = await authRequest(app, user1.id, `/snippets?period=month&user=${user1.id}`);
     const html = await res.text();
     expect(html).toContain("Report mentioning user1");
     expect(html).not.toContain("Report mentioning user2");

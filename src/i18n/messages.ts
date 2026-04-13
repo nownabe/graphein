@@ -320,7 +320,8 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Admin snippet channels
     "admin.snippetChannels.title": "Snippet Channels",
-    "admin.snippetChannels.description": "Configure Slack channels to automatically capture daily reports.",
+    "admin.snippetChannels.description":
+      "Configure Slack channels to automatically capture daily reports.",
     "admin.snippetChannels.add": "Add channel",
     "admin.snippetChannels.placeholder": "Slack Channel ID",
     "admin.snippetChannels.remove": "Remove",

@@ -544,7 +544,9 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
       // Skip if no mentions found
       if (userMentionIds.length === 0 && usergroupMentionIds.length === 0) {
-        console.debug(`[snippet] No mentions found in message ${messageTs} in channel ${channelId}`);
+        console.debug(
+          `[snippet] No mentions found in message ${messageTs} in channel ${channelId}`,
+        );
         return;
       }
 
