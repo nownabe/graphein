@@ -44,4 +44,5 @@ ALTER TABLE "snippet_mentioned_usergroups" ADD CONSTRAINT "snippet_mentioned_use
 ALTER TABLE "snippet_mentioned_users" ADD CONSTRAINT "snippet_mentioned_users_snippet_id_snippets_id_fk" FOREIGN KEY ("snippet_id") REFERENCES "public"."snippets"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "snippet_mentioned_users" ADD CONSTRAINT "snippet_mentioned_users_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "snippets" ADD CONSTRAINT "snippets_posted_by_id_users_id_fk" FOREIGN KEY ("posted_by_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-CREATE INDEX "snippets_posted_at_idx" ON "snippets" USING btree ("posted_at");
+CREATE INDEX "snippets_posted_at_idx" ON "snippets" USING btree ("posted_at");--> statement-breakpoint
+CREATE UNIQUE INDEX "snippets_slack_message_unique" ON "snippets" USING btree ("slack_channel_id","slack_message_ts");
