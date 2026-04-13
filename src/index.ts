@@ -20,7 +20,7 @@ const port = Number(process.env.PORT ?? "3000");
 const devMode = process.env.NODE_ENV !== "production";
 const slackSocketMode = process.env.SLACK_SOCKET_MODE === "true";
 const baseUrl = requireEnv("BASE_URL");
-const snippetTimezone = process.env.SNIPPET_TIMEZONE ?? "Asia/Tokyo";
+const snippetTimezone = process.env.SNIPPET_TIMEZONE ?? "UTC";
 
 // Create core services
 const db = createDb(requireEnv("DATABASE_URL"));
