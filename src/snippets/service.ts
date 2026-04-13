@@ -49,7 +49,17 @@ export function createSnippetService(db: Database) {
   }) {
     const { mentionedUserIds, mentionedUsergroupIds, ...snippetData } = data;
 
-    const [snippet] = await db.insert(snippets).values(snippetData).returning();
+    const result = await db
+      .insert(snippets)
+      .values(snippetData)
+      .onConflictDoNothing({
+        target: [snippets.slackChannelId, snippets.slackMessageTs],
+      })
+      .returning();
+
+    // Conflict means duplicate Slack event delivery — skip silently
+    if (result.length === 0) return null;
+    const [snippet] = result;
 
     if (mentionedUserIds.length > 0) {
       await db.insert(snippetMentionedUsers).values(

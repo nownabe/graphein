@@ -4,7 +4,14 @@ import type { MiddlewareHandler } from "hono";
 import type { SnippetService } from "./service";
 import type { UserService } from "../users/service";
 import type { BuildMrkdwnLabels } from "../config";
-import { computePeriod, navigatePeriod, formatPeriodLabel, type PeriodType } from "./period";
+import {
+  computePeriod,
+  navigatePeriod,
+  formatPeriodLabel,
+  parseDateInTimezone,
+  formatDateInTimezone,
+  type PeriodType,
+} from "./period";
 import { SnippetsPage, SnippetsContentPartial } from "../views/pages/snippets";
 
 export interface SnippetRoutesDeps {
@@ -53,7 +60,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       : "week";
 
     const dateParam = c.req.query("date");
-    const anchor = dateParam ? new Date(dateParam) : new Date();
+    const anchor = dateParam ? parseDateInTimezone(dateParam, snippetTimezone) : new Date();
     if (isNaN(anchor.getTime())) {
       return c.redirect("/snippets");
     }
@@ -76,9 +83,9 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
 
     const prevAnchor = navigatePeriod(period, anchor, snippetTimezone, "prev");
     const nextAnchor = navigatePeriod(period, anchor, snippetTimezone, "next");
-    const prevDate = prevAnchor.toISOString().split("T")[0];
-    const nextDate = nextAnchor.toISOString().split("T")[0];
-    const currentDate = anchor.toISOString().split("T")[0];
+    const prevDate = formatDateInTimezone(prevAnchor, snippetTimezone);
+    const nextDate = formatDateInTimezone(nextAnchor, snippetTimezone);
+    const currentDate = formatDateInTimezone(anchor, snippetTimezone);
 
     const { snippets: snippetList, total } = await snippetService.listSnippets({
       postedById: postedByParam || undefined,

@@ -1,4 +1,13 @@
-import { pgTable, text, timestamp, uuid, boolean, primaryKey, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  boolean,
+  primaryKey,
+  index,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
@@ -92,7 +101,10 @@ export const snippets = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index("snippets_posted_at_idx").on(t.postedAt)],
+  (t) => [
+    index("snippets_posted_at_idx").on(t.postedAt),
+    uniqueIndex("snippets_slack_message_unique").on(t.slackChannelId, t.slackMessageTs),
+  ],
 );
 
 // Snippet mentioned users — junction for user mention filtering

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "snippets_slack_message_unique" ON "snippets" USING btree ("slack_channel_id","slack_message_ts");

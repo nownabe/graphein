@@ -639,8 +639,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       // Convert message_ts to Date
       const postedAt = new Date(Number(messageTs.split(".")[0]) * 1000);
 
-      // Create snippet
-      await snippetService.createSnippet({
+      // Create snippet (returns null if duplicate due to DB unique constraint)
+      const created = await snippetService.createSnippet({
         content: hydratedText,
         postedAt,
         slackMessageTs: messageTs,
@@ -651,7 +651,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         mentionedUsergroupIds: mentionedDbUsergroupIds,
       });
 
-      console.log(`[snippet] Created snippet for message ${messageTs} in channel ${channelId}`);
+      if (created) {
+        console.log(`[snippet] Created snippet for message ${messageTs} in channel ${channelId}`);
+      } else {
+        console.debug(
+          `[snippet] Duplicate message ${messageTs} in channel ${channelId} (conflict), skipped`,
+        );
+      }
     } catch (err) {
       console.error("[snippet] Error in snippet message handler:", err);
     }

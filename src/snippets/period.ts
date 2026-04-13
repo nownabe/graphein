@@ -5,17 +5,15 @@ export interface Period {
   end: Date;
 }
 
-// Compute the start and end of a period for a given anchor date in a timezone.
-// Returns UTC Date objects representing the boundaries.
-export function computePeriod(type: PeriodType, anchor: Date, timezone: string): Period {
-  // Format anchor in the target timezone to get local date parts
-  const parts = new Intl.DateTimeFormat("en-CA", {
+// Extract local date parts (year, month, day) from a UTC Date in a timezone.
+function getLocalParts(date: Date, timezone: string): { year: number; month: number; day: number } {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   })
-    .formatToParts(anchor)
+    .formatToParts(date)
     .reduce(
       (acc, p) => {
         if (p.type === "year") acc.year = Number(p.value);
@@ -25,6 +23,12 @@ export function computePeriod(type: PeriodType, anchor: Date, timezone: string):
       },
       { year: 0, month: 0, day: 0 },
     );
+}
+
+// Compute the start and end of a period for a given anchor date in a timezone.
+// Returns UTC Date objects representing the boundaries.
+export function computePeriod(type: PeriodType, anchor: Date, timezone: string): Period {
+  const parts = getLocalParts(anchor, timezone);
 
   let startLocal: { year: number; month: number; day: number };
   let endLocal: { year: number; month: number; day: number };
@@ -131,44 +135,89 @@ function localToUtc(d: { year: number; month: number; day: number }, timezone: s
   return new Date(guess.getTime() - offsetMs);
 }
 
-// Navigate to the previous/next period
-export function navigatePeriod(
-  type: PeriodType,
-  anchor: Date,
-  timezone: string,
-  direction: "prev" | "next",
-): Date {
+// Parse a YYYY-MM-DD string as midnight in the given timezone, returning a UTC Date.
+// Unlike `new Date("YYYY-MM-DD")` which is UTC midnight, this ensures the date
+// stays correct regardless of the timezone offset.
+export function parseDateInTimezone(dateStr: string, timezone: string): Date {
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return new Date(dateStr);
+  return localToUtc(
+    { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) },
+    timezone,
+  );
+}
+
+// Format a UTC Date as YYYY-MM-DD in the given timezone.
+// Unlike `toISOString().split("T")[0]` which uses UTC, this returns the local date.
+export function formatDateInTimezone(date: Date, timezone: string): string {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: timezone,
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   })
-    .formatToParts(anchor)
+    .formatToParts(date)
     .reduce(
       (acc, p) => {
-        if (p.type === "year") acc.year = Number(p.value);
-        if (p.type === "month") acc.month = Number(p.value);
-        if (p.type === "day") acc.day = Number(p.value);
+        if (p.type === "year") acc.year = p.value;
+        if (p.type === "month") acc.month = p.value;
+        if (p.type === "day") acc.day = p.value;
         return acc;
       },
-      { year: 0, month: 0, day: 0 },
+      { year: "", month: "", day: "" },
     );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
 
+// Navigate to the previous/next period.
+// Returns a UTC Date representing midnight of the navigated date in the given timezone.
+export function navigatePeriod(
+  type: PeriodType,
+  anchor: Date,
+  timezone: string,
+  direction: "prev" | "next",
+): Date {
+  const parts = getLocalParts(anchor, timezone);
   const delta = direction === "prev" ? -1 : 1;
 
+  let target: { year: number; month: number; day: number };
   switch (type) {
     case "day":
-      return new Date(parts.year, parts.month - 1, parts.day + delta);
+      target = addDays(parts, delta);
+      break;
     case "week":
-      return new Date(parts.year, parts.month - 1, parts.day + delta * 7);
+      target = addDays(parts, delta * 7);
+      break;
     case "month":
-      return new Date(parts.year, parts.month - 1 + delta, 1);
+      target = {
+        year:
+          parts.month - 1 + delta < 0
+            ? parts.year - 1
+            : parts.month + delta > 12
+              ? parts.year + 1
+              : parts.year,
+        month: ((parts.month - 1 + delta + 12) % 12) + 1,
+        day: 1,
+      };
+      break;
     case "quarter":
-      return new Date(parts.year, parts.month - 1 + delta * 3, 1);
+      target = {
+        year:
+          parts.month - 1 + delta * 3 < 0
+            ? parts.year - 1
+            : parts.month + delta * 3 > 12
+              ? parts.year + 1
+              : parts.year,
+        month: ((parts.month - 1 + delta * 3 + 12) % 12) + 1,
+        day: 1,
+      };
+      break;
     case "year":
-      return new Date(parts.year + delta, 0, 1);
+      target = { year: parts.year + delta, month: 1, day: 1 };
+      break;
   }
+
+  return localToUtc(target, timezone);
 }
 
 // Format a period range label for display

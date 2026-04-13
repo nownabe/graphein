@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { computePeriod, navigatePeriod } from "./period";
+import { computePeriod, navigatePeriod, parseDateInTimezone, formatDateInTimezone } from "./period";
 
 const TZ = "Asia/Tokyo"; // UTC+9
 
@@ -96,24 +96,72 @@ describe("navigatePeriod", () => {
   it("navigates day forward", () => {
     const anchor = new Date("2026-04-13T10:00:00+09:00");
     const next = navigatePeriod("day", anchor, TZ, "next");
-    expect(next.getDate()).toBe(14);
+    expect(formatDateInTimezone(next, TZ)).toBe("2026-04-14");
   });
 
   it("navigates day backward", () => {
     const anchor = new Date("2026-04-13T10:00:00+09:00");
     const prev = navigatePeriod("day", anchor, TZ, "prev");
-    expect(prev.getDate()).toBe(12);
+    expect(formatDateInTimezone(prev, TZ)).toBe("2026-04-12");
   });
 
   it("navigates week forward", () => {
     const anchor = new Date("2026-04-13T10:00:00+09:00");
     const next = navigatePeriod("week", anchor, TZ, "next");
-    expect(next.getDate()).toBe(20);
+    expect(formatDateInTimezone(next, TZ)).toBe("2026-04-20");
   });
 
   it("navigates month forward", () => {
     const anchor = new Date("2026-04-13T10:00:00+09:00");
     const next = navigatePeriod("month", anchor, TZ, "next");
-    expect(next.getMonth()).toBe(4); // May (0-indexed)
+    expect(formatDateInTimezone(next, TZ)).toBe("2026-05-01");
+  });
+
+  it("navigates month backward", () => {
+    const anchor = new Date("2026-04-13T10:00:00+09:00");
+    const prev = navigatePeriod("month", anchor, TZ, "prev");
+    expect(formatDateInTimezone(prev, TZ)).toBe("2026-03-01");
+  });
+
+  it("navigates quarter forward", () => {
+    const anchor = new Date("2026-04-13T10:00:00+09:00");
+    const next = navigatePeriod("quarter", anchor, TZ, "next");
+    expect(formatDateInTimezone(next, TZ)).toBe("2026-07-01");
+  });
+
+  it("navigates year forward", () => {
+    const anchor = new Date("2026-04-13T10:00:00+09:00");
+    const next = navigatePeriod("year", anchor, TZ, "next");
+    expect(formatDateInTimezone(next, TZ)).toBe("2027-01-01");
+  });
+});
+
+describe("parseDateInTimezone", () => {
+  it("parses YYYY-MM-DD as midnight in the target timezone", () => {
+    const date = parseDateInTimezone("2026-04-13", TZ);
+    // Should be midnight JST = 2026-04-12T15:00:00Z
+    expect(formatInTz(date, TZ)).toContain("2026-04-13");
+    expect(formatInTz(date, TZ)).toContain("00:00");
+  });
+
+  it("does not shift date for negative-offset timezones", () => {
+    const la = "America/Los_Angeles"; // UTC-7
+    const date = parseDateInTimezone("2026-04-13", la);
+    // Should be midnight PDT = 2026-04-13T07:00:00Z
+    expect(formatInTz(date, la)).toContain("2026-04-13");
+    expect(formatInTz(date, la)).toContain("00:00");
+
+    // computePeriod should return April 13 boundaries
+    const { start } = computePeriod("day", date, la);
+    expect(formatInTz(start, la)).toContain("2026-04-13");
+  });
+});
+
+describe("formatDateInTimezone", () => {
+  it("formats in the target timezone, not UTC", () => {
+    // 2026-04-13T02:00:00Z = April 13 11:00 JST, but April 12 7PM PDT
+    const date = new Date("2026-04-13T02:00:00Z");
+    expect(formatDateInTimezone(date, TZ)).toBe("2026-04-13");
+    expect(formatDateInTimezone(date, "America/Los_Angeles")).toBe("2026-04-12");
   });
 });
