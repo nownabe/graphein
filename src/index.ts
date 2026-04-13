@@ -1,4 +1,11 @@
-import { createApp } from "./app";
+import { createHonoApp } from "./app";
+import { createDb } from "./db/client";
+import { createUserService } from "./users/service";
+import { createTaskService } from "./tasks/service";
+import { createSessionHelpers } from "./auth/session";
+import { createGeminiClient } from "./llm/gemini";
+import { createBolt } from "./slack/bolt";
+import { createLabelBuilder } from "./slack/labels";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -9,21 +16,42 @@ function requireEnv(name: string): string {
 }
 
 const port = Number(process.env.PORT ?? "3000");
+const devMode = process.env.NODE_ENV !== "production";
 const slackSocketMode = process.env.SLACK_SOCKET_MODE === "true";
+const baseUrl = requireEnv("BASE_URL");
 
-const { app, boltApp } = createApp({
-  devMode: process.env.NODE_ENV !== "production",
-  databaseUrl: requireEnv("DATABASE_URL"),
-  jwtSecret: requireEnv("JWT_SECRET"),
-  baseUrl: requireEnv("BASE_URL"),
+// Create core services
+const db = createDb(requireEnv("DATABASE_URL"));
+const userService = createUserService(db);
+const taskService = createTaskService(db);
+const session = createSessionHelpers(requireEnv("JWT_SECRET"));
+
+// Create Bolt app and Slack label builder
+const geminiClient = createGeminiClient(requireEnv("GEMINI_API_KEY"));
+const { boltApp, receiver } = createBolt(
+  {
+    slackBotToken: requireEnv("SLACK_BOT_TOKEN"),
+    slackSigningSecret: requireEnv("SLACK_SIGNING_SECRET"),
+    slackSocketMode,
+    slackAppToken: process.env.SLACK_APP_TOKEN ?? "",
+    baseUrl,
+  },
+  { userService, taskService, geminiClient },
+);
+const buildMrkdwnLabels = createLabelBuilder(boltApp, userService);
+
+// Create Hono app
+const app = createHonoApp({
+  devMode,
+  baseUrl,
   slackClientId: requireEnv("SLACK_CLIENT_ID"),
   slackClientSecret: requireEnv("SLACK_CLIENT_SECRET"),
   slackTeamId: requireEnv("SLACK_TEAM_ID"),
-  slackSigningSecret: requireEnv("SLACK_SIGNING_SECRET"),
-  slackBotToken: requireEnv("SLACK_BOT_TOKEN"),
-  slackAppToken: process.env.SLACK_APP_TOKEN ?? "",
-  slackSocketMode,
-  geminiApiKey: requireEnv("GEMINI_API_KEY"),
+  session,
+  userService,
+  taskService,
+  buildMrkdwnLabels,
+  slackReceiver: receiver ?? undefined,
 });
 
 // Start Bolt (Socket Mode connects via WebSocket, HTTP mode is no-op)

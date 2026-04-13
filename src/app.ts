@@ -3,47 +3,23 @@ import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
 import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
-import { createDb } from "./db/client";
-import { createUserService } from "./users/service";
-import { createTaskService } from "./tasks/service";
-import { createSessionHelpers } from "./auth/session";
 import { createCsrfMiddleware } from "./auth/csrf";
 import { createAuthMiddleware } from "./auth/middleware";
 import { createAuthRoutes } from "./auth/routes.tsx";
 import { createTaskRoutes } from "./tasks/routes.tsx";
 import { createAdminRoutes } from "./admin/routes.tsx";
-import { createGeminiClient } from "./llm/gemini";
-import { createBolt } from "./slack/bolt";
-import { createLabelBuilder } from "./slack/labels";
 import { clickjackingMiddleware } from "./auth/clickjacking";
-import type { AppConfig } from "./config";
+import type { HonoAppConfig } from "./config";
 
-export function createApp(config: AppConfig) {
-  // Create dependencies
-  const db = createDb(config.databaseUrl);
-  const userService = createUserService(db);
-  const taskService = createTaskService(db);
-  const session = createSessionHelpers(config.jwtSecret);
+export function createHonoApp(config: HonoAppConfig) {
+  const { session, userService, taskService, buildMrkdwnLabels } = config;
+
   const csrfMw = createCsrfMiddleware(config.baseUrl);
-  const geminiClient = createGeminiClient(config.geminiApiKey);
 
   const { authMiddleware, adminMiddleware } = createAuthMiddleware(
     session.verifyToken,
     userService.isAdmin,
   );
-
-  const { boltApp, receiver } = createBolt(
-    {
-      slackBotToken: config.slackBotToken,
-      slackSigningSecret: config.slackSigningSecret,
-      slackSocketMode: config.slackSocketMode,
-      slackAppToken: config.slackAppToken,
-      baseUrl: config.baseUrl,
-    },
-    { userService, taskService, geminiClient },
-  );
-
-  const buildMrkdwnLabels = createLabelBuilder(boltApp, userService);
 
   const authRoutes = createAuthRoutes(
     {
@@ -152,8 +128,8 @@ export function createApp(config: AppConfig) {
   app.route("/auth", authRoutes);
 
   // Slack events/interactions (HTTP mode only, not used in Socket Mode)
-  if (receiver != null) {
-    const r = receiver;
+  if (config.slackReceiver) {
+    const r = config.slackReceiver;
     app.post("/slack/events", (c) => r.handleRequest(c));
     app.post("/slack/interactions", (c) => r.handleRequest(c));
   }
@@ -164,5 +140,5 @@ export function createApp(config: AppConfig) {
   // Task routes (includes home page)
   app.route("/", taskRoutes);
 
-  return { app, boltApp };
+  return app;
 }
