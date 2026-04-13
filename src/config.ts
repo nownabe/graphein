@@ -4,9 +4,7 @@ import type { TaskService } from "./tasks/service";
 import type { MrkdwnOptions } from "./slack/mrkdwn";
 import type { HonoReceiver } from "./slack/receiver";
 
-export type BuildMrkdwnLabels = (
-  texts: (string | null | undefined)[],
-) => Promise<MrkdwnOptions>;
+export type BuildMrkdwnLabels = (texts: (string | null | undefined)[]) => Promise<MrkdwnOptions>;
 
 export interface HonoAppConfig {
   devMode: boolean;
