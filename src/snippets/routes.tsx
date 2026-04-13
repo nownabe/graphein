@@ -63,7 +63,9 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       : "week";
 
     const dateParam = c.req.query("date");
-    const anchor = dateParam ? parseDateInTimezone(dateParam, timezone) : new Date();
+    const anchor = dateParam
+      ? parseDateInTimezone(dateParam, timezone)
+      : navigatePeriod(period, new Date(), timezone, "prev");
     if (isNaN(anchor.getTime())) {
       return c.redirect("/snippets");
     }

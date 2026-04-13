@@ -1,6 +1,9 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { createTestApp, createTestUser, authRequest, cleanupDb } from "../helpers";
 
+// Format today as YYYY-MM-DD for use as explicit date param
+const today = new Date().toISOString().split("T")[0];
+
 const { app, db, snippetService } = createTestApp();
 
 beforeEach(async () => {
@@ -35,7 +38,7 @@ describe("GET /snippets", () => {
       mentionedUsergroupIds: [],
     });
 
-    const res = await authRequest(app, user.id, "/snippets?period=month");
+    const res = await authRequest(app, user.id, `/snippets?period=month&date=${today}`);
     const html = await res.text();
     expect(html).toContain("Daily report content");
   });
@@ -59,7 +62,11 @@ describe("GET /snippets", () => {
       mentionedUsergroupIds: [],
     });
 
-    const res = await authRequest(app, user1.id, `/snippets?period=month&postedBy=${user1.id}`);
+    const res = await authRequest(
+      app,
+      user1.id,
+      `/snippets?period=month&date=${today}&postedBy=${user1.id}`,
+    );
     const html = await res.text();
     expect(html).toContain("Report from user1");
     expect(html).not.toContain("Report from user2");
@@ -84,7 +91,11 @@ describe("GET /snippets", () => {
       mentionedUsergroupIds: [],
     });
 
-    const res = await authRequest(app, user1.id, `/snippets?period=month&user=${user1.id}`);
+    const res = await authRequest(
+      app,
+      user1.id,
+      `/snippets?period=month&date=${today}&user=${user1.id}`,
+    );
     const html = await res.text();
     expect(html).toContain("Report mentioning user1");
     expect(html).not.toContain("Report mentioning user2");
@@ -108,8 +119,8 @@ describe("GET /snippets", () => {
       mentionedUsergroupIds: [],
     });
 
-    // Query current day — should not include old report
-    const res = await authRequest(app, user.id, "/snippets?period=day");
+    // Query today — should not include old report
+    const res = await authRequest(app, user.id, `/snippets?period=day&date=${today}`);
     const html = await res.text();
     expect(html).not.toContain("Old report");
   });
