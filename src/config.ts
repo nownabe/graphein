@@ -7,6 +7,7 @@ import type { MrkdwnOptions } from "./slack/mrkdwn";
 import type { HonoReceiver } from "./slack/receiver";
 
 export type BuildMrkdwnLabels = (texts: (string | null | undefined)[]) => Promise<MrkdwnOptions>;
+export type ResolveChannelName = (channelId: string) => Promise<string | undefined>;
 
 export interface HonoAppConfig {
   devMode: boolean;
@@ -20,6 +21,7 @@ export interface HonoAppConfig {
   snippetService: SnippetService;
   settingsService: SettingsService;
   buildMrkdwnLabels: BuildMrkdwnLabels;
+  resolveChannelName: ResolveChannelName;
   slackReceiver?: HonoReceiver;
   timezone: string;
 }

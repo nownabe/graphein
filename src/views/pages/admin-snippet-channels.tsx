@@ -9,9 +9,11 @@ type SnippetChannel = InferSelectModel<typeof snippetChannels>;
 
 export function AdminSnippetChannelsList({
   channels,
+  channelNames,
   locale,
 }: {
   channels: SnippetChannel[];
+  channelNames?: Record<string, string>;
   locale: string;
 }) {
   return (
@@ -24,8 +26,13 @@ export function AdminSnippetChannelsList({
         <ul class="bg-surface border border-edge rounded-[var(--radius-lg)] divide-y divide-edge">
           {channels.map((ch) => (
             <li key={ch.id} class="flex items-center justify-between px-5 py-4">
-              <div>
-                <code class="text-sm font-mono text-ink">{ch.slackChannelId}</code>
+              <div class="flex items-center gap-2">
+                {channelNames?.[ch.slackChannelId] && (
+                  <span class="text-sm font-medium text-ink">
+                    #{channelNames[ch.slackChannelId]}
+                  </span>
+                )}
+                <code class="text-xs font-mono text-muted">{ch.slackChannelId}</code>
               </div>
               <button
                 hx-delete={`/admin/snippet-channels/${ch.id}`}
@@ -66,12 +73,14 @@ export function AdminSnippetChannelsList({
 
 export function AdminSnippetChannelsPage({
   channels,
+  channelNames,
   displayName,
   locale,
   theme,
   devMode,
 }: {
   channels: SnippetChannel[];
+  channelNames?: Record<string, string>;
   displayName: string;
   locale: string;
   theme?: string;
@@ -93,7 +102,7 @@ export function AdminSnippetChannelsPage({
           </h1>
           <p class="text-sm text-secondary">{t(locale, "admin.snippetChannels.description")}</p>
         </div>
-        <AdminSnippetChannelsList channels={channels} locale={locale} />
+        <AdminSnippetChannelsList channels={channels} channelNames={channelNames} locale={locale} />
       </main>
     </Layout>
   );

@@ -45,6 +45,7 @@ export function createTestApp() {
     snippetService,
     settingsService,
     buildMrkdwnLabels: async () => ({ users: {}, channels: {}, usergroups: {} }),
+    resolveChannelName: async () => undefined,
     timezone: "Asia/Tokyo",
   });
 
