@@ -135,11 +135,9 @@ export function SnippetsContentPartial({
     const d = overrides.date ?? currentDate;
     params.set("period", p);
     params.set("date", d);
-    if (!overrides.period && !overrides.date) {
-      if (activePostedBy) params.set("postedBy", activePostedBy);
-      if (activeMentionedUser) params.set("user", activeMentionedUser);
-      if (activeMentionedUsergroup) params.set("usergroup", activeMentionedUsergroup);
-    }
+    if (activePostedBy) params.set("postedBy", activePostedBy);
+    if (activeMentionedUser) params.set("user", activeMentionedUser);
+    if (activeMentionedUsergroup) params.set("usergroup", activeMentionedUsergroup);
     return `/snippets?${params.toString()}`;
   }
 
