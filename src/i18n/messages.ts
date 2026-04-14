@@ -154,6 +154,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "snippets.empty": "この期間に日報はありません",
     "snippets.prev": "前へ",
     "snippets.next": "次へ",
+    "snippets.today": "今日",
 
     // Admin snippet channels
     "admin.snippetChannels.title": "日報チャンネル管理",
@@ -317,6 +318,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "snippets.empty": "No snippets for this period",
     "snippets.prev": "Previous",
     "snippets.next": "Next",
+    "snippets.today": "Today",
 
     // Admin snippet channels
     "admin.snippetChannels.title": "Snippet Channels",

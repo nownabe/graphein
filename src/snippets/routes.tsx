@@ -80,6 +80,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     const prevDate = formatDateInTimezone(prevAnchor, timezone);
     const nextDate = formatDateInTimezone(nextAnchor, timezone);
     const currentDate = formatDateInTimezone(anchor, timezone);
+    const todayDate = formatDateInTimezone(new Date(), timezone);
 
     const { snippets: snippetList, total } = await snippetService.listSnippets({
       postedById: postedByParam || undefined,
@@ -120,6 +121,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       prevDate,
       nextDate,
       currentDate,
+      todayDate,
       posters: posterOptions,
       mentionedUsers: mentionedUserOptions,
       mentionedUsergroups: mentionedUsergroupOptions,

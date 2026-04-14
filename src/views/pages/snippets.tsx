@@ -24,6 +24,7 @@ interface SnippetsPageProps {
   prevDate: string;
   nextDate: string;
   currentDate: string;
+  todayDate: string;
   posters: FilterOption[];
   mentionedUsers: FilterOption[];
   mentionedUsergroups: FilterOption[];
@@ -119,6 +120,7 @@ export function SnippetsContentPartial({
   prevDate,
   nextDate,
   currentDate,
+  todayDate,
   posters,
   mentionedUsers,
   mentionedUsergroups,
@@ -159,21 +161,43 @@ export function SnippetsContentPartial({
           hx-target="#snippets-content"
           hx-swap="innerHTML"
           hx-push-url={prevUrl}
-          class="text-sm text-muted hover:text-accent transition-colors"
+          class="p-1.5 text-muted hover:text-accent transition-colors rounded-[var(--radius-sm)] hover:bg-surface-hover"
           title={t(locale, "snippets.prev")}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
             <path d="M10.354 3.354a.5.5 0 00-.708-.708l-5 5a.5.5 0 000 .708l5 5a.5.5 0 00.708-.708L5.707 8l4.647-4.646z" />
           </svg>
         </a>
-        <span class="text-sm font-semibold text-ink">{periodLabel}</span>
+        <div class="flex items-center gap-2">
+          <label class="relative cursor-pointer">
+            <span class="text-sm font-semibold text-ink hover:text-accent transition-colors">
+              {periodLabel}
+            </span>
+            <input
+              type="date"
+              value={currentDate}
+              class="absolute inset-0 opacity-0 cursor-pointer"
+              onchange={`(function(el){var d=el.value;if(!d)return;var url=new URL(window.location.href);url.searchParams.set('date',d);url.searchParams.delete('page');htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});history.pushState(null,'',url.pathname+url.search)})(this)`}
+            />
+          </label>
+          <a
+            href={buildUrl({ date: todayDate })}
+            hx-get={buildUrl({ date: todayDate })}
+            hx-target="#snippets-content"
+            hx-swap="innerHTML"
+            hx-push-url={buildUrl({ date: todayDate })}
+            class="text-xs px-2 py-1 text-muted hover:text-accent border border-edge rounded-[var(--radius-sm)] hover:bg-surface-hover transition-colors"
+          >
+            {t(locale, "snippets.today")}
+          </a>
+        </div>
         <a
           href={nextUrl}
           hx-get={nextUrl}
           hx-target="#snippets-content"
           hx-swap="innerHTML"
           hx-push-url={nextUrl}
-          class="text-sm text-muted hover:text-accent transition-colors"
+          class="p-1.5 text-muted hover:text-accent transition-colors rounded-[var(--radius-sm)] hover:bg-surface-hover"
           title={t(locale, "snippets.next")}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
