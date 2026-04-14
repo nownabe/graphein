@@ -97,7 +97,7 @@ function FilterSelect({
       <select
         name={name}
         class="bg-surface border border-edge rounded-[var(--radius-sm)] px-2.5 py-1.5 text-sm text-ink cursor-pointer"
-        onchange={`(function(el){var v=el.value;var url=new URL(window.location.href);if(v){url.searchParams.set('${name}',v)}else{url.searchParams.delete('${name}')}url.searchParams.delete('page');htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});history.pushState(null,'',url.pathname+url.search)})(this)`}
+        onchange={`(function(el){var v=el.value;var url=new window.URL(window.location.href);if(v){url.searchParams.set('${name}',v)}else{url.searchParams.delete('${name}')}url.searchParams.delete('page');htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});history.pushState(null,'',url.pathname+url.search)})(this)`}
       >
         <option value="">{allLabel}</option>
         {options.map((opt) => (
