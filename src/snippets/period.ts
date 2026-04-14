@@ -27,7 +27,13 @@ function getLocalParts(date: Date, timezone: string): { year: number; month: num
 
 // Compute the start and end of a period for a given anchor date in a timezone.
 // Returns UTC Date objects representing the boundaries.
-export function computePeriod(type: PeriodType, anchor: Date, timezone: string): Period {
+// fiscalQuarterStartMonth (1-12) controls which month Q1 starts on.
+export function computePeriod(
+  type: PeriodType,
+  anchor: Date,
+  timezone: string,
+  fiscalQuarterStartMonth = 1,
+): Period {
   const parts = getLocalParts(anchor, timezone);
 
   let startLocal: { year: number; month: number; day: number };
@@ -55,14 +61,15 @@ export function computePeriod(type: PeriodType, anchor: Date, timezone: string):
           : { year: parts.year, month: parts.month + 1, day: 1 };
       break;
     case "quarter": {
-      const q = Math.floor((parts.month - 1) / 3);
-      const qStartMonth = q * 3 + 1;
-      startLocal = { year: parts.year, month: qStartMonth, day: 1 };
-      const qEndMonth = qStartMonth + 3;
-      endLocal =
-        qEndMonth > 12
-          ? { year: parts.year + 1, month: qEndMonth - 12, day: 1 }
-          : { year: parts.year, month: qEndMonth, day: 1 };
+      // Shift month so that fiscalQuarterStartMonth becomes month 0
+      const shifted = (parts.month - fiscalQuarterStartMonth + 12) % 12;
+      const q = Math.floor(shifted / 3);
+      const qStartMonth = ((fiscalQuarterStartMonth - 1 + q * 3) % 12) + 1;
+      const qStartYear = qStartMonth > parts.month ? parts.year - 1 : parts.year;
+      startLocal = { year: qStartYear, month: qStartMonth, day: 1 };
+      const qEndMonth = ((qStartMonth - 1 + 3) % 12) + 1;
+      const qEndYear = qEndMonth <= qStartMonth ? qStartYear + 1 : qStartYear;
+      endLocal = { year: qEndYear, month: qEndMonth, day: 1 };
       break;
     }
     case "year":
@@ -226,6 +233,7 @@ export function formatPeriodLabel(
   period: Period,
   timezone: string,
   locale: string,
+  fiscalQuarterStartMonth = 1,
 ): string {
   const fmt = (date: Date, opts: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
@@ -251,7 +259,7 @@ export function formatPeriodLabel(
           period.start,
         ),
       );
-      const quarter = Math.ceil(monthNum / 3);
+      const quarter = Math.floor(((monthNum - fiscalQuarterStartMonth + 12) % 12) / 3) + 1;
       const year = fmt(period.start, { year: "numeric" });
       return `Q${quarter} ${year}`;
     }

@@ -83,6 +83,33 @@ describe("computePeriod", () => {
     expect(formatInTz(end, TZ)).toContain("2027-01-01");
   });
 
+  it("returns correct fiscal quarter boundaries when Q1 starts in April", () => {
+    // May 2026 should be in fiscal Q1 (Apr-Jun) when fiscal year starts in April
+    const anchor = new Date("2026-05-15T10:00:00+09:00");
+    const { start, end } = computePeriod("quarter", anchor, TZ, 4);
+
+    expect(formatInTz(start, TZ)).toContain("2026-04-01");
+    expect(formatInTz(end, TZ)).toContain("2026-07-01");
+  });
+
+  it("returns correct fiscal Q4 when Q1 starts in April", () => {
+    // February 2026 should be in fiscal Q4 (Jan-Mar) when fiscal year starts in April
+    const anchor = new Date("2026-02-15T10:00:00+09:00");
+    const { start, end } = computePeriod("quarter", anchor, TZ, 4);
+
+    expect(formatInTz(start, TZ)).toContain("2026-01-01");
+    expect(formatInTz(end, TZ)).toContain("2026-04-01");
+  });
+
+  it("returns correct fiscal Q3 when Q1 starts in April", () => {
+    // November 2026 should be in fiscal Q3 (Oct-Dec) when fiscal year starts in April
+    const anchor = new Date("2026-11-15T10:00:00+09:00");
+    const { start, end } = computePeriod("quarter", anchor, TZ, 4);
+
+    expect(formatInTz(start, TZ)).toContain("2026-10-01");
+    expect(formatInTz(end, TZ)).toContain("2027-01-01");
+  });
+
   it("handles December month boundary (cross-year)", () => {
     const anchor = new Date("2026-12-15T10:00:00+09:00");
     const { start, end } = computePeriod("month", anchor, TZ);

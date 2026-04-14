@@ -2,6 +2,7 @@ import type { SessionHelpers } from "./auth/session";
 import type { UserService } from "./users/service";
 import type { TaskService } from "./tasks/service";
 import type { SnippetService } from "./snippets/service";
+import type { SettingsService } from "./settings/service";
 import type { MrkdwnOptions } from "./slack/mrkdwn";
 import type { HonoReceiver } from "./slack/receiver";
 
@@ -17,6 +18,7 @@ export interface HonoAppConfig {
   userService: UserService;
   taskService: TaskService;
   snippetService: SnippetService;
+  settingsService: SettingsService;
   buildMrkdwnLabels: BuildMrkdwnLabels;
   slackReceiver?: HonoReceiver;
   timezone: string;

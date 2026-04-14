@@ -163,6 +163,14 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.snippetChannels.remove": "削除",
     "admin.snippetChannels.empty": "チャンネルが設定されていません",
     "admin.snippetChannels.confirmRemove": "このチャンネルを削除しますか？",
+
+    // Admin settings
+    "admin.tab.settings": "設定",
+    "admin.settings.title": "設定",
+    "admin.settings.description": "アプリケーションの設定を管理します。",
+    "admin.settings.fiscalQuarterStartMonth": "四半期の開始月",
+    "admin.settings.fiscalQuarterDescription":
+      "四半期の開始月を設定します。例: 4月に設定すると Q1=4-6月, Q2=7-9月, Q3=10-12月, Q4=1-3月 になります。",
   },
   en: {
     // Nav
@@ -327,6 +335,14 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.snippetChannels.remove": "Remove",
     "admin.snippetChannels.empty": "No channels configured",
     "admin.snippetChannels.confirmRemove": "Remove this channel?",
+
+    // Admin settings
+    "admin.tab.settings": "Settings",
+    "admin.settings.title": "Settings",
+    "admin.settings.description": "Manage application settings.",
+    "admin.settings.fiscalQuarterStartMonth": "Fiscal quarter start month",
+    "admin.settings.fiscalQuarterDescription":
+      "Set the starting month of fiscal quarters. E.g., setting April makes Q1=Apr-Jun, Q2=Jul-Sep, Q3=Oct-Dec, Q4=Jan-Mar.",
   },
 };
 

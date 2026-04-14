@@ -5,6 +5,7 @@ import type { Database } from "../src/db/client";
 import { createUserService } from "../src/users/service";
 import { createTaskService } from "../src/tasks/service";
 import { createSnippetService } from "../src/snippets/service";
+import { createSettingsService } from "../src/settings/service";
 import { createSessionHelpers } from "../src/auth/session";
 import {
   users,
@@ -16,6 +17,7 @@ import {
   snippets,
   snippetChannels,
   usergroups,
+  appSettings,
 } from "../src/db/schema";
 import { TEST_DATABASE_URL } from "./setup";
 
@@ -29,6 +31,7 @@ export function createTestApp() {
   const userService = createUserService(db);
   const taskService = createTaskService(db);
   const snippetService = createSnippetService(db);
+  const settingsService = createSettingsService(db);
 
   const app = createHonoApp({
     devMode: false,
@@ -40,11 +43,12 @@ export function createTestApp() {
     userService,
     taskService,
     snippetService,
+    settingsService,
     buildMrkdwnLabels: async () => ({ users: {}, channels: {}, usergroups: {} }),
     timezone: "Asia/Tokyo",
   });
 
-  return { app, db, userService, taskService, snippetService };
+  return { app, db, userService, taskService, snippetService, settingsService };
 }
 
 export async function createTestUser(
@@ -91,4 +95,5 @@ export async function cleanupDb(db: Database) {
   await db.delete(taskOwners);
   await db.delete(tasks);
   await db.delete(users);
+  await db.delete(appSettings);
 }

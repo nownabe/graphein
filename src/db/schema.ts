@@ -135,6 +135,13 @@ export const snippetMentionedUsergroups = pgTable(
   (t) => [primaryKey({ columns: [t.snippetId, t.usergroupId] })],
 );
 
+// App settings — key-value store for application configuration
+export const appSettings = pgTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   createdTasks: many(tasks),
