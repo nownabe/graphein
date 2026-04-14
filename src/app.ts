@@ -13,7 +13,8 @@ import { clickjackingMiddleware } from "./auth/clickjacking";
 import type { HonoAppConfig } from "./config";
 
 export function createHonoApp(config: HonoAppConfig) {
-  const { session, userService, taskService, snippetService, buildMrkdwnLabels } = config;
+  const { session, userService, taskService, snippetService, settingsService, buildMrkdwnLabels } =
+    config;
 
   const csrfMw = createCsrfMiddleware(config.baseUrl);
 
@@ -47,6 +48,7 @@ export function createHonoApp(config: HonoAppConfig) {
     adminMiddleware,
     userService,
     snippetService,
+    settingsService,
     devMode: config.devMode,
   });
 
@@ -54,6 +56,7 @@ export function createHonoApp(config: HonoAppConfig) {
     authMiddleware,
     snippetService,
     userService,
+    settingsService,
     buildMrkdwnLabels: config.buildMrkdwnLabels,
     timezone: config.timezone,
     devMode: config.devMode,

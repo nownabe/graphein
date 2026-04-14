@@ -4,7 +4,7 @@ export function AdminTabs({
   current,
   locale,
 }: {
-  current: "users" | "snippet-channels";
+  current: "users" | "snippet-channels" | "settings";
   locale: string;
 }) {
   const tabs = [
@@ -13,6 +13,11 @@ export function AdminTabs({
       key: "snippet-channels" as const,
       href: "/admin/snippet-channels",
       label: t(locale, "admin.tab.snippetChannels"),
+    },
+    {
+      key: "settings" as const,
+      href: "/admin/settings",
+      label: t(locale, "admin.tab.settings"),
     },
   ];
 

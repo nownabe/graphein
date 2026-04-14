@@ -3,22 +3,26 @@ import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
 import type { UserService } from "../users/service";
 import type { SnippetService } from "../snippets/service";
+import type { SettingsService } from "../settings/service";
 import { AdminUsersPage, AdminUsersList } from "../views/pages/admin-users.tsx";
 import {
   AdminSnippetChannelsPage,
   AdminSnippetChannelsList,
 } from "../views/pages/admin-snippet-channels.tsx";
+import { AdminSettingsPage, AdminSettingsForm } from "../views/pages/admin-settings.tsx";
 
 export interface AdminRoutesDeps {
   authMiddleware: MiddlewareHandler;
   adminMiddleware: MiddlewareHandler;
   userService: UserService;
   snippetService: SnippetService;
+  settingsService: SettingsService;
   devMode: boolean;
 }
 
 export function createAdminRoutes(deps: AdminRoutesDeps) {
-  const { authMiddleware, adminMiddleware, userService, snippetService, devMode } = deps;
+  const { authMiddleware, adminMiddleware, userService, snippetService, settingsService, devMode } =
+    deps;
   const adminRoutes = new Hono();
 
   adminRoutes.use("/admin/*", authMiddleware);
@@ -121,6 +125,36 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
     await snippetService.removeSnippetChannel(id);
     const channels = await snippetService.listSnippetChannels();
     return c.html(<AdminSnippetChannelsList channels={channels} locale={locale} />);
+  });
+
+  // Settings management
+  adminRoutes.get("/admin/settings", async (c) => {
+    const { name: displayName } = c.get("jwtPayload");
+    const locale = getLocale(c);
+    const theme = getTheme(c);
+    const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
+    return c.html(
+      <AdminSettingsPage
+        fiscalQuarterStartMonth={fiscalQuarterStartMonth}
+        displayName={displayName}
+        locale={locale}
+        theme={theme}
+        devMode={devMode}
+      />,
+    );
+  });
+
+  adminRoutes.post("/admin/settings/fiscal-quarter", async (c) => {
+    const locale = getLocale(c);
+    const body = await c.req.parseBody();
+    const month = Number(body.fiscal_quarter_start_month);
+    if (month >= 1 && month <= 12) {
+      await settingsService.setFiscalQuarterStartMonth(month);
+    }
+    const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
+    return c.html(
+      <AdminSettingsForm fiscalQuarterStartMonth={fiscalQuarterStartMonth} locale={locale} />,
+    );
   });
 
   return adminRoutes;

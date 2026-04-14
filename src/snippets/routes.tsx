@@ -3,6 +3,7 @@ import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
 import type { SnippetService } from "./service";
 import type { UserService } from "../users/service";
+import type { SettingsService } from "../settings/service";
 import type { BuildMrkdwnLabels } from "../config";
 import {
   computePeriod,
@@ -18,6 +19,7 @@ export interface SnippetRoutesDeps {
   authMiddleware: MiddlewareHandler;
   snippetService: SnippetService;
   userService: UserService;
+  settingsService: SettingsService;
   buildMrkdwnLabels: BuildMrkdwnLabels;
   timezone: string;
   devMode: boolean;
@@ -26,8 +28,15 @@ export interface SnippetRoutesDeps {
 const VALID_PERIODS = new Set<PeriodType>(["day", "week", "month", "quarter", "year"]);
 
 export function createSnippetRoutes(deps: SnippetRoutesDeps) {
-  const { authMiddleware, snippetService, userService, buildMrkdwnLabels, timezone, devMode } =
-    deps;
+  const {
+    authMiddleware,
+    snippetService,
+    userService,
+    settingsService,
+    buildMrkdwnLabels,
+    timezone,
+    devMode,
+  } = deps;
   const snippetRoutes = new Hono();
 
   snippetRoutes.use("*", authMiddleware);
@@ -67,12 +76,20 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     const userParam = c.req.query("user");
     const usergroupParam = c.req.query("usergroup");
 
-    const { start: periodStart, end: periodEnd } = computePeriod(period, anchor, timezone);
+    const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
+
+    const { start: periodStart, end: periodEnd } = computePeriod(
+      period,
+      anchor,
+      timezone,
+      fiscalQuarterStartMonth,
+    );
     const periodLabel = formatPeriodLabel(
       period,
       { start: periodStart, end: periodEnd },
       timezone,
       locale,
+      fiscalQuarterStartMonth,
     );
 
     const prevAnchor = navigatePeriod(period, anchor, timezone, "prev");
