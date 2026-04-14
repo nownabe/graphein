@@ -655,8 +655,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         console.log(`[snippet] Created snippet for message ${messageTs} in channel ${channelId}`);
         try {
           await client.reactions.add({ channel: channelId, timestamp: messageTs, name: "memo" });
-        } catch {
-          // Non-critical: reaction may fail if bot lacks permissions
+        } catch (err) {
+          console.warn(`[snippet] Failed to add reaction to ${channelId}/${messageTs}:`, err);
         }
       } else {
         console.debug(
