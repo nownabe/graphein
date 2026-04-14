@@ -28,8 +28,8 @@ interface SnippetsPageProps {
   mentionedUsers: FilterOption[];
   mentionedUsergroups: FilterOption[];
   activePostedBy?: string;
-  activeMentionedUser?: string;
-  activeMentionedUsergroup?: string;
+  activeMentionedUsers: string[];
+  activeMentionedUsergroups: string[];
   page: number;
   totalPages: number;
   mrkdwnLabels?: MrkdwnOptions;
@@ -110,6 +110,73 @@ function FilterSelect({
   );
 }
 
+function MultiSelectFilter({
+  name,
+  label,
+  options,
+  activeValues,
+  searchPlaceholder,
+}: {
+  name: string;
+  label: string;
+  options: FilterOption[];
+  activeValues: string[];
+  searchPlaceholder: string;
+}) {
+  if (options.length === 0) return null;
+
+  const activeSet = new Set(activeValues);
+  const selectedOptions = options.filter((o) => activeSet.has(o.id));
+  const instanceId = `ms-${name}`;
+
+  // Build the init script for the multi-select.
+  // It wires up fuzzy search, toggling, and URL sync.
+  const initScript = `(function(){var w=document.getElementById('${instanceId}');if(!w)return;var input=w.querySelector('.ms-input');var list=w.querySelector('.ms-list');var sel=JSON.parse(w.dataset.selected||'[]');function fuzzy(q,t){q=q.toLowerCase();t=t.toLowerCase();var qi=0;for(var ti=0;ti<t.length&&qi<q.length;ti++){if(t[ti]===q[qi])qi++}return qi===q.length}function render(){var q=input.value;list.innerHTML='';var opts=JSON.parse(w.dataset.options||'[]');opts.forEach(function(o){if(sel.indexOf(o.id)!==-1)return;if(q&&!fuzzy(q,o.label))return;var li=document.createElement('button');li.type='button';li.className='w-full text-left px-2.5 py-1.5 text-sm text-ink hover:bg-surface-hover cursor-pointer';li.textContent=o.label;li.onmousedown=function(e){e.preventDefault();sel.push(o.id);input.value='';sync();render()};list.appendChild(li)})}function sync(){var url=new URL(window.location.href);if(sel.length>0){url.searchParams.set('${name}',sel.join(','))}else{url.searchParams.delete('${name}')}url.searchParams.delete('page');htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});history.pushState(null,'',url.pathname+url.search)}input.addEventListener('input',render);input.addEventListener('focus',function(){list.style.display='block';render()});document.addEventListener('click',function(e){if(!w.contains(e.target)){list.style.display='none'}});w.querySelectorAll('.ms-remove').forEach(function(btn){btn.addEventListener('click',function(){var id=btn.dataset.id;sel=sel.filter(function(s){return s!==id});sync()})});render()})()`;
+
+  return (
+    <div class="flex flex-col gap-1">
+      <label class="text-xs text-muted font-medium">{label}</label>
+      <div
+        id={instanceId}
+        class="relative"
+        data-selected={JSON.stringify(activeValues)}
+        data-options={JSON.stringify(options.map((o) => ({ id: o.id, label: o.label })))}
+      >
+        {selectedOptions.length > 0 && (
+          <div class="flex flex-wrap gap-1 mb-1">
+            {selectedOptions.map((opt) => (
+              <span
+                key={opt.id}
+                class="inline-flex items-center gap-1 px-2 py-0.5 bg-surface border border-edge rounded-full text-xs text-ink"
+              >
+                {opt.label}
+                <button
+                  type="button"
+                  class="ms-remove text-muted hover:text-danger cursor-pointer"
+                  data-id={opt.id}
+                >
+                  &times;
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+        <input
+          type="text"
+          placeholder={searchPlaceholder}
+          class="ms-input w-full bg-surface border border-edge rounded-[var(--radius-sm)] px-2.5 py-1.5 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-accent"
+          autocomplete="off"
+        />
+        <div
+          class="ms-list absolute z-20 left-0 right-0 top-full mt-1 bg-surface border border-edge rounded-[var(--radius-sm)] shadow-lg max-h-48 overflow-y-auto"
+          style="display:none"
+        />
+        <script dangerouslySetInnerHTML={{ __html: initScript }} />
+      </div>
+    </div>
+  );
+}
+
 export function SnippetsContentPartial({
   snippets: snippetList,
   total,
@@ -123,8 +190,8 @@ export function SnippetsContentPartial({
   mentionedUsers,
   mentionedUsergroups,
   activePostedBy,
-  activeMentionedUser,
-  activeMentionedUsergroup,
+  activeMentionedUsers,
+  activeMentionedUsergroups,
   page,
   totalPages,
   mrkdwnLabels,
@@ -136,8 +203,9 @@ export function SnippetsContentPartial({
     params.set("period", p);
     params.set("date", d);
     if (activePostedBy) params.set("postedBy", activePostedBy);
-    if (activeMentionedUser) params.set("user", activeMentionedUser);
-    if (activeMentionedUsergroup) params.set("usergroup", activeMentionedUsergroup);
+    if (activeMentionedUsers.length > 0) params.set("user", activeMentionedUsers.join(","));
+    if (activeMentionedUsergroups.length > 0)
+      params.set("usergroup", activeMentionedUsergroups.join(","));
     return `/snippets?${params.toString()}`;
   }
 
@@ -188,19 +256,19 @@ export function SnippetsContentPartial({
           activeValue={activePostedBy}
           allLabel={t(locale, "snippets.filter.all")}
         />
-        <FilterSelect
+        <MultiSelectFilter
           name="user"
           label={t(locale, "snippets.filter.mentionedUser")}
           options={mentionedUsers}
-          activeValue={activeMentionedUser}
-          allLabel={t(locale, "snippets.filter.all")}
+          activeValues={activeMentionedUsers}
+          searchPlaceholder={t(locale, "owners.searchPlaceholder")}
         />
-        <FilterSelect
+        <MultiSelectFilter
           name="usergroup"
           label={t(locale, "snippets.filter.mentionedUsergroup")}
           options={mentionedUsergroups}
-          activeValue={activeMentionedUsergroup}
-          allLabel={t(locale, "snippets.filter.all")}
+          activeValues={activeMentionedUsergroups}
+          searchPlaceholder={t(locale, "owners.searchPlaceholder")}
         />
       </div>
 
@@ -227,8 +295,9 @@ export function SnippetsContentPartial({
             params.set("period", period);
             params.set("date", currentDate);
             if (activePostedBy) params.set("postedBy", activePostedBy);
-            if (activeMentionedUser) params.set("user", activeMentionedUser);
-            if (activeMentionedUsergroup) params.set("usergroup", activeMentionedUsergroup);
+            if (activeMentionedUsers.length > 0) params.set("user", activeMentionedUsers.join(","));
+            if (activeMentionedUsergroups.length > 0)
+              params.set("usergroup", activeMentionedUsergroups.join(","));
             if (p > 1) params.set("page", String(p));
             const href = `/snippets?${params.toString()}`;
             return (

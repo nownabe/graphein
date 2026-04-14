@@ -1,4 +1,4 @@
-import { eq, and, desc, gte, lt, sql } from "drizzle-orm";
+import { eq, and, desc, gte, lt, sql, inArray } from "drizzle-orm";
 import type { Database } from "../db/client";
 import {
   snippets,
@@ -27,8 +27,8 @@ export interface SnippetWithAuthor {
 }
 
 export interface ListSnippetsFilters {
-  mentionedUserId?: string;
-  mentionedUsergroupId?: string;
+  mentionedUserIds?: string[];
+  mentionedUsergroupIds?: string[];
   postedById?: string;
   periodStart?: Date;
   periodEnd?: Date;
@@ -98,18 +98,18 @@ export function createSnippetService(db: Database) {
     }
 
     // For mention filters, we need subqueries
-    if (filters.mentionedUserId) {
+    if (filters.mentionedUserIds && filters.mentionedUserIds.length > 0) {
       const mentionedSnippetIds = db
         .select({ snippetId: snippetMentionedUsers.snippetId })
         .from(snippetMentionedUsers)
-        .where(eq(snippetMentionedUsers.userId, filters.mentionedUserId));
+        .where(inArray(snippetMentionedUsers.userId, filters.mentionedUserIds));
       conditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
     }
-    if (filters.mentionedUsergroupId) {
+    if (filters.mentionedUsergroupIds && filters.mentionedUsergroupIds.length > 0) {
       const mentionedSnippetIds = db
         .select({ snippetId: snippetMentionedUsergroups.snippetId })
         .from(snippetMentionedUsergroups)
-        .where(eq(snippetMentionedUsergroups.usergroupId, filters.mentionedUsergroupId));
+        .where(inArray(snippetMentionedUsergroups.usergroupId, filters.mentionedUsergroupIds));
       conditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
     }
 

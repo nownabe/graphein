@@ -78,6 +78,9 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     const userParam = c.req.query("user");
     const usergroupParam = c.req.query("usergroup");
 
+    const userIds = userParam ? userParam.split(",").filter(Boolean) : [];
+    const usergroupIds = usergroupParam ? usergroupParam.split(",").filter(Boolean) : [];
+
     const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
 
     const { start: periodStart, end: periodEnd } = computePeriod(
@@ -102,8 +105,8 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
 
     const { snippets: snippetList, total } = await snippetService.listSnippets({
       postedById: postedByParam || undefined,
-      mentionedUserId: userParam || undefined,
-      mentionedUsergroupId: usergroupParam || undefined,
+      mentionedUserIds: userIds.length > 0 ? userIds : undefined,
+      mentionedUsergroupIds: usergroupIds.length > 0 ? usergroupIds : undefined,
       periodStart,
       periodEnd,
       limit: perPage,
@@ -143,8 +146,8 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       mentionedUsers: mentionedUserOptions,
       mentionedUsergroups: mentionedUsergroupOptions,
       activePostedBy: postedByParam || undefined,
-      activeMentionedUser: userParam || undefined,
-      activeMentionedUsergroup: usergroupParam || undefined,
+      activeMentionedUsers: userIds,
+      activeMentionedUsergroups: usergroupIds,
       page,
       totalPages,
       mrkdwnLabels,
