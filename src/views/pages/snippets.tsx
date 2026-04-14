@@ -19,6 +19,7 @@ interface SnippetsPageProps {
   theme?: string;
   isAdmin?: boolean;
   devMode?: boolean;
+  currentUserId: string;
   period: PeriodType;
   periodLabel: string;
   prevDate: string;
@@ -27,6 +28,7 @@ interface SnippetsPageProps {
   posters: FilterOption[];
   mentionedUsers: FilterOption[];
   mentionedUsergroups: FilterOption[];
+  currentUserUsergroups: FilterOption[];
   activePostedBy?: string;
   activeMentionedUser?: string;
   activeMentionedUsergroup?: string;
@@ -114,6 +116,7 @@ export function SnippetsContentPartial({
   snippets: snippetList,
   total,
   locale,
+  currentUserId,
   period,
   periodLabel,
   prevDate,
@@ -122,6 +125,7 @@ export function SnippetsContentPartial({
   posters,
   mentionedUsers,
   mentionedUsergroups,
+  currentUserUsergroups,
   activePostedBy,
   activeMentionedUser,
   activeMentionedUsergroup,
@@ -180,6 +184,70 @@ export function SnippetsContentPartial({
             <path d="M5.646 3.354a.5.5 0 01.708-.708l5 5a.5.5 0 010 .708l-5 5a.5.5 0 01-.708-.708L10.293 8 5.646 3.354z" />
           </svg>
         </a>
+      </div>
+
+      <div class="flex flex-wrap gap-2 mb-4">
+        {(() => {
+          const isMyPosts = activePostedBy === currentUserId;
+          const myPostsUrl = (() => {
+            const params = new URLSearchParams();
+            params.set("period", period);
+            params.set("date", currentDate);
+            if (!isMyPosts) {
+              params.set("postedBy", currentUserId);
+            }
+            if (activeMentionedUser) params.set("user", activeMentionedUser);
+            if (activeMentionedUsergroup) params.set("usergroup", activeMentionedUsergroup);
+            return `/snippets?${params.toString()}`;
+          })();
+          return (
+            <a
+              href={myPostsUrl}
+              hx-get={myPostsUrl}
+              hx-target="#snippets-content"
+              hx-swap="innerHTML"
+              hx-push-url={myPostsUrl}
+              class={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+                isMyPosts
+                  ? "bg-accent text-page"
+                  : "bg-surface border border-edge text-muted hover:text-ink"
+              }`}
+            >
+              {t(locale, "snippets.filter.myPosts")}
+            </a>
+          );
+        })()}
+        {currentUserUsergroups.map((g) => {
+          const isActive = activeMentionedUsergroup === g.id;
+          const groupUrl = (() => {
+            const params = new URLSearchParams();
+            params.set("period", period);
+            params.set("date", currentDate);
+            if (activePostedBy) params.set("postedBy", activePostedBy);
+            if (activeMentionedUser) params.set("user", activeMentionedUser);
+            if (!isActive) {
+              params.set("usergroup", g.id);
+            }
+            return `/snippets?${params.toString()}`;
+          })();
+          return (
+            <a
+              key={g.id}
+              href={groupUrl}
+              hx-get={groupUrl}
+              hx-target="#snippets-content"
+              hx-swap="innerHTML"
+              hx-push-url={groupUrl}
+              class={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+                isActive
+                  ? "bg-accent text-page"
+                  : "bg-surface border border-edge text-muted hover:text-ink"
+              }`}
+            >
+              {g.label}
+            </a>
+          );
+        })}
       </div>
 
       <div class="flex flex-wrap gap-4 mb-6">

@@ -248,6 +248,24 @@ export function createSnippetService(db: Database) {
     return !!channel;
   }
 
+  async function getUsergroupsForUser(userId: string) {
+    const userSnippetIds = db
+      .select({ id: snippets.id })
+      .from(snippets)
+      .where(eq(snippets.postedById, userId));
+    const rows = await db
+      .selectDistinct({
+        id: usergroups.id,
+        name: usergroups.name,
+        handle: usergroups.handle,
+      })
+      .from(snippetMentionedUsergroups)
+      .innerJoin(usergroups, eq(snippetMentionedUsergroups.usergroupId, usergroups.id))
+      .where(sql`${snippetMentionedUsergroups.snippetId} IN (${userSnippetIds})`)
+      .orderBy(usergroups.name);
+    return rows;
+  }
+
   async function getDistinctMentionedUsergroups() {
     const rows = await db
       .selectDistinct({
@@ -310,6 +328,7 @@ export function createSnippetService(db: Database) {
     isSnippetChannel,
     getDistinctMentionedUsergroups,
     getDistinctPosters,
+    getUsergroupsForUser,
     findOrCreateUsergroup,
     findSnippetBySlackMessage,
   };

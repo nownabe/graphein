@@ -43,7 +43,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
   }
 
   snippetRoutes.get("/snippets", async (c) => {
-    const { name: displayName } = c.get("jwtPayload");
+    const { sub: currentUserId, name: displayName } = c.get("jwtPayload");
     const isAdmin = c.get("isAdmin");
     const locale = getLocale(c);
     const theme = getTheme(c);
@@ -96,9 +96,10 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     const mrkdwnLabels = await buildMrkdwnLabels(snippetList.map((s) => s.content));
 
     // Load filter options
-    const [posters, mentionedUsergroups] = await Promise.all([
+    const [posters, mentionedUsergroups, currentUserUsergroups] = await Promise.all([
       snippetService.getDistinctPosters(),
       snippetService.getDistinctMentionedUsergroups(),
+      snippetService.getUsergroupsForUser(currentUserId),
     ]);
 
     // For mentioned users filter, use all users (they may be mentioned)
@@ -111,10 +112,16 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       label: g.handle ? `@${g.handle}` : g.name,
     }));
 
+    const currentUserUsergroupOptions = currentUserUsergroups.map((g) => ({
+      id: g.id,
+      label: g.handle ? `@${g.handle}` : g.name,
+    }));
+
     const contentProps = {
       snippets: snippetList,
       total,
       locale,
+      currentUserId,
       period,
       periodLabel,
       prevDate,
@@ -123,6 +130,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       posters: posterOptions,
       mentionedUsers: mentionedUserOptions,
       mentionedUsergroups: mentionedUsergroupOptions,
+      currentUserUsergroups: currentUserUsergroupOptions,
       activePostedBy: postedByParam || undefined,
       activeMentionedUser: userParam || undefined,
       activeMentionedUsergroup: usergroupParam || undefined,
