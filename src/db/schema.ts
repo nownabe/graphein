@@ -6,7 +6,7 @@ import {
   boolean,
   primaryKey,
   index,
-  uniqueIndex,
+  unique,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -103,7 +103,7 @@ export const snippets = pgTable(
   },
   (t) => [
     index("snippets_posted_at_idx").on(t.postedAt),
-    uniqueIndex("snippets_slack_message_unique").on(t.slackChannelId, t.slackMessageTs),
+    unique("snippets_slack_message_unique").on(t.slackChannelId, t.slackMessageTs),
   ],
 );
 
