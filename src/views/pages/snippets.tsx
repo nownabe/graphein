@@ -100,8 +100,30 @@ function SingleSelectFilter({
   const displayLabel = selectedOption ? selectedOption.label : allLabel;
   const hasSelection = !!activeValue;
 
-  const initScript = `(function(){var w=document.getElementById('${instanceId}');if(!w)return;var btn=w.querySelector('.ss-trigger');var pop=w.querySelector('.ss-popover');var list=w.querySelector('.ss-list');var open=false;function close(){open=false;pop.style.display='none';btn.setAttribute('aria-expanded','false')}function toggle(){if(!open){document.dispatchEvent(new CustomEvent('snippetFilterClose',{detail:{except:'${instanceId}'}}))}open=!open;pop.style.display=open?'block':'none';btn.setAttribute('aria-expanded',String(open))}function select(v){var url=new window.URL(window.location.href);if(v){url.searchParams.set('${name}',v)}else{url.searchParams.delete('${name}')}url.searchParams.delete('page');htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});history.pushState(null,'',url.pathname+url.search)}btn.addEventListener('click',function(e){e.stopPropagation();toggle()});list.addEventListener('click',function(e){var b=e.target.closest('button');if(b){select(b.dataset.value||'')}});document.addEventListener('click',function(e){if(open&&!w.contains(e.target)){close()}});document.addEventListener('keydown',function(e){if(e.key==='Escape'&&open){close();btn.focus()}});document.addEventListener('snippetFilterClose',function(e){if(e.detail&&e.detail.except!=='${instanceId}'&&open){close()}})})()`;
-
+  const initScript = [
+    `(function(){`,
+    `var w=document.getElementById('${instanceId}');if(!w)return;`,
+    `var btn=w.querySelector('.ss-trigger');`,
+    `var pop=w.querySelector('.ss-popover');`,
+    `var list=w.querySelector('.ss-list');`,
+    `var open=false;`,
+    `function close(){open=false;pop.style.display='none';btn.setAttribute('aria-expanded','false')}`,
+    `function toggle(){`,
+    `if(!open){document.dispatchEvent(new CustomEvent('snippetFilterClose',{detail:{except:'${instanceId}'}}))}`,
+    `open=!open;pop.style.display=open?'block':'none';btn.setAttribute('aria-expanded',String(open))}`,
+    `function select(v){var url=new window.URL(window.location.href);`,
+    `if(v){url.searchParams.set('${name}',v)}else{url.searchParams.delete('${name}')}`,
+    `url.searchParams.delete('page');`,
+    `htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});`,
+    `history.pushState(null,'',url.pathname+url.search)}`,
+    `btn.addEventListener('click',function(e){e.stopPropagation();toggle()});`,
+    `list.addEventListener('click',function(e){var b=e.target.closest('button');if(b){select(b.dataset.value||'')}});`,
+    `document.addEventListener('click',function(e){if(open&&!w.contains(e.target)){close()}});`,
+    `document.addEventListener('keydown',function(e){if(e.key==='Escape'&&open){close();btn.focus()}});`,
+    `document.addEventListener('snippetFilterClose',function(e){`,
+    `if(e.detail&&e.detail.except!=='${instanceId}'&&open){close()}})`,
+    `})()`,
+  ].join("");
   return (
     <div class="flex flex-col gap-1.5">
       <span class="text-xs font-semibold text-secondary uppercase tracking-wider">{label}</span>
@@ -116,16 +138,44 @@ function SingleSelectFilter({
           <span class={`truncate flex-1 text-left ${hasSelection ? "text-ink" : "text-muted"}`}>
             {displayLabel}
           </span>
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted flex-shrink-0">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="text-muted flex-shrink-0"
+          >
             <path d="M3 4.5L6 7.5L9 4.5" />
           </svg>
         </button>
-        <div class="ss-popover absolute z-30 left-0 top-full mt-1 w-56 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden" style="display:none;box-shadow:0 8px 24px rgba(0,0,0,0.15)">
+        <div
+          class="ss-popover absolute z-30 left-0 top-full mt-1 w-56 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden"
+          style="display:none;box-shadow:0 8px 24px rgba(0,0,0,0.15)"
+        >
           <div class="ss-list max-h-48 overflow-y-auto py-1">
-            <button type="button" data-value="" class={`w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors ${!hasSelection ? "text-ink font-medium" : "text-secondary"}`}>
+            <button
+              type="button"
+              data-value=""
+              class={`w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors ${!hasSelection ? "text-ink font-medium" : "text-secondary"}`}
+            >
               <span class="w-4 flex-shrink-0 text-accent">
                 {!hasSelection && (
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" /></svg>
+                  <svg
+                    width="14"
+                    height="14"
+                    viewBox="0 0 14 14"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M2.5 7.5L5.5 10.5L11.5 3.5" />
+                  </svg>
                 )}
               </span>
               <span>{allLabel}</span>
@@ -133,10 +183,26 @@ function SingleSelectFilter({
             {options.map((opt) => {
               const isSelected = opt.id === activeValue;
               return (
-                <button key={opt.id} type="button" data-value={opt.id} class={`w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors ${isSelected ? "text-ink font-medium" : "text-secondary"}`}>
+                <button
+                  key={opt.id}
+                  type="button"
+                  data-value={opt.id}
+                  class={`w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors ${isSelected ? "text-ink font-medium" : "text-secondary"}`}
+                >
                   <span class="w-4 flex-shrink-0 text-accent">
                     {isSelected && (
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L5.5 10.5L11.5 3.5" /></svg>
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
+                        <path d="M2.5 7.5L5.5 10.5L11.5 3.5" />
+                      </svg>
                     )}
                   </span>
                   <span>{opt.label}</span>
@@ -187,13 +253,65 @@ function MultiSelectFilter({
           .join(", ");
 
   const noResultsEscaped = noResultsLabel.replace(/'/g, "\\'");
-  const okLabelEscaped = okLabel.replace(/'/g, "\\'");
-  const initScript = `(function(){var w=document.getElementById('${instanceId}');if(!w)return;var btn=w.querySelector('.ms-trigger');var pop=w.querySelector('.ms-popover');var input=w.querySelector('.ms-search');var list=w.querySelector('.ms-list');var okBtn=w.querySelector('.ms-ok');var sel=JSON.parse(w.dataset.selected||'[]');var open=false;function fuzzy(q,t){q=q.toLowerCase();t=t.toLowerCase();var qi=0;for(var ti=0;ti<t.length&&qi<q.length;ti++){if(t[ti]===q[qi])qi++}return qi===q.length}function close(){open=false;pop.style.display='none';btn.setAttribute('aria-expanded','false')}function toggle(){if(!open){document.dispatchEvent(new CustomEvent('snippetFilterClose',{detail:{except:'${instanceId}'}}))}open=!open;pop.style.display=open?'block':'none';btn.setAttribute('aria-expanded',String(open));if(open){input.value='';render();input.focus()}}function render(){var q=input.value;list.innerHTML='';var opts=JSON.parse(w.dataset.options||'[]');var count=0;opts.forEach(function(o){if(q&&!fuzzy(q,o.label))return;count++;var checked=sel.indexOf(o.id)!==-1;var item=document.createElement('button');item.type='button';item.className='w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors';var check=document.createElement('span');check.className='w-4 flex-shrink-0 text-accent';check.innerHTML=checked?'<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L5.5 10.5L11.5 3.5"/></svg>':'';var span=document.createElement('span');span.className=checked?'text-ink font-medium':'text-secondary';span.textContent=o.label;item.appendChild(check);item.appendChild(span);item.addEventListener('click',function(ev){ev.stopPropagation();if(checked){sel=sel.filter(function(s){return s!==o.id})}else{sel.push(o.id)}render()});list.appendChild(item)});if(count===0&&q){var empty=document.createElement('div');empty.className='px-3 py-2 text-sm text-muted';empty.textContent='${noResultsEscaped}';list.appendChild(empty)}}function sync(){var url=new window.URL(window.location.href);if(sel.length>0){url.searchParams.set('${name}',sel.join(','))}else{url.searchParams.delete('${name}')}url.searchParams.delete('page');htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});history.pushState(null,'',url.pathname+url.search)}btn.addEventListener('click',function(e){e.stopPropagation();toggle()});okBtn.addEventListener('click',function(e){e.stopPropagation();sync()});input.addEventListener('input',render);document.addEventListener('click',function(e){if(open&&!w.contains(e.target)){close()}});document.addEventListener('keydown',function(e){if(e.key==='Escape'&&open){close();btn.focus()}});document.addEventListener('snippetFilterClose',function(e){if(e.detail&&e.detail.except!=='${instanceId}'&&open){close()}})})()`;
-
+  const initScript = [
+    `(function(){`,
+    `var w=document.getElementById('${instanceId}');if(!w)return;`,
+    `var btn=w.querySelector('.ms-trigger');`,
+    `var pop=w.querySelector('.ms-popover');`,
+    `var input=w.querySelector('.ms-search');`,
+    `var list=w.querySelector('.ms-list');`,
+    `var okBtn=w.querySelector('.ms-ok');`,
+    `var sel=JSON.parse(w.dataset.selected||'[]');`,
+    `var open=false;`,
+    `function fuzzy(q,t){q=q.toLowerCase();t=t.toLowerCase();`,
+    `var qi=0;for(var ti=0;ti<t.length&&qi<q.length;ti++){if(t[ti]===q[qi])qi++}return qi===q.length}`,
+    `function close(){open=false;pop.style.display='none';btn.setAttribute('aria-expanded','false')}`,
+    `function toggle(){`,
+    `if(!open){document.dispatchEvent(new CustomEvent('snippetFilterClose',{detail:{except:'${instanceId}'}}))}`,
+    `open=!open;pop.style.display=open?'block':'none';btn.setAttribute('aria-expanded',String(open));`,
+    `if(open){input.value='';render();input.focus()}}`,
+    `function render(){var q=input.value;list.innerHTML='';`,
+    `var opts=JSON.parse(w.dataset.options||'[]');var count=0;`,
+    `opts.forEach(function(o){if(q&&!fuzzy(q,o.label))return;count++;`,
+    `var checked=sel.indexOf(o.id)!==-1;`,
+    `var item=document.createElement('button');item.type='button';`,
+    `item.className='w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors';`,
+    `var check=document.createElement('span');check.className='w-4 flex-shrink-0 text-accent';`,
+    `check.innerHTML=checked?'<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"`,
+    ` stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L5.5 10.5L11.5 3.5"/></svg>':'';`,
+    `var span=document.createElement('span');`,
+    `span.className=checked?'text-ink font-medium':'text-secondary';`,
+    `span.textContent=o.label;item.appendChild(check);item.appendChild(span);`,
+    `item.addEventListener('click',function(ev){ev.stopPropagation();`,
+    `if(checked){sel=sel.filter(function(s){return s!==o.id})}else{sel.push(o.id)}render()});`,
+    `list.appendChild(item)});`,
+    `if(count===0&&q){var empty=document.createElement('div');`,
+    `empty.className='px-3 py-2 text-sm text-muted';`,
+    `empty.textContent='${noResultsEscaped}';list.appendChild(empty)}}`,
+    `function sync(){var url=new window.URL(window.location.href);`,
+    `if(sel.length>0){url.searchParams.set('${name}',sel.join(','))}`,
+    `else{url.searchParams.delete('${name}')}`,
+    `url.searchParams.delete('page');`,
+    `htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});`,
+    `history.pushState(null,'',url.pathname+url.search)}`,
+    `btn.addEventListener('click',function(e){e.stopPropagation();toggle()});`,
+    `okBtn.addEventListener('click',function(e){e.stopPropagation();sync()});`,
+    `input.addEventListener('input',render);`,
+    `document.addEventListener('click',function(e){if(open&&!w.contains(e.target)){close()}});`,
+    `document.addEventListener('keydown',function(e){if(e.key==='Escape'&&open){close();btn.focus()}});`,
+    `document.addEventListener('snippetFilterClose',function(e){`,
+    `if(e.detail&&e.detail.except!=='${instanceId}'&&open){close()}})`,
+    `})()`,
+  ].join("");
   return (
     <div class="flex flex-col gap-1.5">
       <span class="text-xs font-semibold text-secondary uppercase tracking-wider">{label}</span>
-      <div id={instanceId} class="relative" data-selected={JSON.stringify(activeValues)} data-options={JSON.stringify(options.map((o) => ({ id: o.id, label: o.label })))}>
+      <div
+        id={instanceId}
+        class="relative"
+        data-selected={JSON.stringify(activeValues)}
+        data-options={JSON.stringify(options.map((o) => ({ id: o.id, label: o.label })))}
+      >
         <button
           type="button"
           aria-haspopup="listbox"
@@ -201,23 +319,50 @@ function MultiSelectFilter({
           class="ms-trigger flex items-center gap-1.5 bg-page border border-edge rounded-[var(--radius-sm)] pl-2.5 pr-2 py-2 text-sm cursor-pointer hover:border-muted transition-colors h-9"
           style="min-width:140px"
         >
-          <span class={`truncate flex-1 text-left ${selectedCount > 0 ? "text-ink" : "text-muted"}`}>
+          <span
+            class={`truncate flex-1 text-left ${selectedCount > 0 ? "text-ink" : "text-muted"}`}
+          >
             {selectedCount > 0 ? triggerLabel : searchPlaceholder}
           </span>
           {selectedCount > 0 && (
-            <span class="flex items-center justify-center w-5 h-5 rounded-full text-xs font-semibold text-page bg-accent">{selectedCount}</span>
+            <span class="flex items-center justify-center w-5 h-5 rounded-full text-xs font-semibold text-page bg-accent">
+              {selectedCount}
+            </span>
           )}
-          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted flex-shrink-0">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 12 12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="text-muted flex-shrink-0"
+          >
             <path d="M3 4.5L6 7.5L9 4.5" />
           </svg>
         </button>
-        <div class="ms-popover absolute z-30 left-0 top-full mt-1 w-64 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden" style="display:none;box-shadow:0 8px 24px rgba(0,0,0,0.15)">
+        <div
+          class="ms-popover absolute z-30 left-0 top-full mt-1 w-64 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden"
+          style="display:none;box-shadow:0 8px 24px rgba(0,0,0,0.15)"
+        >
           <div class="p-2 border-b border-edge">
-            <input type="text" placeholder={searchPlaceholder} class="ms-search w-full bg-page border border-edge rounded-[6px] px-2.5 py-1.5 text-sm text-ink placeholder:text-muted" autocomplete="off" />
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              class="ms-search w-full bg-page border border-edge rounded-[6px] px-2.5 py-1.5 text-sm text-ink placeholder:text-muted"
+              autocomplete="off"
+            />
           </div>
           <div class="ms-list max-h-48 overflow-y-auto" />
           <div class="p-2 border-t border-edge">
-            <button type="button" class="ms-ok w-full bg-accent text-page font-semibold text-sm py-1.5 rounded-[6px] cursor-pointer hover:opacity-90 transition-opacity">{okLabel}</button>
+            <button
+              type="button"
+              class="ms-ok w-full bg-accent text-page font-semibold text-sm py-1.5 rounded-[6px] cursor-pointer hover:opacity-90 transition-opacity"
+            >
+              {okLabel}
+            </button>
           </div>
         </div>
         <script dangerouslySetInnerHTML={{ __html: initScript }} />
@@ -279,7 +424,9 @@ export function SnippetsContentPartial({
               <path d="M10.354 3.354a.5.5 0 00-.708-.708l-5 5a.5.5 0 000 .708l5 5a.5.5 0 00.708-.708L5.707 8l4.647-4.646z" />
             </svg>
           </a>
-          <span class="text-sm font-semibold text-ink text-center" style="min-width:140px">{periodLabel}</span>
+          <span class="text-sm font-semibold text-ink text-center" style="min-width:140px">
+            {periodLabel}
+          </span>
           <a
             href={nextUrl}
             hx-get={nextUrl}
