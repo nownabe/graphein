@@ -97,7 +97,7 @@ function FilterSelect({
       <select
         name={name}
         class="bg-surface border border-edge rounded-[var(--radius-sm)] px-2.5 py-1.5 text-sm text-ink cursor-pointer"
-        onchange={`(function(el){var v=el.value;var url=new URL(window.location.href);if(v){url.searchParams.set('${name}',v)}else{url.searchParams.delete('${name}')}url.searchParams.delete('page');htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});history.pushState(null,'',url.pathname+url.search)})(this)`}
+        onchange={`(function(el){var v=el.value;var url=new window.URL(window.location.href);if(v){url.searchParams.set('${name}',v)}else{url.searchParams.delete('${name}')}url.searchParams.delete('page');htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});history.pushState(null,'',url.pathname+url.search)})(this)`}
       >
         <option value="">{allLabel}</option>
         {options.map((opt) => (
@@ -135,11 +135,9 @@ export function SnippetsContentPartial({
     const d = overrides.date ?? currentDate;
     params.set("period", p);
     params.set("date", d);
-    if (!overrides.period && !overrides.date) {
-      if (activePostedBy) params.set("postedBy", activePostedBy);
-      if (activeMentionedUser) params.set("user", activeMentionedUser);
-      if (activeMentionedUsergroup) params.set("usergroup", activeMentionedUsergroup);
-    }
+    if (activePostedBy) params.set("postedBy", activePostedBy);
+    if (activeMentionedUser) params.set("user", activeMentionedUser);
+    if (activeMentionedUsergroup) params.set("usergroup", activeMentionedUsergroup);
     return `/snippets?${params.toString()}`;
   }
 
