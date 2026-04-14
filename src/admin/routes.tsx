@@ -4,6 +4,7 @@ import type { MiddlewareHandler } from "hono";
 import type { UserService } from "../users/service";
 import type { SnippetService } from "../snippets/service";
 import type { SettingsService } from "../settings/service";
+import type { ResolveChannelName } from "../config";
 import { AdminUsersPage, AdminUsersList } from "../views/pages/admin-users.tsx";
 import {
   AdminSnippetChannelsPage,
@@ -17,12 +18,20 @@ export interface AdminRoutesDeps {
   userService: UserService;
   snippetService: SnippetService;
   settingsService: SettingsService;
+  resolveChannelName: ResolveChannelName;
   devMode: boolean;
 }
 
 export function createAdminRoutes(deps: AdminRoutesDeps) {
-  const { authMiddleware, adminMiddleware, userService, snippetService, settingsService, devMode } =
-    deps;
+  const {
+    authMiddleware,
+    adminMiddleware,
+    userService,
+    snippetService,
+    settingsService,
+    resolveChannelName,
+    devMode,
+  } = deps;
   const adminRoutes = new Hono();
 
   adminRoutes.use("/admin/*", authMiddleware);
@@ -90,15 +99,30 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
     return c.html(<AdminUsersList users={users} currentUserId={userId} locale={locale} />);
   });
 
+  async function resolveChannelNames(
+    channels: { slackChannelId: string }[],
+  ): Promise<Record<string, string>> {
+    const names: Record<string, string> = {};
+    await Promise.all(
+      channels.map(async (ch) => {
+        const name = await resolveChannelName(ch.slackChannelId);
+        if (name) names[ch.slackChannelId] = name;
+      }),
+    );
+    return names;
+  }
+
   // Snippet channel management
   adminRoutes.get("/admin/snippet-channels", async (c) => {
     const { name: displayName } = c.get("jwtPayload");
     const locale = getLocale(c);
     const theme = getTheme(c);
     const channels = await snippetService.listSnippetChannels();
+    const channelNames = await resolveChannelNames(channels);
     return c.html(
       <AdminSnippetChannelsPage
         channels={channels}
+        channelNames={channelNames}
         displayName={displayName}
         locale={locale}
         theme={theme}
@@ -115,7 +139,10 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
 
     await snippetService.addSnippetChannel(slackChannelId);
     const channels = await snippetService.listSnippetChannels();
-    return c.html(<AdminSnippetChannelsList channels={channels} locale={locale} />);
+    const channelNames = await resolveChannelNames(channels);
+    return c.html(
+      <AdminSnippetChannelsList channels={channels} channelNames={channelNames} locale={locale} />,
+    );
   });
 
   adminRoutes.delete("/admin/snippet-channels/:id", async (c) => {
@@ -124,7 +151,10 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
 
     await snippetService.removeSnippetChannel(id);
     const channels = await snippetService.listSnippetChannels();
-    return c.html(<AdminSnippetChannelsList channels={channels} locale={locale} />);
+    const channelNames = await resolveChannelNames(channels);
+    return c.html(
+      <AdminSnippetChannelsList channels={channels} channelNames={channelNames} locale={locale} />,
+    );
   });
 
   // Settings management

@@ -8,6 +8,7 @@ import { createSessionHelpers } from "./auth/session";
 import { createGeminiClient } from "./llm/gemini";
 import { createBolt } from "./slack/bolt";
 import { createLabelBuilder } from "./slack/labels";
+import { createSlackLabelResolver } from "./slack/helpers";
 
 function requireEnv(name: string): string {
   const value = process.env[name];
@@ -44,6 +45,7 @@ const { boltApp, receiver } = createBolt(
   { userService, taskService, snippetService, geminiClient },
 );
 const buildMrkdwnLabels = createLabelBuilder(boltApp, userService);
+const slackLabelResolver = createSlackLabelResolver(boltApp.client);
 
 // Create Hono app
 const app = createHonoApp({
@@ -58,6 +60,7 @@ const app = createHonoApp({
   snippetService,
   settingsService,
   buildMrkdwnLabels,
+  resolveChannelName: slackLabelResolver.channel.bind(slackLabelResolver),
   slackReceiver: receiver ?? undefined,
   timezone,
 });

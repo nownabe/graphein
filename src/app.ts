@@ -49,6 +49,7 @@ export function createHonoApp(config: HonoAppConfig) {
     userService,
     snippetService,
     settingsService,
+    resolveChannelName: config.resolveChannelName,
     devMode: config.devMode,
   });
 
