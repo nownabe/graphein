@@ -653,6 +653,11 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
       if (created) {
         console.log(`[snippet] Created snippet for message ${messageTs} in channel ${channelId}`);
+        try {
+          await client.reactions.add({ channel: channelId, timestamp: messageTs, name: "memo" });
+        } catch (err) {
+          console.warn(`[snippet] Failed to add reaction to ${channelId}/${messageTs}:`, err);
+        }
       } else {
         console.debug(
           `[snippet] Duplicate message ${messageTs} in channel ${channelId} (conflict), skipped`,
