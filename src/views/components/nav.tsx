@@ -42,6 +42,12 @@ export function Nav({
           </span>
         </a>
         <a
+          href="/tasks"
+          class="text-sm font-medium text-secondary hover:text-ink transition-colors"
+        >
+          {t(locale, "nav.tasks")}
+        </a>
+        <a
           href="/snippets"
           class="text-sm font-medium text-secondary hover:text-ink transition-colors"
         >

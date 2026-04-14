@@ -5,6 +5,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Nav
     "nav.logout": "ログアウト",
     "nav.admin": "管理",
+    "nav.tasks": "タスク",
 
     // Admin
     "admin.users.title": "ユーザー管理",
@@ -176,6 +177,7 @@ const messages: Record<Locale, Record<string, string>> = {
     // Nav
     "nav.logout": "Logout",
     "nav.admin": "Admin",
+    "nav.tasks": "Tasks",
 
     // Admin
     "admin.users.title": "User Management",
