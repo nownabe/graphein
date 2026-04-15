@@ -113,6 +113,17 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             userIds,
             slackUserIds,
           });
+          // Sync group membership to DB
+          try {
+            const usergroup = await snippetService.findOrCreateUsergroup(
+              groupId,
+              groupHandle ?? groupId,
+              groupHandle ?? undefined,
+            );
+            await snippetService.syncUsergroupMembers(usergroup.id, userIds);
+          } catch {
+            // Non-critical
+          }
         }
       } catch {
         // Skip unresolvable groups
@@ -607,6 +618,34 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             groupHandle ?? undefined,
           );
           mentionedDbUsergroupIds.push(usergroup.id);
+
+          // Sync group membership
+          try {
+            const membersRes = await client.usergroups.users.list({ usergroup: groupId });
+            const memberDbIds: string[] = [];
+            for (const slackUid of membersRes.users ?? []) {
+              try {
+                const memberInfo = await client.users.info({ user: slackUid });
+                if (memberInfo.user?.profile?.email) {
+                  const member = await userService.findOrCreateUser({
+                    slackUserId: slackUid,
+                    email: memberInfo.user.profile.email,
+                    displayName:
+                      memberInfo.user.profile.display_name ||
+                      memberInfo.user.profile.real_name ||
+                      slackUid,
+                    avatarUrl: memberInfo.user.profile.image_72 ?? null,
+                  });
+                  memberDbIds.push(member.id);
+                }
+              } catch {
+                // Skip unresolvable members
+              }
+            }
+            await snippetService.syncUsergroupMembers(usergroup.id, memberDbIds);
+          } catch {
+            // Non-critical: membership sync failure doesn't block snippet creation
+          }
         } catch {
           // Skip unresolvable groups
         }

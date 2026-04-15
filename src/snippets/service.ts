@@ -5,6 +5,7 @@ import {
   snippetChannels,
   snippetMentionedUsers,
   snippetMentionedUsergroups,
+  usergroupMembers,
   usergroups,
   users,
 } from "../db/schema";
@@ -299,6 +300,25 @@ export function createSnippetService(db: Database) {
     return created;
   }
 
+  async function syncUsergroupMembers(usergroupId: string, memberUserIds: string[]) {
+    // Replace all members: delete existing, insert new
+    await db.delete(usergroupMembers).where(eq(usergroupMembers.usergroupId, usergroupId));
+    if (memberUserIds.length > 0) {
+      await db
+        .insert(usergroupMembers)
+        .values(memberUserIds.map((userId) => ({ usergroupId, userId })))
+        .onConflictDoNothing();
+    }
+  }
+
+  async function getUsergroupIdsByMember(userId: string): Promise<string[]> {
+    const rows = await db
+      .select({ usergroupId: usergroupMembers.usergroupId })
+      .from(usergroupMembers)
+      .where(eq(usergroupMembers.userId, userId));
+    return rows.map((r) => r.usergroupId);
+  }
+
   async function findSnippetBySlackMessage(channelId: string, messageTs: string) {
     return db.query.snippets.findFirst({
       where: and(eq(snippets.slackChannelId, channelId), eq(snippets.slackMessageTs, messageTs)),
@@ -315,6 +335,8 @@ export function createSnippetService(db: Database) {
     getDistinctMentionedUsergroups,
     getDistinctPosters,
     findOrCreateUsergroup,
+    syncUsergroupMembers,
+    getUsergroupIdsByMember,
     findSnippetBySlackMessage,
   };
 }
