@@ -502,7 +502,7 @@ export function SnippetsContentPartial({
           </span>
           {isNextDisabled ? (
             <span
-              class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-sm)] text-muted opacity-30 cursor-not-allowed"
+              class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-sm)] text-edge"
               title={t(locale, "snippets.next")}
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
