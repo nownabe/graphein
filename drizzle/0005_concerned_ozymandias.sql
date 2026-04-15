@@ -1,0 +1,1 @@
+ALTER TABLE "usergroups" ADD COLUMN "members_synced_at" timestamp with time zone;

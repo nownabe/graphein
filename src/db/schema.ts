@@ -74,6 +74,7 @@ export const usergroups = pgTable("usergroups", {
   slackUsergroupId: text("slack_usergroup_id").notNull().unique(),
   name: text("name").notNull(),
   handle: text("handle"),
+  membersSyncedAt: timestamp("members_synced_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
