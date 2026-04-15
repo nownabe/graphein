@@ -27,15 +27,13 @@ export function TaskCard({
   const loc = locale ?? "en";
   const isDone = done ?? false;
   const deadlineStr = task.deadline
-    ? (() => {
-        const d = new Date(task.deadline);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, "0");
-        const dd = String(d.getDate()).padStart(2, "0");
-        const hh = String(d.getHours()).padStart(2, "0");
-        const min = String(d.getMinutes()).padStart(2, "0");
-        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
-      })()
+    ? new Intl.DateTimeFormat(loc === "ja" ? "ja-JP" : "en-US", {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(task.deadline))
     : null;
 
   const isOverdue = task.deadline && !isDone && new Date(task.deadline) < new Date();
