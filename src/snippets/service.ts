@@ -5,6 +5,7 @@ import {
   snippetChannels,
   snippetMentionedUsers,
   snippetMentionedUsergroups,
+  usergroupMembers,
   usergroups,
   users,
 } from "../db/schema";
@@ -299,6 +300,69 @@ export function createSnippetService(db: Database) {
     return created;
   }
 
+  const MEMBERSHIP_SYNC_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
+
+  async function isUsergroupMembershipStale(usergroupId: string): Promise<boolean> {
+    const [group] = await db
+      .select({ membersSyncedAt: usergroups.membersSyncedAt })
+      .from(usergroups)
+      .where(eq(usergroups.id, usergroupId));
+    if (!group?.membersSyncedAt) return true;
+    return Date.now() - group.membersSyncedAt.getTime() >= MEMBERSHIP_SYNC_TTL_MS;
+  }
+
+  async function syncUsergroupMembers(usergroupId: string, memberUserIds: string[]) {
+    // Diff sync: only insert/delete what changed
+    const existingRows = await db
+      .select({ userId: usergroupMembers.userId })
+      .from(usergroupMembers)
+      .where(eq(usergroupMembers.usergroupId, usergroupId));
+    const existingSet = new Set(existingRows.map((r) => r.userId));
+    const newSet = new Set(memberUserIds);
+
+    const toAdd = memberUserIds.filter((id) => !existingSet.has(id));
+    const toRemove = existingRows.map((r) => r.userId).filter((id) => !newSet.has(id));
+
+    if (toRemove.length > 0) {
+      await db
+        .delete(usergroupMembers)
+        .where(
+          and(
+            eq(usergroupMembers.usergroupId, usergroupId),
+            inArray(usergroupMembers.userId, toRemove),
+          ),
+        );
+    }
+    if (toAdd.length > 0) {
+      await db
+        .insert(usergroupMembers)
+        .values(toAdd.map((userId) => ({ usergroupId, userId })))
+        .onConflictDoNothing();
+    }
+
+    // Update sync timestamp
+    await db
+      .update(usergroups)
+      .set({ membersSyncedAt: new Date() })
+      .where(eq(usergroups.id, usergroupId));
+  }
+
+  async function getUsergroupsByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    return db
+      .select({ id: usergroups.id, name: usergroups.name, handle: usergroups.handle })
+      .from(usergroups)
+      .where(inArray(usergroups.id, ids));
+  }
+
+  async function getUsergroupIdsByMember(userId: string): Promise<string[]> {
+    const rows = await db
+      .select({ usergroupId: usergroupMembers.usergroupId })
+      .from(usergroupMembers)
+      .where(eq(usergroupMembers.userId, userId));
+    return rows.map((r) => r.usergroupId);
+  }
+
   async function findSnippetBySlackMessage(channelId: string, messageTs: string) {
     return db.query.snippets.findFirst({
       where: and(eq(snippets.slackChannelId, channelId), eq(snippets.slackMessageTs, messageTs)),
@@ -315,6 +379,10 @@ export function createSnippetService(db: Database) {
     getDistinctMentionedUsergroups,
     getDistinctPosters,
     findOrCreateUsergroup,
+    isUsergroupMembershipStale,
+    syncUsergroupMembers,
+    getUsergroupsByIds,
+    getUsergroupIdsByMember,
     findSnippetBySlackMessage,
   };
 }

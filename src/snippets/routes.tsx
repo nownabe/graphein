@@ -78,8 +78,20 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     const userParam = c.req.query("user");
     const usergroupParam = c.req.query("usergroup");
 
-    const userIds = userParam ? userParam.split(",").filter(Boolean) : [];
-    const usergroupIds = usergroupParam ? usergroupParam.split(",").filter(Boolean) : [];
+    // Default mentions filter: on initial page load (no filter-related query params),
+    // pre-select the current user and their usergroups.
+    const { sub: currentUserId } = c.get("jwtPayload");
+    const hasAnyFilterParam =
+      postedByParam !== undefined || userParam !== undefined || usergroupParam !== undefined;
+    let userIds: string[];
+    let usergroupIds: string[];
+    if (hasAnyFilterParam) {
+      userIds = userParam ? userParam.split(",").filter(Boolean) : [];
+      usergroupIds = usergroupParam ? usergroupParam.split(",").filter(Boolean) : [];
+    } else {
+      userIds = [currentUserId];
+      usergroupIds = await snippetService.getUsergroupIdsByMember(currentUserId);
+    }
 
     const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
 
@@ -128,10 +140,25 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
 
     const posterOptions = posters.map((p) => ({ id: p.id, label: p.displayName }));
     const mentionedUserOptions = allUsers.map((u) => ({ id: u.id, label: u.displayName }));
+
+    // Merge default-selected usergroups into options if not already present
     const mentionedUsergroupOptions = mentionedUsergroups.map((g) => ({
       id: g.id,
       label: g.handle ? `@${g.handle}` : g.name,
     }));
+    if (!hasAnyFilterParam && usergroupIds.length > 0) {
+      const existingIds = new Set(mentionedUsergroupOptions.map((o) => o.id));
+      const missingIds = usergroupIds.filter((id) => !existingIds.has(id));
+      if (missingIds.length > 0) {
+        const missingGroups = await snippetService.getUsergroupsByIds(missingIds);
+        for (const g of missingGroups) {
+          mentionedUsergroupOptions.push({
+            id: g.id,
+            label: g.handle ? `@${g.handle}` : g.name,
+          });
+        }
+      }
+    }
 
     const contentProps = {
       snippets: snippetList,
@@ -148,6 +175,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       activePostedBy: postedByParam || undefined,
       activeMentionedUsers: userIds,
       activeMentionedUsergroups: usergroupIds,
+      hasExplicitFilters: hasAnyFilterParam,
       page,
       totalPages,
       mrkdwnLabels,
