@@ -347,6 +347,14 @@ export function createSnippetService(db: Database) {
       .where(eq(usergroups.id, usergroupId));
   }
 
+  async function getUsergroupsByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    return db
+      .select({ id: usergroups.id, name: usergroups.name, handle: usergroups.handle })
+      .from(usergroups)
+      .where(inArray(usergroups.id, ids));
+  }
+
   async function getUsergroupIdsByMember(userId: string): Promise<string[]> {
     const rows = await db
       .select({ usergroupId: usergroupMembers.usergroupId })
@@ -373,6 +381,7 @@ export function createSnippetService(db: Database) {
     findOrCreateUsergroup,
     isUsergroupMembershipStale,
     syncUsergroupMembers,
+    getUsergroupsByIds,
     getUsergroupIdsByMember,
     findSnippetBySlackMessage,
   };

@@ -30,6 +30,7 @@ interface SnippetsPageProps {
   activePostedBy?: string;
   activeMentionedUsers: string[];
   activeMentionedUsergroups: string[];
+  hasExplicitFilters: boolean;
   page: number;
   totalPages: number;
   mrkdwnLabels?: MrkdwnOptions;
@@ -123,7 +124,7 @@ function SingleSelectFilter({
     `open=!open;pop.style.display=open?'block':'none';btn.setAttribute('aria-expanded',String(open));`,
     `if(open){input.value='';render();input.focus()}}`,
     `function select(v){var url=new window.URL(window.location.href);`,
-    `if(v){url.searchParams.set('${name}',v)}else{url.searchParams.delete('${name}')}`,
+    `url.searchParams.set('${name}',v);`,
     `url.searchParams.delete('page');`,
     `htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});`,
     `history.pushState(null,'',url.pathname+url.search)}`,
@@ -344,8 +345,7 @@ function MentionsFilter({
     `empty.textContent='${noResultsEscaped}';list.appendChild(empty)}}`,
     `function sync(){var url=new window.URL(window.location.href);`,
     `sections.forEach(function(sec){var arr=sel[sec.key]||[];`,
-    `if(arr.length>0){url.searchParams.set(sec.key,arr.join(','))}`,
-    `else{url.searchParams.delete(sec.key)}});`,
+    `url.searchParams.set(sec.key,arr.join(','))});`,
     `url.searchParams.delete('page');`,
     `htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});`,
     `history.pushState(null,'',url.pathname+url.search)}`,
@@ -452,6 +452,7 @@ export function SnippetsContentPartial({
   activePostedBy,
   activeMentionedUsers,
   activeMentionedUsergroups,
+  hasExplicitFilters,
   page,
   totalPages,
   mrkdwnLabels,
@@ -462,10 +463,11 @@ export function SnippetsContentPartial({
     const d = overrides.date ?? currentDate;
     params.set("period", p);
     params.set("date", d);
-    if (activePostedBy) params.set("postedBy", activePostedBy);
-    if (activeMentionedUsers.length > 0) params.set("user", activeMentionedUsers.join(","));
-    if (activeMentionedUsergroups.length > 0)
+    if (hasExplicitFilters) {
+      params.set("postedBy", activePostedBy ?? "");
+      params.set("user", activeMentionedUsers.join(","));
       params.set("usergroup", activeMentionedUsergroups.join(","));
+    }
     return `/snippets?${params.toString()}`;
   }
 
@@ -542,6 +544,9 @@ export function SnippetsContentPartial({
               const params = new URLSearchParams();
               params.set("period", period);
               params.set("date", currentDate);
+              params.set("postedBy", "");
+              params.set("user", "");
+              params.set("usergroup", "");
               return `/snippets?${params.toString()}`;
             })();
             return (
@@ -581,10 +586,11 @@ export function SnippetsContentPartial({
             const params = new URLSearchParams();
             params.set("period", period);
             params.set("date", currentDate);
-            if (activePostedBy) params.set("postedBy", activePostedBy);
-            if (activeMentionedUsers.length > 0) params.set("user", activeMentionedUsers.join(","));
-            if (activeMentionedUsergroups.length > 0)
+            if (hasExplicitFilters) {
+              params.set("postedBy", activePostedBy ?? "");
+              params.set("user", activeMentionedUsers.join(","));
               params.set("usergroup", activeMentionedUsergroups.join(","));
+            }
             if (p > 1) params.set("page", String(p));
             const href = `/snippets?${params.toString()}`;
             return (
