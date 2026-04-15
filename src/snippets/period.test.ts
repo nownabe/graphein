@@ -1,5 +1,11 @@
 import { describe, expect, it } from "bun:test";
-import { computePeriod, navigatePeriod, parseDateInTimezone, formatDateInTimezone } from "./period";
+import {
+  computePeriod,
+  navigatePeriod,
+  parseDateInTimezone,
+  formatDateInTimezone,
+  formatPeriodLabel,
+} from "./period";
 
 const TZ = "Asia/Tokyo"; // UTC+9
 
@@ -181,6 +187,80 @@ describe("parseDateInTimezone", () => {
     // computePeriod should return April 13 boundaries
     const { start } = computePeriod("day", date, la);
     expect(formatInTz(start, la)).toContain("2026-04-13");
+  });
+});
+
+describe("formatPeriodLabel", () => {
+  it("shows fiscal year for Q4 when fiscal year starts in April", () => {
+    // Feb 2027 is fiscal Q4 of FY2026 (Apr 2026 - Mar 2027)
+    const anchor = new Date("2027-02-15T10:00:00+09:00");
+    const period = computePeriod("quarter", anchor, TZ, 4);
+    const label = formatPeriodLabel("quarter", period, TZ, "en", 4);
+    expect(label).toBe("Q4 2026");
+  });
+
+  it("shows fiscal year for Q1 when fiscal year starts in April", () => {
+    // May 2026 is fiscal Q1 of FY2026 (Apr 2026 - Mar 2027)
+    const anchor = new Date("2026-05-15T10:00:00+09:00");
+    const period = computePeriod("quarter", anchor, TZ, 4);
+    const label = formatPeriodLabel("quarter", period, TZ, "en", 4);
+    expect(label).toBe("Q1 2026");
+  });
+
+  it("shows fiscal year for Q3 when fiscal year starts in April", () => {
+    // Nov 2026 is fiscal Q3 of FY2026
+    const anchor = new Date("2026-11-15T10:00:00+09:00");
+    const period = computePeriod("quarter", anchor, TZ, 4);
+    const label = formatPeriodLabel("quarter", period, TZ, "en", 4);
+    expect(label).toBe("Q3 2026");
+  });
+
+  it("shows calendar year when fiscal year starts in January", () => {
+    // Default (Jan start) — Q2 2026
+    const anchor = new Date("2026-05-15T10:00:00+09:00");
+    const period = computePeriod("quarter", anchor, TZ, 1);
+    const label = formatPeriodLabel("quarter", period, TZ, "en", 1);
+    expect(label).toBe("Q2 2026");
+  });
+
+  it("shows fiscal year for March (Q4 boundary) when fiscal year starts in April", () => {
+    // March 2027 is still fiscal Q4 of FY2026
+    const anchor = new Date("2027-03-15T10:00:00+09:00");
+    const period = computePeriod("quarter", anchor, TZ, 4);
+    const label = formatPeriodLabel("quarter", period, TZ, "en", 4);
+    expect(label).toBe("Q4 2026");
+  });
+
+  it("shows end year when fiscalYearLabel is 'end' with July start", () => {
+    // Oct 2025 is Q2 of FY starting Jul 2025, labeled by end year = 2026
+    const anchor = new Date("2025-10-15T10:00:00+09:00");
+    const period = computePeriod("quarter", anchor, TZ, 7);
+    const label = formatPeriodLabel("quarter", period, TZ, "en", 7, "end");
+    expect(label).toBe("Q2 2026");
+  });
+
+  it("shows start year when fiscalYearLabel is 'start' with July start", () => {
+    // Oct 2025 is Q2 of FY starting Jul 2025, labeled by start year = 2025
+    const anchor = new Date("2025-10-15T10:00:00+09:00");
+    const period = computePeriod("quarter", anchor, TZ, 7);
+    const label = formatPeriodLabel("quarter", period, TZ, "en", 7, "start");
+    expect(label).toBe("Q2 2025");
+  });
+
+  it("shows end year for Q4 with July start", () => {
+    // Apr 2026 is Q4 of FY Jul 2025 - Jun 2026, end year = 2026
+    const anchor = new Date("2026-04-15T10:00:00+09:00");
+    const period = computePeriod("quarter", anchor, TZ, 7);
+    const label = formatPeriodLabel("quarter", period, TZ, "en", 7, "end");
+    expect(label).toBe("Q4 2026");
+  });
+
+  it("does not add 1 when fiscalYearLabel is 'end' with January start", () => {
+    // Jan start means start year = end year, so 'end' should not change anything
+    const anchor = new Date("2026-05-15T10:00:00+09:00");
+    const period = computePeriod("quarter", anchor, TZ, 1);
+    const label = formatPeriodLabel("quarter", period, TZ, "en", 1, "end");
+    expect(label).toBe("Q2 2026");
   });
 });
 

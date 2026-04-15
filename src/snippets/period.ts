@@ -234,6 +234,7 @@ export function formatPeriodLabel(
   timezone: string,
   locale: string,
   fiscalQuarterStartMonth = 1,
+  fiscalYearLabel: "start" | "end" = "start",
 ): string {
   const fmt = (date: Date, opts: Intl.DateTimeFormatOptions) =>
     new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "en-US", {
@@ -254,14 +255,17 @@ export function formatPeriodLabel(
     case "month":
       return fmt(period.start, { year: "numeric", month: "long" });
     case "quarter": {
-      const monthNum = Number(
-        new Intl.DateTimeFormat("en-CA", { timeZone: timezone, month: "2-digit" }).format(
-          period.start,
-        ),
-      );
+      const startParts = getLocalParts(period.start, timezone);
+      const monthNum = startParts.month;
       const quarter = Math.floor(((monthNum - fiscalQuarterStartMonth + 12) % 12) / 3) + 1;
-      const year = fmt(period.start, { year: "numeric" });
-      return `Q${quarter} ${year}`;
+      // Fiscal year labeled by the year it starts or ends
+      const fyStartYear =
+        fiscalQuarterStartMonth > 1 && monthNum < fiscalQuarterStartMonth
+          ? startParts.year - 1
+          : startParts.year;
+      const fiscalYear =
+        fiscalYearLabel === "end" && fiscalQuarterStartMonth > 1 ? fyStartYear + 1 : fyStartYear;
+      return `Q${quarter} ${fiscalYear}`;
     }
     case "year":
       return fmt(period.start, { year: "numeric" });

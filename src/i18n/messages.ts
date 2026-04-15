@@ -185,6 +185,11 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.settings.fiscalQuarterStartMonth": "四半期の開始月",
     "admin.settings.fiscalQuarterDescription":
       "四半期の開始月を設定します。例: 4月に設定すると Q1=4-6月, Q2=7-9月, Q3=10-12月, Q4=1-3月 になります。",
+    "admin.settings.fiscalYearLabel": "年度の表記方法",
+    "admin.settings.fiscalYearLabelDescription":
+      "四半期の年度表記に開始年と終了年のどちらを使うか設定します。例: 2025年7月〜2026年6月の場合、開始年なら「2025」、終了年なら「2026」と表記します。",
+    "admin.settings.fiscalYearLabel.start": "開始年",
+    "admin.settings.fiscalYearLabel.end": "終了年",
   },
   en: {
     // Nav
@@ -371,6 +376,11 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.settings.fiscalQuarterStartMonth": "Fiscal quarter start month",
     "admin.settings.fiscalQuarterDescription":
       "Set the starting month of fiscal quarters. E.g., setting April makes Q1=Apr-Jun, Q2=Jul-Sep, Q3=Oct-Dec, Q4=Jan-Mar.",
+    "admin.settings.fiscalYearLabel": "Fiscal year labeling",
+    "admin.settings.fiscalYearLabelDescription":
+      'Whether to label fiscal years by start or end year. E.g., for Jul 2025 – Jun 2026: start year shows "2025", end year shows "2026".',
+    "admin.settings.fiscalYearLabel.start": "Start year",
+    "admin.settings.fiscalYearLabel.end": "End year",
   },
 };
 

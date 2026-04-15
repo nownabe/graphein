@@ -14,13 +14,15 @@ function monthLabel(month: number, locale: string): string {
 
 export function AdminSettingsForm({
   fiscalQuarterStartMonth,
+  fiscalYearLabel,
   locale,
 }: {
   fiscalQuarterStartMonth: number;
+  fiscalYearLabel: string;
   locale: string;
 }) {
   return (
-    <div id="settings-form">
+    <div id="settings-form" class="space-y-6">
       <form
         hx-post="/admin/settings/fiscal-quarter"
         hx-target="#settings-form"
@@ -42,6 +44,22 @@ export function AdminSettingsForm({
             ))}
           </select>
         </div>
+        <div class="flex flex-col gap-1">
+          <label class="text-sm font-medium text-secondary">
+            {t(locale, "admin.settings.fiscalYearLabel")}
+          </label>
+          <select
+            name="fiscal_year_label"
+            class="bg-surface border border-edge rounded-[var(--radius-sm)] px-3 py-2 text-sm text-ink cursor-pointer"
+          >
+            <option value="start" selected={fiscalYearLabel === "start"}>
+              {t(locale, "admin.settings.fiscalYearLabel.start")}
+            </option>
+            <option value="end" selected={fiscalYearLabel === "end"}>
+              {t(locale, "admin.settings.fiscalYearLabel.end")}
+            </option>
+          </select>
+        </div>
         <button
           type="submit"
           class="px-4 py-2 bg-accent text-page text-sm font-semibold rounded-[var(--radius-sm)] hover:opacity-90 transition-opacity cursor-pointer"
@@ -50,18 +68,21 @@ export function AdminSettingsForm({
         </button>
       </form>
       <p class="mt-2 text-xs text-muted">{t(locale, "admin.settings.fiscalQuarterDescription")}</p>
+      <p class="text-xs text-muted">{t(locale, "admin.settings.fiscalYearLabelDescription")}</p>
     </div>
   );
 }
 
 export function AdminSettingsPage({
   fiscalQuarterStartMonth,
+  fiscalYearLabel,
   displayName,
   locale,
   theme,
   devMode,
 }: {
   fiscalQuarterStartMonth: number;
+  fiscalYearLabel: string;
   displayName: string;
   locale: string;
   theme?: string;
@@ -83,7 +104,11 @@ export function AdminSettingsPage({
           </h1>
           <p class="text-sm text-secondary">{t(locale, "admin.settings.description")}</p>
         </div>
-        <AdminSettingsForm fiscalQuarterStartMonth={fiscalQuarterStartMonth} locale={locale} />
+        <AdminSettingsForm
+          fiscalQuarterStartMonth={fiscalQuarterStartMonth}
+          fiscalYearLabel={fiscalYearLabel}
+          locale={locale}
+        />
       </main>
     </Layout>
   );

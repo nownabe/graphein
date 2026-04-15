@@ -163,9 +163,11 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
     const locale = getLocale(c);
     const theme = getTheme(c);
     const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
+    const fiscalYearLabel = await settingsService.getFiscalYearLabel();
     return c.html(
       <AdminSettingsPage
         fiscalQuarterStartMonth={fiscalQuarterStartMonth}
+        fiscalYearLabel={fiscalYearLabel}
         displayName={displayName}
         locale={locale}
         theme={theme}
@@ -181,9 +183,18 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
     if (month >= 1 && month <= 12) {
       await settingsService.setFiscalQuarterStartMonth(month);
     }
+    const yearLabel = String(body.fiscal_year_label);
+    if (yearLabel === "start" || yearLabel === "end") {
+      await settingsService.setFiscalYearLabel(yearLabel);
+    }
     const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
+    const fiscalYearLabel = await settingsService.getFiscalYearLabel();
     return c.html(
-      <AdminSettingsForm fiscalQuarterStartMonth={fiscalQuarterStartMonth} locale={locale} />,
+      <AdminSettingsForm
+        fiscalQuarterStartMonth={fiscalQuarterStartMonth}
+        fiscalYearLabel={fiscalYearLabel}
+        locale={locale}
+      />,
     );
   });
 
