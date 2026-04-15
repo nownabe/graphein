@@ -78,6 +78,20 @@ export const usergroups = pgTable("usergroups", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Usergroup members — cached Slack usergroup membership
+export const usergroupMembers = pgTable(
+  "usergroup_members",
+  {
+    usergroupId: uuid("usergroup_id")
+      .notNull()
+      .references(() => usergroups.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.usergroupId, t.userId] })],
+);
+
 // Snippet channels — admin-configured channels to monitor
 export const snippetChannels = pgTable("snippet_channels", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -149,6 +163,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   ownedTasks: many(taskOwners),
   snippets: many(snippets),
   snippetMentions: many(snippetMentionedUsers),
+  usergroupMemberships: many(usergroupMembers),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -183,7 +198,19 @@ export const taskOwnersRelations = relations(taskOwners, ({ one }) => ({
 }));
 
 export const usergroupsRelations = relations(usergroups, ({ many }) => ({
+  members: many(usergroupMembers),
   snippetMentions: many(snippetMentionedUsergroups),
+}));
+
+export const usergroupMembersRelations = relations(usergroupMembers, ({ one }) => ({
+  usergroup: one(usergroups, {
+    fields: [usergroupMembers.usergroupId],
+    references: [usergroups.id],
+  }),
+  user: one(users, {
+    fields: [usergroupMembers.userId],
+    references: [users.id],
+  }),
 }));
 
 export const snippetsRelations = relations(snippets, ({ one, many }) => ({
