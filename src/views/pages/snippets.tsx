@@ -86,12 +86,16 @@ function SingleSelectFilter({
   options,
   activeValue,
   allLabel,
+  searchPlaceholder,
+  noResultsLabel,
 }: {
   name: string;
   label: string;
   options: FilterOption[];
   activeValue?: string;
   allLabel: string;
+  searchPlaceholder: string;
+  noResultsLabel: string;
 }) {
   if (options.length === 0) return null;
 
@@ -100,24 +104,60 @@ function SingleSelectFilter({
   const displayLabel = selectedOption ? selectedOption.label : allLabel;
   const hasSelection = !!activeValue;
 
+  const allLabelEscaped = allLabel.replace(/'/g, "\\'");
+  const noResultsEscaped = noResultsLabel.replace(/'/g, "\\'");
   const initScript = [
     `(function(){`,
     `var w=document.getElementById('${instanceId}');if(!w)return;`,
     `var btn=w.querySelector('.ss-trigger');`,
     `var pop=w.querySelector('.ss-popover');`,
+    `var input=w.querySelector('.ss-search');`,
     `var list=w.querySelector('.ss-list');`,
+    `var activeVal=w.dataset.active||'';`,
     `var open=false;`,
+    `function fuzzy(q,t){q=q.toLowerCase();t=t.toLowerCase();`,
+    `var qi=0;for(var ti=0;ti<t.length&&qi<q.length;ti++){if(t[ti]===q[qi])qi++}return qi===q.length}`,
     `function close(){open=false;pop.style.display='none';btn.setAttribute('aria-expanded','false')}`,
     `function toggle(){`,
     `if(!open){document.dispatchEvent(new CustomEvent('snippetFilterClose',{detail:{except:'${instanceId}'}}))}`,
-    `open=!open;pop.style.display=open?'block':'none';btn.setAttribute('aria-expanded',String(open))}`,
+    `open=!open;pop.style.display=open?'block':'none';btn.setAttribute('aria-expanded',String(open));`,
+    `if(open){input.value='';render();input.focus()}}`,
     `function select(v){var url=new window.URL(window.location.href);`,
     `if(v){url.searchParams.set('${name}',v)}else{url.searchParams.delete('${name}')}`,
     `url.searchParams.delete('page');`,
     `htmx.ajax('GET',url.pathname+url.search,{target:'#snippets-content',swap:'innerHTML'});`,
     `history.pushState(null,'',url.pathname+url.search)}`,
+    `function render(){var q=input.value;list.innerHTML='';var count=0;`,
+    `var opts=JSON.parse(w.dataset.options||'[]');`,
+    // "All" option — always shown when no search query
+    `if(!q){count++;var allBtn=document.createElement('button');allBtn.type='button';`,
+    `allBtn.className='w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors';`,
+    `var allCheck=document.createElement('span');allCheck.className='w-4 flex-shrink-0 text-accent';`,
+    `allCheck.innerHTML=!activeVal?'<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"`,
+    ` stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L5.5 10.5L11.5 3.5"/></svg>':'';`,
+    `var allSpan=document.createElement('span');`,
+    `allSpan.className=!activeVal?'text-ink font-medium':'text-secondary';`,
+    `allSpan.textContent='${allLabelEscaped}';allBtn.appendChild(allCheck);allBtn.appendChild(allSpan);`,
+    `allBtn.addEventListener('click',function(ev){ev.stopPropagation();select('')});`,
+    `list.appendChild(allBtn)}`,
+    // Options
+    `opts.forEach(function(o){if(q&&!fuzzy(q,o.label))return;count++;`,
+    `var checked=o.id===activeVal;`,
+    `var item=document.createElement('button');item.type='button';`,
+    `item.className='w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors';`,
+    `var check=document.createElement('span');check.className='w-4 flex-shrink-0 text-accent';`,
+    `check.innerHTML=checked?'<svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"`,
+    ` stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 7.5L5.5 10.5L11.5 3.5"/></svg>':'';`,
+    `var span=document.createElement('span');`,
+    `span.className=checked?'text-ink font-medium':'text-secondary';`,
+    `span.textContent=o.label;item.appendChild(check);item.appendChild(span);`,
+    `item.addEventListener('click',function(ev){ev.stopPropagation();select(o.id)});`,
+    `list.appendChild(item)});`,
+    `if(count===0&&q){var empty=document.createElement('div');`,
+    `empty.className='px-3 py-2 text-sm text-muted';`,
+    `empty.textContent='${noResultsEscaped}';list.appendChild(empty)}}`,
     `btn.addEventListener('click',function(e){e.stopPropagation();toggle()});`,
-    `list.addEventListener('click',function(e){var b=e.target.closest('button');if(b){select(b.dataset.value||'')}});`,
+    `input.addEventListener('input',render);`,
     `document.addEventListener('click',function(e){if(open&&!w.contains(e.target)){close()}});`,
     `document.addEventListener('keydown',function(e){if(e.key==='Escape'&&open){close();btn.focus()}});`,
     `document.addEventListener('snippetFilterClose',function(e){`,
@@ -127,7 +167,12 @@ function SingleSelectFilter({
   return (
     <div class="flex flex-col gap-1.5">
       <span class="text-xs font-semibold text-secondary uppercase tracking-wider">{label}</span>
-      <div id={instanceId} class="relative">
+      <div
+        id={instanceId}
+        class="relative"
+        data-active={activeValue ?? ""}
+        data-options={JSON.stringify(options.map((o) => ({ id: o.id, label: o.label })))}
+      >
         <button
           type="button"
           aria-haspopup="listbox"
@@ -153,63 +198,18 @@ function SingleSelectFilter({
           </svg>
         </button>
         <div
-          class="ss-popover absolute z-30 left-0 top-full mt-1 w-56 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden"
+          class="ss-popover absolute z-30 left-0 top-full mt-1 w-64 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden"
           style="display:none;box-shadow:0 8px 24px rgba(0,0,0,0.15)"
         >
-          <div class="ss-list max-h-48 overflow-y-auto py-1">
-            <button
-              type="button"
-              data-value=""
-              class={`w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors ${!hasSelection ? "text-ink font-medium" : "text-secondary"}`}
-            >
-              <span class="w-4 flex-shrink-0 text-accent">
-                {!hasSelection && (
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="2"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                  >
-                    <path d="M2.5 7.5L5.5 10.5L11.5 3.5" />
-                  </svg>
-                )}
-              </span>
-              <span>{allLabel}</span>
-            </button>
-            {options.map((opt) => {
-              const isSelected = opt.id === activeValue;
-              return (
-                <button
-                  key={opt.id}
-                  type="button"
-                  data-value={opt.id}
-                  class={`w-full flex items-center gap-2.5 px-3 py-2 text-sm cursor-pointer hover:bg-surface-hover transition-colors ${isSelected ? "text-ink font-medium" : "text-secondary"}`}
-                >
-                  <span class="w-4 flex-shrink-0 text-accent">
-                    {isSelected && (
-                      <svg
-                        width="14"
-                        height="14"
-                        viewBox="0 0 14 14"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                      >
-                        <path d="M2.5 7.5L5.5 10.5L11.5 3.5" />
-                      </svg>
-                    )}
-                  </span>
-                  <span>{opt.label}</span>
-                </button>
-              );
-            })}
+          <div class="p-2 border-b border-edge">
+            <input
+              type="text"
+              placeholder={searchPlaceholder}
+              class="ss-search w-full bg-page border border-edge rounded-[6px] px-2.5 py-1.5 text-sm text-ink placeholder:text-muted"
+              autocomplete="off"
+            />
           </div>
+          <div class="ss-list max-h-48 overflow-y-auto py-1" />
         </div>
         <script dangerouslySetInnerHTML={{ __html: initScript }} />
       </div>
@@ -450,6 +450,8 @@ export function SnippetsContentPartial({
           options={posters}
           activeValue={activePostedBy}
           allLabel={t(locale, "snippets.filter.all")}
+          searchPlaceholder={t(locale, "snippets.filter.searchPoster")}
+          noResultsLabel={t(locale, "snippets.filter.noResults")}
         />
         <MultiSelectFilter
           name="user"
