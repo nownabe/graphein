@@ -94,6 +94,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     }
 
     const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
+    const fiscalYearLabel = await settingsService.getFiscalYearLabel();
 
     const { start: periodStart, end: periodEnd } = computePeriod(
       period,
@@ -107,6 +108,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       timezone,
       locale,
       fiscalQuarterStartMonth,
+      fiscalYearLabel,
     );
 
     const prevAnchor = navigatePeriod(period, anchor, timezone, "prev");
