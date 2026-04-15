@@ -63,26 +63,6 @@ export function SnippetCard({
       <div class="text-[13px] leading-relaxed text-secondary">
         <Mrkdwn text={snippet.content} options={mrkdwnLabels} />
       </div>
-      {(snippet.mentionedUsers.length > 0 || snippet.mentionedUsergroups.length > 0) && (
-        <div class="flex flex-wrap gap-1.5 mt-3 pt-3 border-t border-edge">
-          {snippet.mentionedUsers.map((u) => (
-            <span
-              key={u.id}
-              class="text-xs px-2 py-0.5 rounded-full bg-[var(--color-glow-accent)] text-accent font-medium"
-            >
-              @{u.displayName}
-            </span>
-          ))}
-          {snippet.mentionedUsergroups.map((g) => (
-            <span
-              key={g.id}
-              class="text-xs px-2 py-0.5 rounded-full bg-[var(--color-glow-accent)] text-accent font-medium"
-            >
-              @{g.handle ?? g.name}
-            </span>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
