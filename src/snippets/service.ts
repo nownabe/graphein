@@ -1,4 +1,4 @@
-import { eq, and, desc, gte, lt, sql, inArray } from "drizzle-orm";
+import { eq, and, or, desc, gte, lt, sql, inArray } from "drizzle-orm";
 import type { Database } from "../db/client";
 import {
   snippets,
@@ -97,20 +97,24 @@ export function createSnippetService(db: Database) {
       conditions.push(lt(snippets.postedAt, filters.periodEnd));
     }
 
-    // For mention filters, we need subqueries
+    // For mention filters, combine user and group mentions with OR
+    const mentionConditions = [];
     if (filters.mentionedUserIds && filters.mentionedUserIds.length > 0) {
       const mentionedSnippetIds = db
         .select({ snippetId: snippetMentionedUsers.snippetId })
         .from(snippetMentionedUsers)
         .where(inArray(snippetMentionedUsers.userId, filters.mentionedUserIds));
-      conditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
+      mentionConditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
     }
     if (filters.mentionedUsergroupIds && filters.mentionedUsergroupIds.length > 0) {
       const mentionedSnippetIds = db
         .select({ snippetId: snippetMentionedUsergroups.snippetId })
         .from(snippetMentionedUsergroups)
         .where(inArray(snippetMentionedUsergroups.usergroupId, filters.mentionedUsergroupIds));
-      conditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
+      mentionConditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
+    }
+    if (mentionConditions.length > 0) {
+      conditions.push(or(...mentionConditions)!);
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
