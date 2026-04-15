@@ -114,6 +114,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     const prevDate = formatDateInTimezone(prevAnchor, timezone);
     const nextDate = formatDateInTimezone(nextAnchor, timezone);
     const currentDate = formatDateInTimezone(anchor, timezone);
+    const isNextDisabled = periodEnd > new Date();
 
     const { snippets: snippetList, total } = await snippetService.listSnippets({
       postedById: postedByParam || undefined,
@@ -179,6 +180,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       page,
       totalPages,
       mrkdwnLabels,
+      isNextDisabled,
     };
 
     if (c.req.header("HX-Request") && !c.req.header("HX-Boosted")) {

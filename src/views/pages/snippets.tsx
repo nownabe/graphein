@@ -34,6 +34,7 @@ interface SnippetsPageProps {
   page: number;
   totalPages: number;
   mrkdwnLabels?: MrkdwnOptions;
+  isNextDisabled?: boolean;
 }
 
 function PeriodTabs({
@@ -456,6 +457,7 @@ export function SnippetsContentPartial({
   page,
   totalPages,
   mrkdwnLabels,
+  isNextDisabled,
 }: Omit<SnippetsPageProps, "displayName" | "theme" | "isAdmin" | "devMode">) {
   function buildUrl(overrides: Record<string, string> = {}): string {
     const params = new URLSearchParams();
@@ -498,19 +500,30 @@ export function SnippetsContentPartial({
           <span class="text-sm font-semibold text-ink text-center" style="min-width:140px">
             {periodLabel}
           </span>
-          <a
-            href={nextUrl}
-            hx-get={nextUrl}
-            hx-target="#snippets-content"
-            hx-swap="innerHTML"
-            hx-push-url={nextUrl}
-            class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
-            title={t(locale, "snippets.next")}
-          >
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M5.646 3.354a.5.5 0 01.708-.708l5 5a.5.5 0 010 .708l-5 5a.5.5 0 01-.708-.708L10.293 8 5.646 3.354z" />
-            </svg>
-          </a>
+          {isNextDisabled ? (
+            <span
+              class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-sm)] text-muted opacity-30 cursor-not-allowed"
+              title={t(locale, "snippets.next")}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M5.646 3.354a.5.5 0 01.708-.708l5 5a.5.5 0 010 .708l-5 5a.5.5 0 01-.708-.708L10.293 8 5.646 3.354z" />
+              </svg>
+            </span>
+          ) : (
+            <a
+              href={nextUrl}
+              hx-get={nextUrl}
+              hx-target="#snippets-content"
+              hx-swap="innerHTML"
+              hx-push-url={nextUrl}
+              class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
+              title={t(locale, "snippets.next")}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M5.646 3.354a.5.5 0 01.708-.708l5 5a.5.5 0 010 .708l-5 5a.5.5 0 01-.708-.708L10.293 8 5.646 3.354z" />
+              </svg>
+            </a>
+          )}
         </div>
       </div>
 
