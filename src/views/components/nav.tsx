@@ -2,11 +2,13 @@ import { t } from "../../i18n/index";
 
 export function Nav({
   displayName,
+  avatarUrl,
   locale,
   theme,
   isAdmin,
 }: {
   displayName: string;
+  avatarUrl?: string | null;
   locale: string;
   theme?: string;
   isAdmin?: boolean;
@@ -61,9 +63,13 @@ export function Nav({
             class="flex items-center gap-2 cursor-pointer rounded-full px-1 py-1 hover:bg-surface-hover transition-colors"
             onclick="(function(){var m=document.getElementById('user-menu');if(m.classList.contains('user-menu-open')){m.classList.remove('user-menu-open')}else{m.classList.add('user-menu-open');var close=function(e){if(!m.contains(e.target)&&e.target.id!=='user-menu-trigger'&&!document.getElementById('user-menu-trigger').contains(e.target)){m.classList.remove('user-menu-open');document.removeEventListener('click',close)}};setTimeout(function(){document.addEventListener('click',close)},0)}})()"
           >
-            <div class="w-7 h-7 rounded-full bg-surface-hover text-secondary flex items-center justify-center text-xs font-semibold shrink-0 border border-edge">
-              {initial}
-            </div>
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={displayName} class="w-7 h-7 rounded-full shrink-0" />
+            ) : (
+              <div class="w-7 h-7 rounded-full bg-surface-hover text-secondary flex items-center justify-center text-xs font-semibold shrink-0 border border-edge">
+                {initial}
+              </div>
+            )}
             <span class="text-sm text-secondary hidden sm:inline">{displayName}</span>
             <svg
               class="w-3.5 h-3.5 text-muted hidden sm:block"
@@ -84,9 +90,13 @@ export function Nav({
             {/* User info */}
             <div class="px-4 py-3 border-b border-edge">
               <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-full bg-surface-hover text-secondary flex items-center justify-center text-sm font-semibold shrink-0 border border-edge">
-                  {initial}
-                </div>
+                {avatarUrl ? (
+                  <img src={avatarUrl} alt={displayName} class="w-8 h-8 rounded-full shrink-0" />
+                ) : (
+                  <div class="w-8 h-8 rounded-full bg-surface-hover text-secondary flex items-center justify-center text-sm font-semibold shrink-0 border border-edge">
+                    {initial}
+                  </div>
+                )}
                 <div class="min-w-0">
                   <div class="text-sm font-medium text-ink truncate">{displayName}</div>
                 </div>

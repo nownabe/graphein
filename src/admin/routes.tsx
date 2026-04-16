@@ -49,6 +49,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
 
   adminRoutes.get("/admin/users", async (c) => {
     const { sub: userId, name: displayName } = c.get("jwtPayload");
+    const avatarUrl = c.get("avatarUrl");
     const locale = getLocale(c);
     const theme = getTheme(c);
     const users = await userService.listAllUsers();
@@ -57,6 +58,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
         users={users}
         currentUserId={userId}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         locale={locale}
         theme={theme}
         devMode={devMode}
@@ -115,6 +117,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
   // Snippet channel management
   adminRoutes.get("/admin/snippet-channels", async (c) => {
     const { name: displayName } = c.get("jwtPayload");
+    const avatarUrl = c.get("avatarUrl");
     const locale = getLocale(c);
     const theme = getTheme(c);
     const channels = await snippetService.listSnippetChannels();
@@ -124,6 +127,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
         channels={channels}
         channelNames={channelNames}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         locale={locale}
         theme={theme}
         devMode={devMode}
@@ -160,6 +164,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
   // Settings management
   adminRoutes.get("/admin/settings", async (c) => {
     const { name: displayName } = c.get("jwtPayload");
+    const avatarUrl = c.get("avatarUrl");
     const locale = getLocale(c);
     const theme = getTheme(c);
     const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
@@ -169,6 +174,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
         fiscalQuarterStartMonth={fiscalQuarterStartMonth}
         fiscalYearLabel={fiscalYearLabel}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         locale={locale}
         theme={theme}
         devMode={devMode}
