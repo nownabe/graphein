@@ -77,6 +77,7 @@ export function AdminSettingsPage({
   fiscalQuarterStartMonth,
   fiscalYearLabel,
   displayName,
+  avatarUrl,
   locale,
   theme,
   devMode,
@@ -84,6 +85,7 @@ export function AdminSettingsPage({
   fiscalQuarterStartMonth: number;
   fiscalYearLabel: string;
   displayName: string;
+  avatarUrl?: string | null;
   locale: string;
   theme?: string;
   devMode?: boolean;
@@ -95,7 +97,7 @@ export function AdminSettingsPage({
       theme={theme}
       devMode={devMode}
     >
-      <Nav displayName={displayName} locale={locale} theme={theme} isAdmin />
+      <Nav displayName={displayName} avatarUrl={avatarUrl} locale={locale} theme={theme} isAdmin />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <AdminTabs current="settings" locale={locale} />
         <div class="mb-8">

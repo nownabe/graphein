@@ -54,6 +54,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
   snippetRoutes.get("/snippets", async (c) => {
     const { name: displayName } = c.get("jwtPayload");
     const isAdmin = c.get("isAdmin");
+    const avatarUrl = c.get("avatarUrl");
     const locale = getLocale(c);
     const theme = getTheme(c);
 
@@ -193,6 +194,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       <SnippetsPage
         {...contentProps}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         theme={theme}
         isAdmin={isAdmin}
         devMode={devMode}

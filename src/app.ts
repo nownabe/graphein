@@ -20,7 +20,10 @@ export function createHonoApp(config: HonoAppConfig) {
 
   const { authMiddleware, adminMiddleware } = createAuthMiddleware(
     session.verifyToken,
-    userService.isAdmin,
+    async (userId) => {
+      const user = await userService.findUserById(userId);
+      return { isAdmin: user?.role === "admin", avatarUrl: user?.avatarUrl ?? null };
+    },
   );
 
   const authRoutes = createAuthRoutes(

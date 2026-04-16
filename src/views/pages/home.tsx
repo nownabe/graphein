@@ -210,6 +210,7 @@ export function HomePage({
   assignedTasks,
   ownedTasks,
   displayName,
+  avatarUrl,
   locale,
   theme,
   activeFilter,
@@ -225,6 +226,7 @@ export function HomePage({
   assignedTasks: Task[];
   ownedTasks: Task[];
   displayName: string;
+  avatarUrl?: string | null;
   locale: string;
   theme?: string;
   activeFilter?: string;
@@ -241,7 +243,7 @@ export function HomePage({
   const view = activeView ?? "assigned";
   return (
     <Layout title={t(locale, "page.myTasks")} locale={locale} theme={theme} devMode={devMode}>
-      <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
+      <Nav displayName={displayName} avatarUrl={avatarUrl} locale={locale} theme={theme} isAdmin={isAdmin} />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-xl font-bold text-ink tracking-tight">{t(locale, "page.myTasks")}</h1>

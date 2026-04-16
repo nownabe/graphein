@@ -75,6 +75,7 @@ export function AdminSnippetChannelsPage({
   channels,
   channelNames,
   displayName,
+  avatarUrl,
   locale,
   theme,
   devMode,
@@ -82,6 +83,7 @@ export function AdminSnippetChannelsPage({
   channels: SnippetChannel[];
   channelNames?: Record<string, string>;
   displayName: string;
+  avatarUrl?: string | null;
   locale: string;
   theme?: string;
   devMode?: boolean;
@@ -93,7 +95,7 @@ export function AdminSnippetChannelsPage({
       theme={theme}
       devMode={devMode}
     >
-      <Nav displayName={displayName} locale={locale} theme={theme} isAdmin />
+      <Nav displayName={displayName} avatarUrl={avatarUrl} locale={locale} theme={theme} isAdmin />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <AdminTabs current="snippet-channels" locale={locale} />
         <div class="mb-8">

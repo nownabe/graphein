@@ -212,6 +212,7 @@ export function TaskEditPage({
   task,
   owners,
   displayName,
+  avatarUrl,
   locale,
   theme,
   isAdmin,
@@ -220,6 +221,7 @@ export function TaskEditPage({
   task: Task;
   owners: User[];
   displayName: string;
+  avatarUrl?: string | null;
   locale: string;
   theme?: string;
   isAdmin?: boolean;
@@ -232,7 +234,7 @@ export function TaskEditPage({
       theme={theme}
       devMode={devMode}
     >
-      <Nav displayName={displayName} locale={locale} theme={theme} isAdmin={isAdmin} />
+      <Nav displayName={displayName} avatarUrl={avatarUrl} locale={locale} theme={theme} isAdmin={isAdmin} />
       <TaskEditContent task={task} owners={owners} locale={locale} />
     </Layout>
   );

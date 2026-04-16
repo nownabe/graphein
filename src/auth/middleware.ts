@@ -6,12 +6,13 @@ declare module "hono" {
   interface ContextVariableMap {
     jwtPayload: JwtPayload;
     isAdmin: boolean;
+    avatarUrl: string | null;
   }
 }
 
 export function createAuthMiddleware(
   verifyToken: (token: string) => Promise<JwtPayload | null>,
-  isAdminFn: (userId: string) => Promise<boolean>,
+  getUserInfo: (userId: string) => Promise<{ isAdmin: boolean; avatarUrl: string | null }>,
 ) {
   const authMiddleware = createMiddleware(async (c, next) => {
     const token = getCookie(c, "token");
@@ -25,7 +26,9 @@ export function createAuthMiddleware(
     }
 
     c.set("jwtPayload", payload);
-    c.set("isAdmin", await isAdminFn(payload.sub));
+    const info = await getUserInfo(payload.sub);
+    c.set("isAdmin", info.isAdmin);
+    c.set("avatarUrl", info.avatarUrl);
     await next();
   });
 

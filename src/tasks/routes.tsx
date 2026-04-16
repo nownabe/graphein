@@ -94,6 +94,7 @@ export function createTaskRoutes(deps: TaskRoutesDeps) {
   taskRoutes.get("/tasks", async (c) => {
     const { sub: userId, name: displayName } = c.get("jwtPayload");
     const isAdmin = c.get("isAdmin");
+    const avatarUrl = c.get("avatarUrl");
     const locale = getLocale(c);
     const theme = getTheme(c);
     const filter = c.req.query("filter") ?? "all";
@@ -128,6 +129,7 @@ export function createTaskRoutes(deps: TaskRoutesDeps) {
         assignedTasks={assignedTasks}
         ownedTasks={ownedTasks}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         locale={locale}
         theme={theme}
         activeFilter={filter}
@@ -147,6 +149,7 @@ export function createTaskRoutes(deps: TaskRoutesDeps) {
   taskRoutes.get("/tasks/archived", async (c) => {
     const { sub: userId, name: displayName } = c.get("jwtPayload");
     const isAdmin = c.get("isAdmin");
+    const avatarUrl = c.get("avatarUrl");
     const locale = getLocale(c);
     const theme = getTheme(c);
     const view = c.req.query("view") === "owned" ? "owned" : "assigned";
@@ -175,6 +178,7 @@ export function createTaskRoutes(deps: TaskRoutesDeps) {
       <ArchivedPage
         tasks={tasksWithFlags}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         locale={locale}
         theme={theme}
         activeView={view}
@@ -192,6 +196,7 @@ export function createTaskRoutes(deps: TaskRoutesDeps) {
     const taskId = c.req.param("id");
     const { sub: userId, name: displayName } = c.get("jwtPayload");
     const isAdmin = c.get("isAdmin");
+    const avatarUrl = c.get("avatarUrl");
     const locale = getLocale(c);
     const theme = getTheme(c);
 
@@ -208,6 +213,7 @@ export function createTaskRoutes(deps: TaskRoutesDeps) {
         task={task}
         assignees={assignees}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         locale={locale}
         theme={theme}
         isAdmin={isAdmin}
@@ -221,6 +227,7 @@ export function createTaskRoutes(deps: TaskRoutesDeps) {
     const taskId = c.req.param("id");
     const { sub: userId, name: displayName } = c.get("jwtPayload");
     const isAdmin = c.get("isAdmin");
+    const avatarUrl = c.get("avatarUrl");
     const locale = getLocale(c);
     const theme = getTheme(c);
 
@@ -237,6 +244,7 @@ export function createTaskRoutes(deps: TaskRoutesDeps) {
         task={task}
         owners={owners}
         displayName={displayName}
+        avatarUrl={avatarUrl}
         locale={locale}
         theme={theme}
         isAdmin={isAdmin}

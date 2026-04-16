@@ -77,6 +77,7 @@ export function AdminUsersPage({
   users: allUsers,
   currentUserId,
   displayName,
+  avatarUrl,
   locale,
   theme,
   devMode,
@@ -84,13 +85,14 @@ export function AdminUsersPage({
   users: User[];
   currentUserId: string;
   displayName: string;
+  avatarUrl?: string | null;
   locale: string;
   theme?: string;
   devMode?: boolean;
 }) {
   return (
     <Layout title={t(locale, "admin.users.title")} locale={locale} theme={theme} devMode={devMode}>
-      <Nav displayName={displayName} locale={locale} theme={theme} isAdmin />
+      <Nav displayName={displayName} avatarUrl={avatarUrl} locale={locale} theme={theme} isAdmin />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <AdminTabs current="users" locale={locale} />
         <div class="mb-8">
