@@ -44,6 +44,7 @@ export function AdminUsersListInner({
             const isAdmin = u.role === "admin";
             const isSelf = u.id === currentUserId;
             const isLastAdmin = isAdmin && adminCount <= 1;
+            const isDeactivated = u.deactivatedAt != null;
             const initial = u.displayName.charAt(0).toUpperCase();
 
             const actionParams = new URLSearchParams();
@@ -52,7 +53,10 @@ export function AdminUsersListInner({
             const actionSuffix = `?${actionParams.toString()}`;
 
             return (
-              <li key={u.id} class="flex items-center gap-3 px-5 py-4">
+              <li
+                key={u.id}
+                class={`flex items-center gap-3 px-5 py-4${isDeactivated ? " opacity-50" : ""}`}
+              >
                 {u.avatarUrl ? (
                   <img
                     src={u.avatarUrl}
@@ -73,6 +77,11 @@ export function AdminUsersListInner({
                   </div>
                   <div class="text-xs text-muted truncate">{u.email}</div>
                 </div>
+                {isDeactivated && (
+                  <span class="text-xs font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] bg-[var(--color-glow-danger)] text-danger">
+                    {t(locale, "admin.status.deactivated")}
+                  </span>
+                )}
                 <span
                   class={`text-xs font-semibold px-2 py-0.5 rounded-[var(--radius-sm)] ${
                     isAdmin
@@ -82,28 +91,51 @@ export function AdminUsersListInner({
                 >
                   {isAdmin ? t(locale, "admin.role.admin") : t(locale, "admin.role.user")}
                 </span>
-                {isAdmin ? (
-                  isLastAdmin ? null : (
+                <div class="flex items-center gap-1">
+                  {isAdmin ? (
+                    isLastAdmin ? null : (
+                      <button
+                        hx-post={`/admin/users/${u.id}/demote${actionSuffix}`}
+                        hx-target="#admin-users-list"
+                        hx-swap="outerHTML"
+                        hx-confirm={t(locale, "admin.confirm.demote")}
+                        class="text-xs px-2.5 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-danger hover:bg-[var(--color-glow-danger)] transition-colors"
+                      >
+                        {t(locale, "admin.button.demote")}
+                      </button>
+                    )
+                  ) : (
                     <button
-                      hx-post={`/admin/users/${u.id}/demote${actionSuffix}`}
+                      hx-post={`/admin/users/${u.id}/promote${actionSuffix}`}
                       hx-target="#admin-users-list"
                       hx-swap="outerHTML"
-                      hx-confirm={t(locale, "admin.confirm.demote")}
-                      class="text-xs px-2.5 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-danger hover:bg-[var(--color-glow-danger)] transition-colors"
+                      class="text-xs px-2.5 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-accent hover:bg-surface-hover transition-colors"
                     >
-                      {t(locale, "admin.button.demote")}
+                      {t(locale, "admin.button.promote")}
                     </button>
-                  )
-                ) : (
-                  <button
-                    hx-post={`/admin/users/${u.id}/promote${actionSuffix}`}
-                    hx-target="#admin-users-list"
-                    hx-swap="outerHTML"
-                    class="text-xs px-2.5 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-accent hover:bg-surface-hover transition-colors"
-                  >
-                    {t(locale, "admin.button.promote")}
-                  </button>
-                )}
+                  )}
+                  {!isSelf &&
+                    (isDeactivated ? (
+                      <button
+                        hx-post={`/admin/users/${u.id}/reactivate${actionSuffix}`}
+                        hx-target="#admin-users-list"
+                        hx-swap="outerHTML"
+                        class="text-xs px-2.5 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-success hover:bg-[var(--color-glow-success)] transition-colors"
+                      >
+                        {t(locale, "admin.button.reactivate")}
+                      </button>
+                    ) : (
+                      <button
+                        hx-post={`/admin/users/${u.id}/deactivate${actionSuffix}`}
+                        hx-target="#admin-users-list"
+                        hx-swap="outerHTML"
+                        hx-confirm={t(locale, "admin.confirm.deactivate")}
+                        class="text-xs px-2.5 py-1.5 rounded-[var(--radius-sm)] text-muted hover:text-danger hover:bg-[var(--color-glow-danger)] transition-colors"
+                      >
+                        {t(locale, "admin.button.deactivate")}
+                      </button>
+                    ))}
+                </div>
               </li>
             );
           })}

@@ -139,8 +139,8 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       snippetService.getDistinctMentionedUsergroups(),
     ]);
 
-    // For mentioned users filter, use all users (they may be mentioned)
-    const allUsers = await userService.listAllUsers();
+    // For mentioned users filter, use active users only
+    const allUsers = await userService.listActiveUsers();
 
     const posterOptions = posters.map((p) => ({ id: p.id, label: p.displayName }));
     const mentionedUserOptions = allUsers.map((u) => ({ id: u.id, label: u.displayName }));

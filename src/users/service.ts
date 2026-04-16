@@ -1,4 +1,4 @@
-import { eq, inArray, ilike, or, sql, asc, ne, and } from "drizzle-orm";
+import { eq, inArray, ilike, or, sql, asc, ne, and, isNull } from "drizzle-orm";
 import type { Database } from "../db/client";
 import { users } from "../db/schema";
 
@@ -78,6 +78,13 @@ export function createUserService(db: Database) {
     });
   }
 
+  async function listActiveUsers() {
+    return db.query.users.findMany({
+      where: isNull(users.deactivatedAt),
+      orderBy: [asc(users.displayName)],
+    });
+  }
+
   async function listUsersPaginated(opts: { page: number; perPage: number; query?: string }) {
     const { page, perPage, query } = opts;
     const offset = (page - 1) * perPage;
@@ -137,7 +144,34 @@ export function createUserService(db: Database) {
     return count;
   }
 
+  async function deactivateUser(userId: string) {
+    const [updated] = await db
+      .update(users)
+      .set({ deactivatedAt: new Date(), updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async function reactivateUser(userId: string) {
+    const [updated] = await db
+      .update(users)
+      .set({ deactivatedAt: null, updatedAt: new Date() })
+      .where(eq(users.id, userId))
+      .returning();
+    return updated;
+  }
+
+  async function isDeactivated(userId: string): Promise<boolean> {
+    const u = await db.query.users.findFirst({
+      where: eq(users.id, userId),
+      columns: { deactivatedAt: true },
+    });
+    return u?.deactivatedAt != null;
+  }
+
   // Case-insensitive name/email search for owner autocomplete.
+  // Excludes deactivated users.
   async function searchUsersByName(
     q: string,
     opts: { excludeIds?: string[]; limit?: number } = {},
@@ -147,7 +181,10 @@ export function createUserService(db: Database) {
     const like = `%${query}%`;
     const excluded = opts.excludeIds ?? [];
     const rows = await db.query.users.findMany({
-      where: or(ilike(users.displayName, like), ilike(users.email, like)),
+      where: and(
+        or(ilike(users.displayName, like), ilike(users.email, like)),
+        isNull(users.deactivatedAt),
+      ),
       orderBy: (u, { asc }) => asc(u.displayName),
       limit: (opts.limit ?? 8) + excluded.length,
     });
@@ -161,8 +198,12 @@ export function createUserService(db: Database) {
     findUserBySlackUserId,
     findUsersBySlackUserIds,
     isAdmin,
+    isDeactivated,
     listAllUsers,
+    listActiveUsers,
     setUserRole,
+    deactivateUser,
+    reactivateUser,
     updateUserTheme,
     updateUserLocale,
     countAdminsExcluding,

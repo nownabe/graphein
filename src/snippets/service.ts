@@ -1,4 +1,4 @@
-import { eq, and, or, desc, gte, lt, sql, inArray } from "drizzle-orm";
+import { eq, and, or, desc, gte, lt, sql, inArray, isNull } from "drizzle-orm";
 import type { Database } from "../db/client";
 import {
   snippets,
@@ -275,6 +275,7 @@ export function createSnippetService(db: Database) {
       })
       .from(snippets)
       .innerJoin(users, eq(snippets.postedById, users.id))
+      .where(isNull(users.deactivatedAt))
       .orderBy(users.displayName);
     return rows;
   }

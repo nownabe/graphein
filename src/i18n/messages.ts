@@ -17,6 +17,11 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.button.demote": "管理者から外す",
     "admin.confirm.demote": "このユーザーを管理者から外しますか？",
     "admin.cannotRemoveLastAdmin": "管理者は少なくとも1人必要です",
+    "admin.button.deactivate": "無効化",
+    "admin.button.reactivate": "有効化",
+    "admin.confirm.deactivate":
+      "このユーザーを無効化しますか？無効化されたユーザーはタスクの割り当て対象や日報の処理対象から除外されます。",
+    "admin.status.deactivated": "無効",
     "admin.you": "あなた",
     "admin.users.search": "名前またはメールで検索…",
     "admin.users.noResults": "該当するユーザーが見つかりません",
@@ -212,6 +217,11 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.button.demote": "Remove admin",
     "admin.confirm.demote": "Remove admin role from this user?",
     "admin.cannotRemoveLastAdmin": "At least one admin must remain",
+    "admin.button.deactivate": "Deactivate",
+    "admin.button.reactivate": "Reactivate",
+    "admin.confirm.deactivate":
+      "Deactivate this user? Deactivated users will be excluded from task assignment and snippet processing.",
+    "admin.status.deactivated": "Deactivated",
     "admin.you": "you",
     "admin.users.search": "Search by name or email…",
     "admin.users.noResults": "No matching users",

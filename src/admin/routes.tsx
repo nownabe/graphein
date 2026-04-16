@@ -158,6 +158,65 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
     );
   });
 
+  adminRoutes.post("/admin/users/:id/deactivate", async (c) => {
+    const targetId = c.req.param("id");
+    const { sub: userId } = c.get("jwtPayload");
+    const locale = getLocale(c);
+    const { page, q } = parseUsersQuery(c);
+
+    const target = await userService.findUserById(targetId);
+    if (!target) return c.text("Not found", 404);
+
+    // Cannot deactivate yourself
+    if (targetId === userId) return c.text("Cannot deactivate yourself", 400);
+
+    await userService.deactivateUser(targetId);
+
+    const result = await userService.listUsersPaginated({
+      page,
+      perPage: USERS_PER_PAGE,
+      query: q || undefined,
+    });
+    return c.html(
+      <AdminUsersListInner
+        users={result.users}
+        currentUserId={userId}
+        locale={locale}
+        page={result.page}
+        totalPages={Math.max(1, Math.ceil(result.total / result.perPage))}
+        query={q}
+      />,
+    );
+  });
+
+  adminRoutes.post("/admin/users/:id/reactivate", async (c) => {
+    const targetId = c.req.param("id");
+    const { sub: userId } = c.get("jwtPayload");
+    const locale = getLocale(c);
+    const { page, q } = parseUsersQuery(c);
+
+    const target = await userService.findUserById(targetId);
+    if (!target) return c.text("Not found", 404);
+
+    await userService.reactivateUser(targetId);
+
+    const result = await userService.listUsersPaginated({
+      page,
+      perPage: USERS_PER_PAGE,
+      query: q || undefined,
+    });
+    return c.html(
+      <AdminUsersListInner
+        users={result.users}
+        currentUserId={userId}
+        locale={locale}
+        page={result.page}
+        totalPages={Math.max(1, Math.ceil(result.total / result.perPage))}
+        query={q}
+      />,
+    );
+  });
+
   async function resolveChannelNames(
     channels: { slackChannelId: string }[],
   ): Promise<Record<string, string>> {
