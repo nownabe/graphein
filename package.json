@@ -33,6 +33,6 @@
     "@types/bun": "^1.2.0",
     "drizzle-kit": "^0.31.0",
     "tailwindcss": "^4.1.0",
-    "typescript": "^5.8.0"
+    "typescript": "^6.0.0"
   }
 }
