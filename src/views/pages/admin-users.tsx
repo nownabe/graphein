@@ -26,8 +26,16 @@ export function AdminUsersList({
         const isAdmin = u.role === "admin";
         const isSelf = u.id === currentUserId;
         const isLastAdmin = isAdmin && adminCount <= 1;
+        const initial = u.displayName.charAt(0).toUpperCase();
         return (
           <li key={u.id} class="flex items-center gap-3 px-5 py-4">
+            {u.avatarUrl ? (
+              <img src={u.avatarUrl} alt={u.displayName} class="w-8 h-8 rounded-full shrink-0" />
+            ) : (
+              <div class="w-8 h-8 rounded-full bg-surface-hover text-secondary flex items-center justify-center text-sm font-semibold shrink-0 border border-edge">
+                {initial}
+              </div>
+            )}
             <div class="min-w-0 flex-1">
               <div class="text-sm font-medium text-ink truncate">
                 {u.displayName}
