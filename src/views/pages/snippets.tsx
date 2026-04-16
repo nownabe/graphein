@@ -635,7 +635,13 @@ export function SnippetsPage(props: SnippetsPageProps) {
   const { displayName, avatarUrl, locale, theme, isAdmin, devMode, ...contentProps } = props;
   return (
     <Layout title={t(locale, "page.snippets")} locale={locale} theme={theme} devMode={devMode}>
-      <Nav displayName={displayName} avatarUrl={avatarUrl} locale={locale} theme={theme} isAdmin={isAdmin} />
+      <Nav
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        locale={locale}
+        theme={theme}
+        isAdmin={isAdmin}
+      />
       <main class="max-w-3xl mx-auto px-6 py-10">
         <div class="mb-6">
           <h1 class="text-xl font-bold text-ink tracking-tight">{t(locale, "page.snippets")}</h1>

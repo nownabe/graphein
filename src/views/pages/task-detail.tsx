@@ -234,7 +234,13 @@ export function TaskEditPage({
       theme={theme}
       devMode={devMode}
     >
-      <Nav displayName={displayName} avatarUrl={avatarUrl} locale={locale} theme={theme} isAdmin={isAdmin} />
+      <Nav
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        locale={locale}
+        theme={theme}
+        isAdmin={isAdmin}
+      />
       <TaskEditContent task={task} owners={owners} locale={locale} />
     </Layout>
   );

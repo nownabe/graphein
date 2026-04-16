@@ -64,11 +64,7 @@ export function Nav({
             onclick="(function(){var m=document.getElementById('user-menu');if(m.classList.contains('user-menu-open')){m.classList.remove('user-menu-open')}else{m.classList.add('user-menu-open');var close=function(e){if(!m.contains(e.target)&&e.target.id!=='user-menu-trigger'&&!document.getElementById('user-menu-trigger').contains(e.target)){m.classList.remove('user-menu-open');document.removeEventListener('click',close)}};setTimeout(function(){document.addEventListener('click',close)},0)}})()"
           >
             {avatarUrl ? (
-              <img
-                src={avatarUrl}
-                alt={displayName}
-                class="w-7 h-7 rounded-full shrink-0"
-              />
+              <img src={avatarUrl} alt={displayName} class="w-7 h-7 rounded-full shrink-0" />
             ) : (
               <div class="w-7 h-7 rounded-full bg-surface-hover text-secondary flex items-center justify-center text-xs font-semibold shrink-0 border border-edge">
                 {initial}
@@ -95,11 +91,7 @@ export function Nav({
             <div class="px-4 py-3 border-b border-edge">
               <div class="flex items-center gap-2.5">
                 {avatarUrl ? (
-                  <img
-                    src={avatarUrl}
-                    alt={displayName}
-                    class="w-8 h-8 rounded-full shrink-0"
-                  />
+                  <img src={avatarUrl} alt={displayName} class="w-8 h-8 rounded-full shrink-0" />
                 ) : (
                   <div class="w-8 h-8 rounded-full bg-surface-hover text-secondary flex items-center justify-center text-sm font-semibold shrink-0 border border-edge">
                     {initial}
