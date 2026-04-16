@@ -5,7 +5,7 @@ import type { UserService } from "../users/service";
 import type { SnippetService } from "../snippets/service";
 import type { SettingsService } from "../settings/service";
 import type { ResolveChannelName } from "../config";
-import { AdminUsersPage, AdminUsersList } from "../views/pages/admin-users.tsx";
+import { AdminUsersPage, AdminUsersListInner } from "../views/pages/admin-users.tsx";
 import {
   AdminSnippetChannelsPage,
   AdminSnippetChannelsList,
@@ -47,21 +47,50 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
     return cookie === "light" ? "light" : "dark";
   }
 
+  const USERS_PER_PAGE = 20;
+
+  function parseUsersQuery(c: any) {
+    const page = Math.max(1, Number(c.req.query("page")) || 1);
+    const q = (c.req.query("q") as string) || "";
+    return { page, q };
+  }
+
   adminRoutes.get("/admin/users", async (c) => {
     const { sub: userId, name: displayName } = c.get("jwtPayload");
     const avatarUrl = c.get("avatarUrl");
     const locale = getLocale(c);
     const theme = getTheme(c);
-    const users = await userService.listAllUsers();
+    const { page, q } = parseUsersQuery(c);
+    const result = await userService.listUsersPaginated({
+      page,
+      perPage: USERS_PER_PAGE,
+      query: q || undefined,
+    });
+    const isHtmx = c.req.header("HX-Request") && !c.req.header("HX-Boosted");
+    if (isHtmx) {
+      return c.html(
+        <AdminUsersListInner
+          users={result.users}
+          currentUserId={userId}
+          locale={locale}
+          page={result.page}
+          totalPages={Math.max(1, Math.ceil(result.total / result.perPage))}
+          query={q}
+        />,
+      );
+    }
     return c.html(
       <AdminUsersPage
-        users={users}
+        users={result.users}
         currentUserId={userId}
         displayName={displayName}
         avatarUrl={avatarUrl}
         locale={locale}
         theme={theme}
         devMode={devMode}
+        page={result.page}
+        totalPages={Math.max(1, Math.ceil(result.total / result.perPage))}
+        query={q}
       />,
     );
   });
@@ -70,20 +99,35 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
     const targetId = c.req.param("id");
     const { sub: userId } = c.get("jwtPayload");
     const locale = getLocale(c);
+    const { page, q } = parseUsersQuery(c);
 
     const target = await userService.findUserById(targetId);
     if (!target) return c.text("Not found", 404);
 
     await userService.setUserRole(targetId, "admin");
 
-    const users = await userService.listAllUsers();
-    return c.html(<AdminUsersList users={users} currentUserId={userId} locale={locale} />);
+    const result = await userService.listUsersPaginated({
+      page,
+      perPage: USERS_PER_PAGE,
+      query: q || undefined,
+    });
+    return c.html(
+      <AdminUsersListInner
+        users={result.users}
+        currentUserId={userId}
+        locale={locale}
+        page={result.page}
+        totalPages={Math.max(1, Math.ceil(result.total / result.perPage))}
+        query={q}
+      />,
+    );
   });
 
   adminRoutes.post("/admin/users/:id/demote", async (c) => {
     const targetId = c.req.param("id");
     const { sub: userId } = c.get("jwtPayload");
     const locale = getLocale(c);
+    const { page, q } = parseUsersQuery(c);
 
     const target = await userService.findUserById(targetId);
     if (!target) return c.text("Not found", 404);
@@ -97,8 +141,21 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
 
     await userService.setUserRole(targetId, "user");
 
-    const users = await userService.listAllUsers();
-    return c.html(<AdminUsersList users={users} currentUserId={userId} locale={locale} />);
+    const result = await userService.listUsersPaginated({
+      page,
+      perPage: USERS_PER_PAGE,
+      query: q || undefined,
+    });
+    return c.html(
+      <AdminUsersListInner
+        users={result.users}
+        currentUserId={userId}
+        locale={locale}
+        page={result.page}
+        totalPages={Math.max(1, Math.ceil(result.total / result.perPage))}
+        query={q}
+      />,
+    );
   });
 
   async function resolveChannelNames(

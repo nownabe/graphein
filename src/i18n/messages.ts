@@ -18,6 +18,11 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.confirm.demote": "このユーザーを管理者から外しますか？",
     "admin.cannotRemoveLastAdmin": "管理者は少なくとも1人必要です",
     "admin.you": "あなた",
+    "admin.users.search": "名前またはメールで検索…",
+    "admin.users.noResults": "該当するユーザーが見つかりません",
+    "admin.users.prev": "前へ",
+    "admin.users.next": "次へ",
+    "admin.users.pageInfo": "{page} / {totalPages}",
     "admin.tab.users": "ユーザー",
     "admin.tab.snippetChannels": "日報チャンネル",
 
@@ -208,6 +213,11 @@ const messages: Record<Locale, Record<string, string>> = {
     "admin.confirm.demote": "Remove admin role from this user?",
     "admin.cannotRemoveLastAdmin": "At least one admin must remain",
     "admin.you": "you",
+    "admin.users.search": "Search by name or email…",
+    "admin.users.noResults": "No matching users",
+    "admin.users.prev": "Previous",
+    "admin.users.next": "Next",
+    "admin.users.pageInfo": "{page} / {totalPages}",
     "admin.tab.users": "Users",
     "admin.tab.snippetChannels": "Snippet Channels",
 

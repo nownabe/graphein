@@ -78,6 +78,30 @@ export function createUserService(db: Database) {
     });
   }
 
+  async function listUsersPaginated(opts: { page: number; perPage: number; query?: string }) {
+    const { page, perPage, query } = opts;
+    const offset = (page - 1) * perPage;
+
+    const conditions = query?.trim()
+      ? or(ilike(users.displayName, `%${query.trim()}%`), ilike(users.email, `%${query.trim()}%`))
+      : undefined;
+
+    const [rows, [{ count }]] = await Promise.all([
+      db.query.users.findMany({
+        where: conditions,
+        orderBy: [asc(users.displayName)],
+        limit: perPage,
+        offset,
+      }),
+      db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(users)
+        .where(conditions ?? sql`true`),
+    ]);
+
+    return { users: rows, total: count, page, perPage };
+  }
+
   async function setUserRole(userId: string, role: UserRole) {
     const [updated] = await db
       .update(users)
@@ -142,6 +166,7 @@ export function createUserService(db: Database) {
     updateUserTheme,
     updateUserLocale,
     countAdminsExcluding,
+    listUsersPaginated,
     searchUsersByName,
   };
 }
