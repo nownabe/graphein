@@ -50,6 +50,13 @@
       "when": 1776341056567,
       "tag": "0006_sparkling_morph",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1776343736525,
+      "tag": "0007_lean_the_phantom",
+      "breakpoints": true
     }
   ]
 }

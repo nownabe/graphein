@@ -55,6 +55,12 @@ export function Nav({
         >
           {t(locale, "nav.snippets")}
         </a>
+        <a
+          href="/kudos"
+          class="text-sm font-medium text-secondary hover:text-ink transition-colors"
+        >
+          {t(locale, "nav.kudos")}
+        </a>
         <div class="flex-1" />
         <div class="relative">
           <button

@@ -158,6 +158,72 @@ export const appSettings = pgTable("app_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// Kudos channels — admin-configured channels to monitor for kudos
+export const kudosChannels = pgTable("kudos_channels", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  slackChannelId: text("slack_channel_id").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Kudos — a Slack message containing one or more kudos entries
+export const kudos = pgTable(
+  "kudos",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    slackMessageTs: text("slack_message_ts"),
+    slackChannelId: text("slack_channel_id"),
+    slackPermalink: text("slack_permalink"),
+    postedAt: timestamp("posted_at", { withTimezone: true }).notNull(),
+    postedById: uuid("posted_by_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("kudos_posted_at_idx").on(t.postedAt),
+    unique("kudos_slack_message_unique").on(t.slackChannelId, t.slackMessageTs),
+  ],
+);
+
+// Kudos entries — individual kudos within a message
+export const kudosEntries = pgTable("kudos_entries", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  kudosId: uuid("kudos_id")
+    .notNull()
+    .references(() => kudos.id, { onDelete: "cascade" }),
+  message: text("message").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// Kudos entry mentioned users — targets per entry
+export const kudosEntryMentionedUsers = pgTable(
+  "kudos_entry_mentioned_users",
+  {
+    kudosEntryId: uuid("kudos_entry_id")
+      .notNull()
+      .references(() => kudosEntries.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.kudosEntryId, t.userId] })],
+);
+
+// Kudos entry mentioned usergroups — group targets per entry
+export const kudosEntryMentionedUsergroups = pgTable(
+  "kudos_entry_mentioned_usergroups",
+  {
+    kudosEntryId: uuid("kudos_entry_id")
+      .notNull()
+      .references(() => kudosEntries.id, { onDelete: "cascade" }),
+    usergroupId: uuid("usergroup_id")
+      .notNull()
+      .references(() => usergroups.id, { onDelete: "cascade" }),
+  },
+  (t) => [primaryKey({ columns: [t.kudosEntryId, t.usergroupId] })],
+);
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   createdTasks: many(tasks),
@@ -166,6 +232,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   snippets: many(snippets),
   snippetMentions: many(snippetMentionedUsers),
   usergroupMemberships: many(usergroupMembers),
+  kudos: many(kudos),
+  kudosEntryMentions: many(kudosEntryMentionedUsers),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
@@ -202,6 +270,7 @@ export const taskOwnersRelations = relations(taskOwners, ({ one }) => ({
 export const usergroupsRelations = relations(usergroups, ({ many }) => ({
   members: many(usergroupMembers),
   snippetMentions: many(snippetMentionedUsergroups),
+  kudosEntryMentions: many(kudosEntryMentionedUsergroups),
 }));
 
 export const usergroupMembersRelations = relations(usergroupMembers, ({ one }) => ({
@@ -244,6 +313,48 @@ export const snippetMentionedUsergroupsRelations = relations(
     }),
     usergroup: one(usergroups, {
       fields: [snippetMentionedUsergroups.usergroupId],
+      references: [usergroups.id],
+    }),
+  }),
+);
+
+export const kudosRelations = relations(kudos, ({ one, many }) => ({
+  postedBy: one(users, {
+    fields: [kudos.postedById],
+    references: [users.id],
+  }),
+  entries: many(kudosEntries),
+}));
+
+export const kudosEntriesRelations = relations(kudosEntries, ({ one, many }) => ({
+  kudos: one(kudos, {
+    fields: [kudosEntries.kudosId],
+    references: [kudos.id],
+  }),
+  mentionedUsers: many(kudosEntryMentionedUsers),
+  mentionedUsergroups: many(kudosEntryMentionedUsergroups),
+}));
+
+export const kudosEntryMentionedUsersRelations = relations(kudosEntryMentionedUsers, ({ one }) => ({
+  entry: one(kudosEntries, {
+    fields: [kudosEntryMentionedUsers.kudosEntryId],
+    references: [kudosEntries.id],
+  }),
+  user: one(users, {
+    fields: [kudosEntryMentionedUsers.userId],
+    references: [users.id],
+  }),
+}));
+
+export const kudosEntryMentionedUsergroupsRelations = relations(
+  kudosEntryMentionedUsergroups,
+  ({ one }) => ({
+    entry: one(kudosEntries, {
+      fields: [kudosEntryMentionedUsergroups.kudosEntryId],
+      references: [kudosEntries.id],
+    }),
+    usergroup: one(usergroups, {
+      fields: [kudosEntryMentionedUsergroups.usergroupId],
       references: [usergroups.id],
     }),
   }),
