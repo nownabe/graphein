@@ -24,7 +24,7 @@
     "@google/genai": "^1.0.0",
     "@slack/bolt": "^4.2.0",
     "@slack/web-api": "^7.9.0",
-    "drizzle-orm": "^0.43.0",
+    "drizzle-orm": "^0.45.0",
     "hono": "^4.7.0",
     "postgres": "^3.4.5"
   },
