@@ -529,15 +529,6 @@ export function SnippetsContentPartial({
       </div>
 
       <div class="flex flex-wrap items-end gap-4 mb-4 relative z-10">
-        <SingleSelectFilter
-          name="postedBy"
-          label={t(locale, "snippets.filter.postedBy")}
-          options={posters}
-          activeValue={activePostedBy}
-          allLabel={t(locale, "snippets.filter.all")}
-          searchPlaceholder={t(locale, "snippets.filter.searchPoster")}
-          noResultsLabel={t(locale, "snippets.filter.noResults")}
-        />
         <MentionsFilter
           label={t(locale, "snippets.filter.mentions")}
           userOptions={mentionedUsers}
@@ -551,6 +542,15 @@ export function SnippetsContentPartial({
           userSectionLabel={t(locale, "snippets.filter.sectionUsers")}
           groupSectionLabel={t(locale, "snippets.filter.sectionGroups")}
           selectedSectionLabel={t(locale, "snippets.filter.sectionSelected")}
+        />
+        <SingleSelectFilter
+          name="postedBy"
+          label={t(locale, "snippets.filter.postedBy")}
+          options={posters}
+          activeValue={activePostedBy}
+          allLabel={t(locale, "snippets.filter.all")}
+          searchPlaceholder={t(locale, "snippets.filter.searchPoster")}
+          noResultsLabel={t(locale, "snippets.filter.noResults")}
         />
         {hasActiveFilters &&
           (() => {
