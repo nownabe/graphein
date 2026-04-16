@@ -9,12 +9,20 @@ import { createAuthRoutes } from "./auth/routes.tsx";
 import { createTaskRoutes } from "./tasks/routes.tsx";
 import { createAdminRoutes } from "./admin/routes.tsx";
 import { createSnippetRoutes } from "./snippets/routes.tsx";
+import { createKudosRoutes } from "./kudos/routes.tsx";
 import { clickjackingMiddleware } from "./auth/clickjacking";
 import type { HonoAppConfig } from "./config";
 
 export function createHonoApp(config: HonoAppConfig) {
-  const { session, userService, taskService, snippetService, settingsService, buildMrkdwnLabels } =
-    config;
+  const {
+    session,
+    userService,
+    taskService,
+    snippetService,
+    kudosService,
+    settingsService,
+    buildMrkdwnLabels,
+  } = config;
 
   const csrfMw = createCsrfMiddleware(config.baseUrl);
 
@@ -51,6 +59,7 @@ export function createHonoApp(config: HonoAppConfig) {
     adminMiddleware,
     userService,
     snippetService,
+    kudosService,
     settingsService,
     resolveChannelName: config.resolveChannelName,
     devMode: config.devMode,
@@ -60,6 +69,15 @@ export function createHonoApp(config: HonoAppConfig) {
     authMiddleware,
     snippetService,
     userService,
+    settingsService,
+    buildMrkdwnLabels: config.buildMrkdwnLabels,
+    timezone: config.timezone,
+    devMode: config.devMode,
+  });
+
+  const kudosRoutes = createKudosRoutes({
+    authMiddleware,
+    kudosService,
     settingsService,
     buildMrkdwnLabels: config.buildMrkdwnLabels,
     timezone: config.timezone,
@@ -157,6 +175,9 @@ export function createHonoApp(config: HonoAppConfig) {
 
   // Snippet routes
   app.route("/", snippetRoutes);
+
+  // Kudos routes
+  app.route("/", kudosRoutes);
 
   // Task routes (includes home page)
   app.route("/", taskRoutes);

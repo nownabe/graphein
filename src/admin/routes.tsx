@@ -3,6 +3,7 @@ import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
 import type { UserService } from "../users/service";
 import type { SnippetService } from "../snippets/service";
+import type { KudosService } from "../kudos/service";
 import type { SettingsService } from "../settings/service";
 import type { ResolveChannelName } from "../config";
 import { AdminUsersPage, AdminUsersListInner } from "../views/pages/admin-users.tsx";
@@ -10,6 +11,10 @@ import {
   AdminSnippetChannelsPage,
   AdminSnippetChannelsList,
 } from "../views/pages/admin-snippet-channels.tsx";
+import {
+  AdminKudosChannelsPage,
+  AdminKudosChannelsList,
+} from "../views/pages/admin-kudos-channels.tsx";
 import { AdminSettingsPage, AdminSettingsForm } from "../views/pages/admin-settings.tsx";
 
 export interface AdminRoutesDeps {
@@ -17,6 +22,7 @@ export interface AdminRoutesDeps {
   adminMiddleware: MiddlewareHandler;
   userService: UserService;
   snippetService: SnippetService;
+  kudosService: KudosService;
   settingsService: SettingsService;
   resolveChannelName: ResolveChannelName;
   devMode: boolean;
@@ -28,6 +34,7 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
     adminMiddleware,
     userService,
     snippetService,
+    kudosService,
     settingsService,
     resolveChannelName,
     devMode,
@@ -274,6 +281,53 @@ export function createAdminRoutes(deps: AdminRoutesDeps) {
     const channelNames = await resolveChannelNames(channels);
     return c.html(
       <AdminSnippetChannelsList channels={channels} channelNames={channelNames} locale={locale} />,
+    );
+  });
+
+  // Kudos channel management
+  adminRoutes.get("/admin/kudos-channels", async (c) => {
+    const { name: displayName } = c.get("jwtPayload");
+    const avatarUrl = c.get("avatarUrl");
+    const locale = getLocale(c);
+    const theme = getTheme(c);
+    const channels = await kudosService.listKudosChannels();
+    const channelNames = await resolveChannelNames(channels);
+    return c.html(
+      <AdminKudosChannelsPage
+        channels={channels}
+        channelNames={channelNames}
+        displayName={displayName}
+        avatarUrl={avatarUrl}
+        locale={locale}
+        theme={theme}
+        devMode={devMode}
+      />,
+    );
+  });
+
+  adminRoutes.post("/admin/kudos-channels", async (c) => {
+    const locale = getLocale(c);
+    const body = await c.req.parseBody();
+    const slackChannelId = (body.slack_channel_id as string)?.trim();
+    if (!slackChannelId) return c.text("Bad Request", 400);
+
+    await kudosService.addKudosChannel(slackChannelId);
+    const channels = await kudosService.listKudosChannels();
+    const channelNames = await resolveChannelNames(channels);
+    return c.html(
+      <AdminKudosChannelsList channels={channels} channelNames={channelNames} locale={locale} />,
+    );
+  });
+
+  adminRoutes.delete("/admin/kudos-channels/:id", async (c) => {
+    const id = c.req.param("id");
+    const locale = getLocale(c);
+
+    await kudosService.removeKudosChannel(id);
+    const channels = await kudosService.listKudosChannels();
+    const channelNames = await resolveChannelNames(channels);
+    return c.html(
+      <AdminKudosChannelsList channels={channels} channelNames={channelNames} locale={locale} />,
     );
   });
 
