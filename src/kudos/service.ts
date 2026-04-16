@@ -6,7 +6,6 @@ import {
   kudosEntries,
   kudosEntryMentionedUsers,
   kudosEntryMentionedUsergroups,
-  usergroupMembers,
   users,
 } from "../db/schema";
 
@@ -42,43 +41,47 @@ export function createKudosService(db: Database) {
   }) {
     const { entries: entryData, ...kudosData } = data;
 
-    const result = await db
-      .insert(kudos)
-      .values(kudosData)
-      .onConflictDoNothing({
-        target: [kudos.slackChannelId, kudos.slackMessageTs],
-      })
-      .returning();
-
-    if (result.length === 0) return null;
-    const [kudosRecord] = result;
-
-    for (const entry of entryData) {
-      const [entryRecord] = await db
-        .insert(kudosEntries)
-        .values({ kudosId: kudosRecord.id, message: entry.message })
+    return db.transaction(async (tx) => {
+      const result = await tx
+        .insert(kudos)
+        .values(kudosData)
+        .onConflictDoNothing({
+          target: [kudos.slackChannelId, kudos.slackMessageTs],
+        })
         .returning();
 
-      if (entry.mentionedUserIds.length > 0) {
-        await db.insert(kudosEntryMentionedUsers).values(
-          entry.mentionedUserIds.map((userId) => ({
-            kudosEntryId: entryRecord.id,
-            userId,
-          })),
-        );
+      if (result.length === 0) return null;
+      const [kudosRecord] = result;
+
+      for (const entry of entryData) {
+        const [entryRecord] = await tx
+          .insert(kudosEntries)
+          .values({ kudosId: kudosRecord.id, message: entry.message })
+          .returning();
+
+        const uniqueUserIds = [...new Set(entry.mentionedUserIds)];
+        if (uniqueUserIds.length > 0) {
+          await tx.insert(kudosEntryMentionedUsers).values(
+            uniqueUserIds.map((userId) => ({
+              kudosEntryId: entryRecord.id,
+              userId,
+            })),
+          );
+        }
+
+        const uniqueUsergroupIds = [...new Set(entry.mentionedUsergroupIds)];
+        if (uniqueUsergroupIds.length > 0) {
+          await tx.insert(kudosEntryMentionedUsergroups).values(
+            uniqueUsergroupIds.map((usergroupId) => ({
+              kudosEntryId: entryRecord.id,
+              usergroupId,
+            })),
+          );
+        }
       }
 
-      if (entry.mentionedUsergroupIds.length > 0) {
-        await db.insert(kudosEntryMentionedUsergroups).values(
-          entry.mentionedUsergroupIds.map((usergroupId) => ({
-            kudosEntryId: entryRecord.id,
-            usergroupId,
-          })),
-        );
-      }
-    }
-
-    return kudosRecord;
+      return kudosRecord;
+    });
   }
 
   async function listKudosEntries(
@@ -96,25 +99,14 @@ export function createKudosService(db: Database) {
     }
 
     if (filters.mentionedUserId) {
-      const directMentionEntryIds = db
+      // Group members are expanded to kudosEntryMentionedUsers at write time,
+      // so we only need to check this single table.
+      const mentionEntryIds = db
         .select({ entryId: kudosEntryMentionedUsers.kudosEntryId })
         .from(kudosEntryMentionedUsers)
         .where(eq(kudosEntryMentionedUsers.userId, filters.mentionedUserId));
 
-      const groupMentionEntryIds = db
-        .select({ entryId: kudosEntryMentionedUsergroups.kudosEntryId })
-        .from(kudosEntryMentionedUsergroups)
-        .innerJoin(
-          usergroupMembers,
-          and(
-            eq(kudosEntryMentionedUsergroups.usergroupId, usergroupMembers.usergroupId),
-            eq(usergroupMembers.userId, filters.mentionedUserId),
-          ),
-        );
-
-      conditions.push(
-        sql`(${kudosEntries.id} IN (${directMentionEntryIds}) OR ${kudosEntries.id} IN (${groupMentionEntryIds}))`,
-      );
+      conditions.push(sql`${kudosEntries.id} IN (${mentionEntryIds})`);
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -206,8 +198,9 @@ export function createKudosService(db: Database) {
   }
 
   async function getDistinctMentionedUsers() {
-    // Users directly mentioned in kudos entries
-    const directRows = await db
+    // Group members are expanded to kudosEntryMentionedUsers at write time,
+    // so this single query covers both direct and group mentions.
+    const rows = await db
       .selectDistinct({
         id: users.id,
         displayName: users.displayName,
@@ -215,35 +208,9 @@ export function createKudosService(db: Database) {
       })
       .from(kudosEntryMentionedUsers)
       .innerJoin(users, eq(kudosEntryMentionedUsers.userId, users.id))
-      .where(isNull(users.deactivatedAt));
-
-    // Users mentioned via usergroup membership
-    const groupRows = await db
-      .selectDistinct({
-        id: users.id,
-        displayName: users.displayName,
-        avatarUrl: users.avatarUrl,
-      })
-      .from(kudosEntryMentionedUsergroups)
-      .innerJoin(
-        usergroupMembers,
-        eq(kudosEntryMentionedUsergroups.usergroupId, usergroupMembers.usergroupId),
-      )
-      .innerJoin(users, eq(usergroupMembers.userId, users.id))
-      .where(isNull(users.deactivatedAt));
-
-    // Deduplicate
-    const userMap = new Map<
-      string,
-      { id: string; displayName: string; avatarUrl: string | null }
-    >();
-    for (const row of [...directRows, ...groupRows]) {
-      if (!userMap.has(row.id)) {
-        userMap.set(row.id, row);
-      }
-    }
-
-    return Array.from(userMap.values()).sort((a, b) => a.displayName.localeCompare(b.displayName));
+      .where(isNull(users.deactivatedAt))
+      .orderBy(users.displayName);
+    return rows;
   }
 
   return {

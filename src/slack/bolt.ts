@@ -779,11 +779,27 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                     }
 
                     // Usergroup mention: <!subteam^S123> or <!subteam^S123|handle>
+                    // Expand group members to individual user mentions at write time
+                    // so read queries don't depend on current membership.
                     const groupMatch = mention.match(/<!subteam\^(S[A-Z0-9]+)/);
                     if (groupMatch) {
                       try {
                         const usergroup = await resolveUsergroupToDb(groupMatch[1]);
                         mentionedUsergroupIds.push(usergroup.id);
+                        // Expand group members into mentionedUserIds at write time
+                        // so read queries don't depend on current membership.
+                        const membersRes = await client.usergroups.users.list({
+                          usergroup: groupMatch[1],
+                        });
+                        for (const slackUid of membersRes.users ?? []) {
+                          try {
+                            const member = await resolveSlackUserToDb(slackUid);
+                            if (member && member.deactivatedAt == null)
+                              mentionedUserIds.push(member.id);
+                          } catch {
+                            // Skip
+                          }
+                        }
                       } catch {
                         // Skip
                       }
