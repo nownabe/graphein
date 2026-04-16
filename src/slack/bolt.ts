@@ -98,6 +98,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                   result.user.profile.display_name || result.user.profile.real_name || slackUid,
                 avatarUrl: result.user.profile.image_72 ?? null,
               });
+              // Skip deactivated users
+              if (user.deactivatedAt != null) continue;
               userIds.push(user.id);
               slackUserIds.push(slackUid);
             }
@@ -453,6 +455,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
               result.user.profile.display_name || result.user.profile.real_name || slackUid,
             avatarUrl: result.user.profile.image_72 ?? null,
           });
+          // Skip deactivated users
+          if (user.deactivatedAt != null) continue;
           if (!assigneeIds.includes(user.id)) {
             assigneeIds.push(user.id);
           }
@@ -578,7 +582,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       const resolver = createSlackLabelResolver(client);
       const hydratedText = await hydrateMentionLabels(messageText, resolver);
 
-      // Resolve mentioned users
+      // Resolve mentioned users (skip deactivated)
       const mentionedDbUserIds: string[] = [];
       for (const slackUid of userMentionIds) {
         try {
@@ -591,6 +595,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                 result.user.profile.display_name || result.user.profile.real_name || slackUid,
               avatarUrl: result.user.profile.image_72 ?? null,
             });
+            if (user.deactivatedAt != null) continue;
             mentionedDbUserIds.push(user.id);
           }
         } catch {
@@ -655,7 +660,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         }
       }
 
-      // Resolve message author
+      // Resolve message author (skip if deactivated)
       const authorInfo = await client.users.info({ user: message.user });
       const author = await userService.findOrCreateUser({
         slackUserId: message.user,
@@ -666,6 +671,10 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           message.user,
         avatarUrl: authorInfo.user?.profile?.image_72 ?? null,
       });
+      if (author.deactivatedAt != null) {
+        console.debug(`[snippet] Skipping message from deactivated user ${message.user}`);
+        return;
+      }
 
       // Get permalink
       let permalink: string | undefined;

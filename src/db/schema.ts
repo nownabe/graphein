@@ -19,6 +19,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"),
   locale: text("locale").notNull().default("en"),
   theme: text("theme").notNull().default("dark"),
+  deactivatedAt: timestamp("deactivated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
