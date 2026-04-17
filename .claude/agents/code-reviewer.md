@@ -48,7 +48,7 @@ Then append your review to the log file specified in your prompt. Use the Edit t
 #### Review
 
 Status: [APPROVED or NEEDS_FIX]
-Reviewed commit: [{short_sha}](https://github.com/{owner}/{repo}/commit/{full_sha})
+Reviewed commit: [{short_sha}](https://github.com/nownabe/graphein/commit/{full_sha})
 
 [If APPROVED: brief approval message]
 [If NEEDS_FIX: numbered list of issues with file paths and line numbers]
