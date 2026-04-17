@@ -535,6 +535,293 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     }
   });
 
+  // Message shortcut: add_snippet
+  // 1. Shortcut handler: quick validation → show confirmation modal (or info modal on error)
+  // 2. View submission handler: ack with loading → async processing → views.update with result
+  boltApp.shortcut("add_snippet", async ({ shortcut, ack, client }) => {
+    await ack();
+
+    if (shortcut.type !== "message_action") return;
+
+    const existingUser = await userService.findUserBySlackUserId(shortcut.user.id);
+    const locale = (existingUser?.locale ?? "en") as Locale;
+
+    const messageText =
+      blocksToMrkdwn((shortcut.message as { blocks?: unknown }).blocks) ??
+      shortcut.message.text ??
+      "";
+    const channelId = shortcut.channel.id;
+    const messageTs = shortcut.message_ts;
+    const triggerId = shortcut.trigger_id;
+    const authorSlackId = (shortcut.message as { user?: string }).user ?? shortcut.user.id;
+
+    try {
+      // Quick validation (fast enough for trigger_id)
+      const userMentionIds = [...new Set(extractUserMentions(messageText))];
+      const usergroupMentionIds = [...new Set(extractUsergroupMentions(messageText))];
+
+      if (userMentionIds.length === 0 && usergroupMentionIds.length === 0) {
+        await client.views.open({
+          trigger_id: triggerId,
+          view: {
+            type: "modal",
+            callback_id: "add_snippet_modal_info",
+            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.snippet.noMentions") },
+              },
+            ],
+          },
+        });
+        return;
+      }
+
+      const existing = await snippetService.findSnippetBySlackMessage(channelId, messageTs);
+      if (existing) {
+        await client.views.open({
+          trigger_id: triggerId,
+          view: {
+            type: "modal",
+            callback_id: "add_snippet_modal_info",
+            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.snippet.duplicate") },
+              },
+            ],
+          },
+        });
+        return;
+      }
+
+      // Show confirmation modal with original message preview
+      await client.views.open({
+        trigger_id: triggerId,
+        view: {
+          type: "modal",
+          callback_id: "add_snippet_modal",
+          private_metadata: JSON.stringify({
+            channelId,
+            messageTs,
+            messageText,
+            authorSlackId,
+            locale,
+          }),
+          title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+          submit: { type: "plain_text", text: t(locale, "slack.snippet.submit") },
+          close: { type: "plain_text", text: t(locale, "slack.snippet.cancel") },
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: `*${t(locale, "slack.snippet.originalMessage")}*\n>${messageText.replace(/\n/g, "\n>")}`,
+              },
+            },
+          ],
+        },
+      });
+    } catch (err) {
+      console.error("Error in add_snippet shortcut:", err);
+    }
+  });
+
+  // Modal submission: add_snippet_modal
+  boltApp.view("add_snippet_modal", async ({ ack, view, client }) => {
+    const metadata = JSON.parse(view.private_metadata);
+    const { channelId, messageTs, messageText, authorSlackId } = metadata;
+    const locale = (metadata.locale ?? "en") as Locale;
+
+    // Ack with loading view to avoid 3-second timeout
+    await ack({
+      response_action: "update",
+      view: {
+        type: "modal",
+        callback_id: "add_snippet_modal_processing",
+        title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+        blocks: [
+          { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.snippet.loading") } },
+        ],
+      },
+    });
+
+    try {
+      const resolver = createSlackLabelResolver(client);
+      const userMentionIds = [...new Set(extractUserMentions(messageText))];
+      const usergroupMentionIds = [...new Set(extractUsergroupMentions(messageText))];
+      const hydratedText = await hydrateMentionLabels(messageText, resolver);
+
+      // Resolve mentioned users
+      const mentionedDbUserIds: string[] = [];
+      for (const slackUid of userMentionIds) {
+        try {
+          const result = await client.users.info({ user: slackUid });
+          if (result.user?.profile?.email) {
+            const user = await userService.findOrCreateUser({
+              slackUserId: slackUid,
+              email: result.user.profile.email,
+              displayName:
+                result.user.profile.display_name || result.user.profile.real_name || slackUid,
+              avatarUrl: result.user.profile.image_72 ?? null,
+            });
+            if (user.deactivatedAt == null) mentionedDbUserIds.push(user.id);
+          }
+        } catch {
+          // Skip unresolvable users
+        }
+      }
+
+      // Resolve mentioned usergroups
+      const mentionedDbUsergroupIds: string[] = [];
+      for (const groupId of usergroupMentionIds) {
+        try {
+          const groupHandle = await resolver.usergroup(groupId);
+          let groupName = groupHandle ?? groupId;
+          try {
+            const groupsRes = await client.usergroups.list({ include_disabled: false });
+            const group = (groupsRes.usergroups ?? []).find((g) => g.id === groupId);
+            if (group) groupName = group.name ?? groupName;
+          } catch {
+            // Use handle as fallback
+          }
+          const usergroup = await snippetService.findOrCreateUsergroup(
+            groupId,
+            groupName,
+            groupHandle ?? undefined,
+          );
+          mentionedDbUsergroupIds.push(usergroup.id);
+
+          // Sync group membership
+          try {
+            if (await snippetService.isUsergroupMembershipStale(usergroup.id)) {
+              const membersRes = await client.usergroups.users.list({ usergroup: groupId });
+              const memberDbIds: string[] = [];
+              for (const memberSlackUid of membersRes.users ?? []) {
+                try {
+                  const memberResult = await client.users.info({ user: memberSlackUid });
+                  if (memberResult.user?.profile?.email) {
+                    const member = await userService.findOrCreateUser({
+                      slackUserId: memberSlackUid,
+                      email: memberResult.user.profile.email,
+                      displayName:
+                        memberResult.user.profile.display_name ||
+                        memberResult.user.profile.real_name ||
+                        memberSlackUid,
+                      avatarUrl: memberResult.user.profile.image_72 ?? null,
+                    });
+                    if (member) memberDbIds.push(member.id);
+                  }
+                } catch {
+                  // Skip unresolvable members
+                }
+              }
+              await snippetService.syncUsergroupMembers(usergroup.id, memberDbIds);
+            }
+          } catch {
+            // Non-critical
+          }
+        } catch {
+          // Skip unresolvable groups
+        }
+      }
+
+      // Resolve message author
+      const authorInfo = await client.users.info({ user: authorSlackId });
+      const author = await userService.findOrCreateUser({
+        slackUserId: authorSlackId,
+        email: authorInfo.user?.profile?.email ?? "",
+        displayName:
+          authorInfo.user?.profile?.display_name ||
+          authorInfo.user?.profile?.real_name ||
+          authorSlackId,
+        avatarUrl: authorInfo.user?.profile?.image_72 ?? null,
+      });
+
+      if (author.deactivatedAt != null) {
+        console.debug(`[snippet-shortcut] Skipping message from deactivated user ${authorSlackId}`);
+        return;
+      }
+
+      let permalink: string | undefined;
+      try {
+        const permalinkRes = await client.chat.getPermalink({
+          channel: channelId,
+          message_ts: messageTs,
+        });
+        permalink = permalinkRes.permalink ?? undefined;
+      } catch {
+        // Non-critical
+      }
+
+      const postedAt = new Date(Number(messageTs.split(".")[0]) * 1000);
+      const created = await snippetService.createSnippet({
+        content: hydratedText,
+        postedAt,
+        slackMessageTs: messageTs,
+        slackChannelId: channelId,
+        slackPermalink: permalink,
+        postedById: author.id,
+        mentionedUserIds: mentionedDbUserIds,
+        mentionedUsergroupIds: mentionedDbUsergroupIds,
+      });
+
+      if (created) {
+        console.log(
+          `[snippet-shortcut] Created snippet for message ${messageTs} in channel ${channelId}`,
+        );
+        try {
+          await client.reactions.add({
+            channel: channelId,
+            timestamp: messageTs,
+            name: "memo",
+          });
+        } catch (err) {
+          console.warn(
+            `[snippet-shortcut] Failed to add reaction to ${channelId}/${messageTs}:`,
+            err,
+          );
+        }
+      }
+
+      // Show success
+      await client.views.update({
+        view_id: view.id,
+        view: {
+          type: "modal",
+          callback_id: "add_snippet_modal_done",
+          title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+          close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
+          blocks: [
+            { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.snippet.success") } },
+          ],
+        },
+      });
+    } catch (err) {
+      console.error("[snippet-shortcut] Error creating snippet from modal:", err);
+      try {
+        await client.views.update({
+          view_id: view.id,
+          view: {
+            type: "modal",
+            callback_id: "add_snippet_modal_error",
+            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
+            blocks: [
+              { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.snippet.error") } },
+            ],
+          },
+        });
+      } catch (updateErr) {
+        console.error("Failed to update snippet modal with error:", updateErr);
+      }
+    }
+  });
+
   // Message event listener for snippet and kudos capture
   boltApp.message(async ({ message, client }) => {
     try {
