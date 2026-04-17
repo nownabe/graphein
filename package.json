@@ -18,7 +18,8 @@
     "check:app": "bun run typecheck && bun run test && bun run test:integration && bun run css:build",
     "check:format": "oxfmt --check",
     "check:lint": "oxlint --deny-warnings",
-    "check:workflows": "actionlint && ghalint run && zizmor .github/workflows/"
+    "check:workflows": "actionlint && ghalint run && zizmor .github/workflows/",
+    "slack:manifest": "bun run scripts/generate-slack-manifest.ts"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

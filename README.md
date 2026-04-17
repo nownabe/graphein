@@ -18,40 +18,19 @@ The name comes from the Greek word **γραφεῖν** (graphein), meaning "to w
 
 ### 1. Create a Slack App
 
-Create a new app at [api.slack.com/apps](https://api.slack.com/apps).
+Generate a manifest and create an app at [api.slack.com/apps](https://api.slack.com/apps):
 
-#### Socket Mode
-
-- Turn on **Settings → Socket Mode**
-- Go to **Settings → Basic Information → App-Level Tokens** and generate a token with the `connections:write` scope (starts with `xapp-`)
-
-#### OAuth & Permissions
-
-Add the following Bot Token Scopes:
-
-- `chat:write`
-- `users:read`
-- `users:read.email`
-- `usergroups:read`
-
-#### OpenID Connect
-
-Set the Redirect URL:
-
-```
-http://localhost:3000/auth/slack/callback
+```bash
+bun run slack:manifest
 ```
 
-#### Interactivity & Shortcuts
+Follow the prompts to configure app name, base URL, and Socket Mode. The generated YAML can be pasted into **Create New App → From a manifest**.
 
-- Turn on Interactivity
-- Go to Shortcuts → **Create New Shortcut** → select **On messages**:
-  - Name: `Create Task`
-  - Callback ID: `create_task`
+After creating the app:
 
-#### Install
-
-Install the app to your workspace.
+1. If using Socket Mode, go to **Settings → Basic Information → App-Level Tokens** and generate a token with the `connections:write` scope (starts with `xapp-`)
+2. Go to **Settings → OpenID Connect** and set the Redirect URL to `{BASE_URL}/auth/slack/callback`
+3. Install the app to your workspace
 
 ### 2. Configure Environment Variables
 
