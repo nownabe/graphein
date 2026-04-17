@@ -685,7 +685,22 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     const { channelId, messageTs, messageText } = metadata;
     const locale = (metadata.locale ?? "en") as Locale;
 
-    // Process before ack: success closes modal, failure shows error in modal
+    // Ack immediately with a loading view to avoid Slack's 3-second timeout
+    await ack({
+      response_action: "update",
+      view: {
+        type: "modal",
+        callback_id: "add_snippet_modal_processing",
+        title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+        blocks: [
+          {
+            type: "section",
+            text: { type: "mrkdwn", text: t(locale, "slack.snippet.loading") },
+          },
+        ],
+      },
+    });
+
     try {
       const resolver = createSlackLabelResolver(client);
 
@@ -783,7 +798,6 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
       if (author.deactivatedAt != null) {
         console.debug(`[snippet-shortcut] Skipping message from deactivated user ${authorSlackId}`);
-        await ack();
         return;
       }
 
@@ -810,9 +824,6 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         mentionedUsergroupIds: mentionedDbUsergroupIds,
       });
 
-      // Close modal on success
-      await ack();
-
       if (created) {
         console.log(
           `[snippet-shortcut] Created snippet for message ${messageTs} in channel ${channelId}`,
@@ -830,23 +841,48 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           );
         }
       }
+
+      // Update modal to show success
+      try {
+        await client.views.update({
+          view_id: view.id,
+          view: {
+            type: "modal",
+            callback_id: "add_snippet_modal_done",
+            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.snippet.success") },
+              },
+            ],
+          },
+        });
+      } catch (updateErr) {
+        console.warn("Failed to update snippet modal with success:", updateErr);
+      }
     } catch (err) {
       console.error("[snippet-shortcut] Error creating snippet from modal:", err);
-      await ack({
-        response_action: "update",
-        view: {
-          type: "modal",
-          callback_id: "add_snippet_modal_error",
-          title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
-          close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
-          blocks: [
-            {
-              type: "section",
-              text: { type: "mrkdwn", text: t(locale, "slack.snippet.error") },
-            },
-          ],
-        },
-      });
+      try {
+        await client.views.update({
+          view_id: view.id,
+          view: {
+            type: "modal",
+            callback_id: "add_snippet_modal_error",
+            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.snippet.error") },
+              },
+            ],
+          },
+        });
+      } catch (updateErr) {
+        console.error("Failed to update snippet modal with error:", updateErr);
+      }
     }
   });
 
