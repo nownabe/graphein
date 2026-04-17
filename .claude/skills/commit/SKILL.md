@@ -45,7 +45,7 @@ Format: `<type>: <description>`
 
 | Type       | When to use                                                                          |
 | ---------- | ------------------------------------------------------------------------------------ |
-| `feat`     | A new user-facing feature                                                            |
+| `feat`     | A new **user-facing** feature (not dev tooling)                                      |
 | `fix`      | A bug fix                                                                            |
 | `docs`     | Documentation-only changes (README, CLAUDE.md, comments, etc.)                       |
 | `style`    | Formatting changes that do not affect code meaning (whitespace, semicolons, etc.)    |
@@ -55,7 +55,7 @@ Format: `<type>: <description>`
 | `deps`     | Dependency updates (version bumps, lock file changes, etc.)                          |
 | `build`    | Changes to the build system or build configuration                                   |
 | `ci`       | CI/CD configuration changes (GitHub Actions, workflows, etc.)                        |
-| `chore`    | Miscellaneous tasks that do not fit any of the above (gitignore, tool config, etc.)  |
+| `chore`    | Dev tooling, config, and other non-user-facing tasks (skills, agents, gitignore, etc.) |
 
 - Subject line: imperative mood, lowercase, no period, max 72 characters.
 - Add a body (separated by a blank line) only when the "why" is not obvious from the subject.
