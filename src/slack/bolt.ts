@@ -536,9 +536,9 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
   });
 
   // Message shortcut: add_snippet
-  // No modal — just ack, process in background, and use :memo: reaction as
-  // success feedback (same as the automatic event handler). Errors are reported
-  // via ephemeral messages.
+  // Success feedback is the :memo: reaction (same as automatic event handler).
+  // Fast validation failures (no mentions, duplicate) show a modal via trigger_id.
+  // Processing errors fall back to ephemeral since trigger_id may have expired.
   boltApp.shortcut("add_snippet", async ({ shortcut, ack, client }) => {
     await ack();
 
@@ -553,28 +553,35 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       "";
     const channelId = shortcut.channel.id;
     const messageTs = shortcut.message_ts;
+    const triggerId = shortcut.trigger_id;
     const authorSlackId = (shortcut.message as { user?: string }).user ?? shortcut.user.id;
+
+    // Helper to show an info/error modal
+    async function showInfoModal(text: string) {
+      await client.views.open({
+        trigger_id: triggerId,
+        view: {
+          type: "modal",
+          callback_id: "add_snippet_modal_info",
+          title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+          close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
+          blocks: [{ type: "section", text: { type: "mrkdwn", text } }],
+        },
+      });
+    }
 
     try {
       const userMentionIds = [...new Set(extractUserMentions(messageText))];
       const usergroupMentionIds = [...new Set(extractUsergroupMentions(messageText))];
 
       if (userMentionIds.length === 0 && usergroupMentionIds.length === 0) {
-        await client.chat.postEphemeral({
-          channel: channelId,
-          user: shortcut.user.id,
-          text: t(locale, "slack.snippet.noMentions"),
-        });
+        await showInfoModal(t(locale, "slack.snippet.noMentions"));
         return;
       }
 
       const existing = await snippetService.findSnippetBySlackMessage(channelId, messageTs);
       if (existing) {
-        await client.chat.postEphemeral({
-          channel: channelId,
-          user: shortcut.user.id,
-          text: t(locale, "slack.snippet.duplicate"),
-        });
+        await showInfoModal(t(locale, "slack.snippet.duplicate"));
         return;
       }
 
