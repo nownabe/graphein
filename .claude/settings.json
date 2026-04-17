@@ -21,6 +21,7 @@
       "Bash(ghalint run:*)",
       "Bash(oxlint:*)",
       "Bash(oxfmt:*)",
+      "Bash(bun run tools/run-sql.ts:*)",
       "mcp__chrome-devtools__*",
       "Skill(commit)",
       "Skill(pr)"
