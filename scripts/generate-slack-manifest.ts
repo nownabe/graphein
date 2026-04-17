@@ -78,8 +78,7 @@ function toYamlObject(obj: Record<string, unknown>, indent: number): string {
   return Object.entries(obj)
     .map(([key, value]) => {
       if (value === null || value === undefined) return `${pad}${key}: null`;
-      if (typeof value === "boolean" || typeof value === "number")
-        return `${pad}${key}: ${value}`;
+      if (typeof value === "boolean" || typeof value === "number") return `${pad}${key}: ${value}`;
       if (typeof value === "string") return `${pad}${key}: ${yamlString(value)}`;
       return `${pad}${key}:\n${toYaml(value, indent + 1)}`;
     })
