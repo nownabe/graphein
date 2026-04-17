@@ -188,7 +188,6 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.snippet.confirm": "このメッセージを日報として追加しますか？",
     "slack.snippet.originalMessage": "メッセージ:",
     "slack.snippet.duplicate": "このメッセージはすでに日報として登録されています。",
-    "slack.snippet.success": "日報を追加しました。",
     "slack.snippet.error": "日報の追加中にエラーが発生しました。もう一度お試しください。",
     "slack.snippet.noMentions":
       "このメッセージにはメンションが含まれていないため、日報として追加できません。",
@@ -433,7 +432,6 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.snippet.confirm": "Add this message as a snippet?",
     "slack.snippet.originalMessage": "Message:",
     "slack.snippet.duplicate": "This message has already been added as a snippet.",
-    "slack.snippet.success": "Snippet added successfully.",
     "slack.snippet.error": "An error occurred while adding the snippet. Please try again.",
     "slack.snippet.noMentions": "This message has no mentions and cannot be added as a snippet.",
 
