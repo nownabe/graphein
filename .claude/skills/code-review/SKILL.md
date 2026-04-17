@@ -73,7 +73,7 @@ Pass this prompt (fill in the variables):
 
 ```
 Review round {N}. Log file: {log_file_path}
-Repository: {owner}/{repo}
+Repository: nownabe/graphein
 ```
 
 After the sub-agent returns, read the log file to determine the status.
