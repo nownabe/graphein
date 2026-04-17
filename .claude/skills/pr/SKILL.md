@@ -33,7 +33,13 @@ bun run check:all
 
 If any check fails, fix the issues and re-run. Do NOT skip checks or push with failures.
 
-## 4. Check Existing PR State
+## 4. Local Code Review
+
+Run the `/code-review` skill to perform an automated local code review before pushing. This will loop up to 5 rounds of review and fix until approved.
+
+If the review does not converge (not approved after 5 rounds), STOP and inform the user.
+
+## 5. Check Existing PR State
 
 Before pushing, check if there is an existing PR for this branch:
 
@@ -44,13 +50,13 @@ gh pr view --json state --jq '.state'
 - If the PR is `CLOSED` or `MERGED`, STOP and inform the user. Do NOT push to a closed/merged PR's branch.
 - If no PR exists or the PR is `OPEN`, proceed.
 
-## 5. Push
+## 6. Push
 
 ```
 git push -u origin HEAD
 ```
 
-## 6. Create Pull Request
+## 7. Create Pull Request
 
 If a PR does not yet exist for this branch:
 
