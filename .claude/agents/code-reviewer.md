@@ -34,6 +34,7 @@ You are a code reviewer. Review the changes on the current branch compared to ma
 ## Output
 
 Determine the review status:
+
 - If there are NO issues worth fixing: **STATUS: APPROVED**
 - If there are issues: **STATUS: NEEDS_FIX**
 
@@ -42,7 +43,6 @@ Get the HEAD commit SHA by running `git rev-parse HEAD` and `git rev-parse --sho
 Then append your review to the log file specified in your prompt. Use the Edit tool to append (match the last line of the file and add after it). The format must be:
 
 ```markdown
-
 ### Round {N}
 
 #### Review
@@ -55,5 +55,6 @@ Reviewed commit: [{short_sha}](https://github.com/{owner}/{repo}/commit/{full_sh
 ```
 
 Finally, respond with one of:
+
 - `STATUS: APPROVED` — if no issues found
 - `STATUS: NEEDS_FIX` — if issues were found (include the numbered list in your response too so the caller can see it)

@@ -48,6 +48,7 @@ Your role is purely orchestration: launch sub-agents, read their results, and co
 3. Compute the log file path: `.agents/code-review/{yyyyMMdd}-{branch_name}.md`
    - Replace all `/` in branch_name with `-`
 4. Initialize the log file with the header:
+
    ```markdown
    # {yyyyMMdd}-{branch_name}
 
@@ -92,16 +93,18 @@ If status is **NEEDS_FIX**:
    git commit -m "fix: address review round {N} feedback"
    ```
 5. Append the fix section to the log file:
-   ```markdown
 
+   ```markdown
    #### Fix
 
    Fixed files:
+
    - file1.ts
    - file2.tsx
 
    [Brief summary of what was changed and why]
    ```
+
 6. Stage and commit the log file update:
    ```
    git add .agents/code-review/
