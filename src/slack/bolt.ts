@@ -841,6 +841,27 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           );
         }
       }
+
+      // Show success modal
+      try {
+        await client.views.update({
+          view_id: view.id,
+          view: {
+            type: "modal",
+            callback_id: "add_snippet_modal_done",
+            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.snippet.success") },
+              },
+            ],
+          },
+        });
+      } catch (updateErr) {
+        console.warn("Failed to update snippet modal with success:", updateErr);
+      }
     } catch (err) {
       console.error("[snippet-shortcut] Error creating snippet from modal:", err);
       try {
