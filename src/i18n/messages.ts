@@ -181,12 +181,9 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Slack snippet shortcut
     "slack.snippet.title": "日報を追加",
-    "slack.snippet.submit": "追加",
     "slack.snippet.cancel": "キャンセル",
     "slack.snippet.close": "閉じる",
-    "slack.snippet.loading": "メッセージを確認中です...",
-    "slack.snippet.confirm": "このメッセージを日報として追加しますか？",
-    "slack.snippet.originalMessage": "メッセージ:",
+    "slack.snippet.loading": "処理中です...",
     "slack.snippet.duplicate": "このメッセージはすでに日報として登録されています。",
     "slack.snippet.success": "日報を追加しました。",
     "slack.snippet.error": "日報の追加中にエラーが発生しました。もう一度お試しください。",
@@ -426,12 +423,9 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // Slack snippet shortcut
     "slack.snippet.title": "Add Snippet",
-    "slack.snippet.submit": "Add",
     "slack.snippet.cancel": "Cancel",
     "slack.snippet.close": "Close",
-    "slack.snippet.loading": "Checking message...",
-    "slack.snippet.confirm": "Add this message as a snippet?",
-    "slack.snippet.originalMessage": "Message:",
+    "slack.snippet.loading": "Processing...",
     "slack.snippet.duplicate": "This message has already been added as a snippet.",
     "slack.snippet.success": "Snippet added successfully.",
     "slack.snippet.error": "An error occurred while adding the snippet. Please try again.",
