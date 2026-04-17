@@ -632,6 +632,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             messageTs,
             messageText,
             slackUserId: shortcut.user.id,
+            authorSlackId: (shortcut.message as { user?: string }).user ?? shortcut.user.id,
             locale,
           }),
           title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
@@ -680,11 +681,25 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
   // Modal submission: add_snippet_modal
   boltApp.view("add_snippet_modal", async ({ ack, view, client }) => {
-    await ack();
-
     const metadata = JSON.parse(view.private_metadata);
-    const { channelId, messageTs, messageText, slackUserId } = metadata;
+    const { channelId, messageTs, messageText } = metadata;
     const locale = (metadata.locale ?? "en") as Locale;
+
+    // Respond with a loading modal so the user sees progress
+    await ack({
+      response_action: "update",
+      view: {
+        type: "modal",
+        callback_id: "add_snippet_modal_loading",
+        title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+        blocks: [
+          {
+            type: "section",
+            text: { type: "mrkdwn", text: t(locale, "slack.snippet.loading") },
+          },
+        ],
+      },
+    });
 
     try {
       const resolver = createSlackLabelResolver(client);
@@ -768,27 +783,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         }
       }
 
-      // Resolve message author (original poster, not the shortcut user)
-      // For message shortcuts, the original poster is in the message.
-      // We use the shortcut user as fallback since we stored slackUserId.
-      // However, the message author is who posted - we need to get it from the message.
-      // Since we don't have the original author in metadata, fetch the message.
-      let authorSlackId = slackUserId;
-      try {
-        const historyRes = await client.conversations.history({
-          channel: channelId,
-          latest: messageTs,
-          inclusive: true,
-          limit: 1,
-        });
-        const msg = historyRes.messages?.[0];
-        if (msg?.user) {
-          authorSlackId = msg.user;
-        }
-      } catch {
-        // Use shortcut user as fallback
-      }
-
+      // Resolve message author (stored in private_metadata from shortcut payload)
+      const authorSlackId = metadata.authorSlackId;
       const authorInfo = await client.users.info({ user: authorSlackId });
       const author = await userService.findOrCreateUser({
         slackUserId: authorSlackId,
@@ -848,13 +844,23 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     } catch (err) {
       console.error("[snippet-shortcut] Error creating snippet from modal:", err);
       try {
-        await client.chat.postEphemeral({
-          channel: channelId,
-          user: slackUserId,
-          text: t(locale, "slack.snippet.error"),
+        await client.views.update({
+          view_id: view.id,
+          view: {
+            type: "modal",
+            callback_id: "add_snippet_modal_error",
+            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
+            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.snippet.error") },
+              },
+            ],
+          },
         });
-      } catch (ephemeralErr) {
-        console.error("Failed to send ephemeral error message:", ephemeralErr);
+      } catch (updateErr) {
+        console.error("Failed to update snippet modal with error:", updateErr);
       }
     }
   });
