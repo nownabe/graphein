@@ -210,6 +210,8 @@ const messages: Record<Locale, Record<string, string>> = {
       "このメッセージにはKudosのエントリが含まれていません。メンションで始まる行が必要です。",
     "slack.kudos.notUserMessage":
       "このメッセージはユーザーが投稿したものではないため、Kudosとして追加できません。",
+    "slack.kudos.deactivatedAuthor":
+      "メッセージの投稿者が無効化されているため、Kudosを追加できません。",
     "slack.kudos.notKudosChannel": "このチャンネルはKudosチャンネルとして設定されていません。",
 
     // Admin snippet channels
@@ -472,6 +474,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.kudos.noEntries": "This message has no kudos entries. Lines must start with a mention.",
     "slack.kudos.notUserMessage":
       "This message was not posted by a user and cannot be added as kudos.",
+    "slack.kudos.deactivatedAuthor": "The message author is deactivated. Cannot add kudos.",
     "slack.kudos.notKudosChannel": "This channel is not configured as a kudos channel.",
 
     // Admin snippet channels

@@ -953,7 +953,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             "add_kudos_modal_done",
             locale,
             "slack.kudos.title",
-            "slack.kudos.noEntries",
+            "slack.kudos.deactivatedAuthor",
             "slack.kudos.close",
           ),
         });
