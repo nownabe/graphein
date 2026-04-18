@@ -10,11 +10,9 @@ export { expect };
  *    Use this for tests that need to interact with the Graphein web UI.
  */
 export const test = base.extend<{ authedPage: Awaited<ReturnType<(typeof base)["page"]>> }>({
-  authedPage: async ({ browser }, use) => {
-    const context = await browser.newContext();
+  authedPage: async ({ context }, use) => {
     await authenticateContext(context);
     const page = await context.newPage();
     await use(page);
-    await context.close();
   },
 });
