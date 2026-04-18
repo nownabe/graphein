@@ -3,6 +3,7 @@
  *
  * Prompts for environment-specific values (app name, URLs, etc.)
  * and outputs a complete YAML manifest to stdout.
+ * Selecting "Development mode" adds extra bot scopes needed for testing.
  *
  * Usage: bun run scripts/generate-slack-manifest.ts
  */
@@ -100,9 +101,24 @@ interface ManifestOptions {
   appName: string;
   redirectUrl: string;
   socketMode: boolean;
+  dev: boolean;
 }
 
 function buildManifest(opts: ManifestOptions): Record<string, unknown> {
+  const botScopes = [
+    "channels:history",
+    "channels:read",
+    "chat:write",
+    "reactions:write",
+    "users:read",
+    "users:read.email",
+    "usergroups:read",
+  ];
+
+  if (opts.dev) {
+    botScopes.push("reactions:read");
+  }
+
   return {
     display_information: {
       name: opts.appName,
@@ -138,15 +154,7 @@ function buildManifest(opts: ManifestOptions): Record<string, unknown> {
     oauth_config: {
       redirect_urls: [opts.redirectUrl],
       scopes: {
-        bot: [
-          "channels:history",
-          "channels:read",
-          "chat:write",
-          "reactions:write",
-          "users:read",
-          "users:read.email",
-          "usergroups:read",
-        ],
+        bot: botScopes,
       },
     },
     settings: {
@@ -169,14 +177,19 @@ function buildManifest(opts: ManifestOptions): Record<string, unknown> {
 
 console.log("=== Graphein Slack App Manifest Generator ===\n");
 
+const useDev = askYesNo("Development mode? (adds extra scopes for testing)", false);
+
 const appName = ask("App name", "Graphein");
-const baseUrl = ask("Base URL (e.g. https://graphein.example.com)", "http://localhost:3000");
+let baseUrl = "";
+while (!baseUrl) {
+  baseUrl = ask("Base URL (e.g. https://abc123.ngrok.io)", "");
+}
 const socketMode = askYesNo("Enable Socket Mode?", true);
 
 const redirectUrl = `${baseUrl.replace(/\/$/, "")}/auth/slack/callback`;
 console.log(`\n  Redirect URL: ${redirectUrl}`);
 
-const manifest = buildManifest({ appName, redirectUrl, socketMode });
+const manifest = buildManifest({ appName, redirectUrl, socketMode, dev: useDev });
 const yaml = toYaml(manifest);
 
 console.log("\n--- Generated Manifest (YAML) ---\n");
