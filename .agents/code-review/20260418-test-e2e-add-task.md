@@ -39,3 +39,12 @@ Fixed files:
 1. Changed `slackMessageTs` to `string | undefined`, added `replyTs` variable, and reset both to `undefined` at end of `afterEach`.
 2. Store the reply `ts` from `slackClient.chat.postMessage`, delete it in `afterEach` before the parent message.
 3. Added `getSlackClient` to the static import from `./helpers/slack` and removed the dynamic import.
+
+### Round 2
+
+#### Review
+
+Status: APPROVED
+Reviewed commit: [5ed909e](https://github.com/nownabe/graphein/commit/5ed909ea6c2bd2ec9bd21dba84ef4792ac81da81)
+
+All three round 1 issues have been correctly addressed: `slackMessageTs` is now typed as `string | undefined` and reset after cleanup, thread reply `ts` is tracked and deleted in `afterEach` before the parent message, and `getSlackClient` uses the existing static import. TypeScript compiles cleanly. No new issues found.
