@@ -840,9 +840,50 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     const channelId = shortcut.channel.id;
     const messageTs = shortcut.message_ts;
     const triggerId = shortcut.trigger_id;
-    const authorSlackId = (shortcut.message as { user?: string }).user ?? shortcut.user.id;
+    const authorSlackId = (shortcut.message as { user?: string }).user;
 
     try {
+      // Reject bot/system messages that have no real user
+      if (!authorSlackId) {
+        await client.views.open({
+          trigger_id: triggerId,
+          view: {
+            type: "modal",
+            callback_id: "add_kudos_modal_info",
+            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.kudos.notUserMessage") },
+              },
+            ],
+          },
+        });
+        return;
+      }
+
+      // Check if this channel is configured as a kudos channel
+      const isKudosMonitored = await kudosService.isKudosChannel(channelId);
+      if (!isKudosMonitored) {
+        await client.views.open({
+          trigger_id: triggerId,
+          view: {
+            type: "modal",
+            callback_id: "add_kudos_modal_info",
+            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.kudos.notKudosChannel") },
+              },
+            ],
+          },
+        });
+        return;
+      }
+
       // Check if the message contains kudos entries
       const parsedEntries = parseKudosMessage(messageText);
       if (parsedEntries.length === 0) {

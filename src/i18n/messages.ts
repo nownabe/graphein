@@ -204,6 +204,9 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.kudos.error": "Kudosの追加中にエラーが発生しました。もう一度お試しください。",
     "slack.kudos.noEntries":
       "このメッセージにはKudosのエントリが含まれていません。メンションで始まる行が必要です。",
+    "slack.kudos.notUserMessage":
+      "このメッセージはユーザーが投稿したものではないため、Kudosとして追加できません。",
+    "slack.kudos.notKudosChannel": "このチャンネルはKudosチャンネルとして設定されていません。",
 
     // Admin snippet channels
     "admin.snippetChannels.title": "日報チャンネル管理",
@@ -459,6 +462,9 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.kudos.duplicate": "This message has already been added as kudos.",
     "slack.kudos.error": "An error occurred while adding kudos. Please try again.",
     "slack.kudos.noEntries": "This message has no kudos entries. Lines must start with a mention.",
+    "slack.kudos.notUserMessage":
+      "This message was not posted by a user and cannot be added as kudos.",
+    "slack.kudos.notKudosChannel": "This channel is not configured as a kudos channel.",
 
     // Admin snippet channels
     "admin.snippetChannels.title": "Snippet Channels",
