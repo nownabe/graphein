@@ -23,3 +23,6 @@ drizzle/meta/
 # Playwright
 test-results/
 playwright-report/
+
+# Claude Code worktrees
+.claude/worktrees/

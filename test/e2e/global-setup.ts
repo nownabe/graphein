@@ -9,6 +9,7 @@ import { env } from "./helpers/env";
 async function globalSetup() {
   const db = createDb(env.databaseUrl);
   await migrate(db, { migrationsFolder: "./drizzle" });
+  await db.$client.end();
 }
 
 export default globalSetup;
