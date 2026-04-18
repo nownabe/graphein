@@ -458,8 +458,7 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.kudos.success": "Kudos added successfully.",
     "slack.kudos.duplicate": "This message has already been added as kudos.",
     "slack.kudos.error": "An error occurred while adding kudos. Please try again.",
-    "slack.kudos.noEntries":
-      "This message has no kudos entries. Lines must start with a mention.",
+    "slack.kudos.noEntries": "This message has no kudos entries. Lines must start with a mention.",
 
     // Admin snippet channels
     "admin.snippetChannels.title": "Snippet Channels",
