@@ -202,6 +202,13 @@ bun run test:e2e -- --headed  # Run with visible browser
 | `test/e2e/helpers/db.ts`                | Database query/cleanup helpers                       |
 | `test/e2e/helpers/auth.ts`              | JWT token creation, browser context auth             |
 
+## API Design
+
+- Follow [Google API Improvement Proposals (AIP)](https://google.aip.dev/) for API design
+- Key references: [AIP-122 (Resource names)](https://google.aip.dev/122), [AIP-127 (HTTP and gRPC Transcoding)](https://google.aip.dev/127), [AIP-190 (Naming conventions)](https://google.aip.dev/190)
+- URL path collection identifiers use camelCase (e.g. `/api/v1/snippetChannels`)
+- See `docs/design/api.md` for the API design doc
+
 ## Conventions
 
 - Files using JSX must have `.tsx` extension
