@@ -25,7 +25,8 @@
       "mcp__chrome-devtools__*",
       "Skill(commit)",
       "Skill(pr)",
-      "Skill(e2e)"
+      "Skill(e2e)",
+      "Skill(handle-issue)"
     ],
     "defaultMode": "acceptEdits"
   }
