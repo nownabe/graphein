@@ -1,4 +1,4 @@
-import { test as base, expect } from "@playwright/test";
+import { test as base, expect, type Page } from "@playwright/test";
 import { authenticateContext } from "./helpers/auth";
 
 export { expect };
@@ -9,7 +9,7 @@ export { expect };
  * - `authedPage`: A page with a valid JWT session cookie already set.
  *    Use this for tests that need to interact with the Graphein web UI.
  */
-export const test = base.extend<{ authedPage: Awaited<ReturnType<(typeof base)["page"]>> }>({
+export const test = base.extend<{ authedPage: Page }>({
   authedPage: async ({ context }, use) => {
     await authenticateContext(context);
     const page = await context.newPage();

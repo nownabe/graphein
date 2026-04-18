@@ -154,24 +154,24 @@ Playwright-based E2E tests live in `test/e2e/`. They test the full Slack → Gra
 
 ### Prerequisites
 
-- Dev server running (`bun run dev`) with `DATABASE_URL` pointing to the E2E database
 - E2E database running (`bun run db:up` starts all databases including `db-e2e` on port 15434)
 - Slack workspace accessible (bot token with posting permissions)
+- The E2E server is started automatically by `global-setup.ts` on port 3001 (HTTP mode, Socket Mode off)
 
 ### Environment Variables
 
 Set these in `.envrc` (direnv) or your shell before running E2E tests:
 
-| Variable                 | Description                                                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| `E2E_SLACK_BOT_TOKEN`    | Slack bot token for posting messages                                                                          |
-| `E2E_SLACK_CHANNEL_ID`   | General test channel ID                                                                                       |
-| `E2E_SLACK_USER_ID`      | Slack user ID for the test user                                                                               |
-| `E2E_SNIPPET_CHANNEL_ID` | Snippet-monitored channel ID                                                                                  |
-| `E2E_KUDOS_CHANNEL_ID`   | Kudos-monitored channel ID                                                                                    |
-| `E2E_GRAPHEIN_URL`       | Graphein app URL (default: `http://localhost:3000`)                                                           |
-| `E2E_DATABASE_URL`       | E2E database connection string (default: `postgres://graphein_e2e:graphein_e2e@localhost:15434/graphein_e2e`) |
-| `JWT_SECRET`             | JWT signing secret (same as dev server)                                                                       |
+| Variable                   | Description                                             |
+| -------------------------- | ------------------------------------------------------- |
+| `E2E_SLACK_BOT_TOKEN`      | Slack bot token for posting messages                    |
+| `E2E_SLACK_SIGNING_SECRET` | Slack signing secret for request signature verification |
+| `E2E_SLACK_CHANNEL_ID`     | General test channel ID                                 |
+| `E2E_SLACK_USER_ID`        | Slack user ID for the test user                         |
+| `E2E_SNIPPET_CHANNEL_ID`   | Snippet-monitored channel ID                            |
+| `E2E_KUDOS_CHANNEL_ID`     | Kudos-monitored channel ID                              |
+| `E2E_DATABASE_URL`         | E2E database connection string                          |
+| `E2E_JWT_SECRET`           | JWT signing secret for E2E test auth                    |
 
 ### Running
 
@@ -182,21 +182,25 @@ bun run test:e2e -- --headed  # Run with visible browser
 
 ### Architecture
 
-- **Slack interactions use the Slack Web API** (not browser automation) — messages are posted via `chat.postMessage`, reactions checked via `reactions.get`, etc.
+- **E2E server starts automatically** — `global-setup.ts` spawns the Graphein server on port 3001 in HTTP mode (Socket Mode off). Torn down by `global-teardown.ts`.
+- **Slack shortcut/modal flows are simulated via signed HTTP requests** — `slack-interaction.ts` constructs Slack-compatible payloads with HMAC-SHA256 signatures and POSTs them to `/slack/interactions`.
+- **Slack API helpers** — messages are posted via `chat.postMessage`, reactions checked via `reactions.get`, etc.
 - **Graphein UI verification uses Playwright** — the browser navigates to the web app and asserts on rendered content.
 - **Auth is handled via JWT cookies** — the `authenticateContext` helper creates a valid session token and sets it as a cookie, bypassing the Slack OIDC flow.
 - **DB verification uses the `postgres` driver directly** — helpers in `test/e2e/helpers/db.ts` query the E2E database. Migrations run automatically via `global-setup.ts`.
 
 ### Helpers
 
-| File                        | Purpose                                              |
-| --------------------------- | ---------------------------------------------------- |
-| `test/e2e/global-setup.ts`  | Run DB migrations before tests                       |
-| `test/e2e/fixtures.ts`      | Custom Playwright fixtures (`authedPage`)            |
-| `test/e2e/helpers/env.ts`   | Environment variable accessors                       |
-| `test/e2e/helpers/slack.ts` | Slack API helpers (post, delete, reactions, threads) |
-| `test/e2e/helpers/db.ts`    | Database query/cleanup helpers                       |
-| `test/e2e/helpers/auth.ts`  | JWT token creation, browser context auth             |
+| File                                    | Purpose                                              |
+| --------------------------------------- | ---------------------------------------------------- |
+| `test/e2e/global-setup.ts`              | DB migrations, user setup, E2E server startup        |
+| `test/e2e/global-teardown.ts`           | E2E server shutdown                                  |
+| `test/e2e/fixtures.ts`                  | Custom Playwright fixtures (`authedPage`)            |
+| `test/e2e/helpers/env.ts`               | Environment variable accessors                       |
+| `test/e2e/helpers/slack.ts`             | Slack API helpers (post, delete, reactions, threads) |
+| `test/e2e/helpers/slack-interaction.ts` | Signed Slack interaction request helpers             |
+| `test/e2e/helpers/db.ts`                | Database query/cleanup helpers                       |
+| `test/e2e/helpers/auth.ts`              | JWT token creation, browser context auth             |
 
 ## Conventions
 
