@@ -933,8 +933,6 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         return;
       }
 
-
-
       // Resolve each entry's target mentions
       const resolvedEntries: {
         message: string;
@@ -1265,7 +1263,11 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                     const groupMatch = mention.match(/<!subteam\^(S[A-Z0-9]+)/);
                     if (groupMatch) {
                       try {
-                        const usergroup = await resolveUsergroupToDb(client, resolver, groupMatch[1]);
+                        const usergroup = await resolveUsergroupToDb(
+                          client,
+                          resolver,
+                          groupMatch[1],
+                        );
                         mentionedUsergroupIds.push(usergroup.id);
                         // Expand group members into mentionedUserIds at write time
                         // so read queries don't depend on current membership.
