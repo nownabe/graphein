@@ -180,7 +180,10 @@ console.log("=== Graphein Slack App Manifest Generator ===\n");
 const useDev = askYesNo("Development mode? (adds extra scopes for testing)", false);
 
 const appName = ask("App name", "Graphein");
-const baseUrl = ask("Base URL (e.g. https://graphein.example.com)", "http://localhost:3000");
+let baseUrl = "";
+while (!baseUrl) {
+  baseUrl = ask("Base URL (e.g. https://abc123.ngrok.io)", "");
+}
 const socketMode = askYesNo("Enable Socket Mode?", true);
 
 const redirectUrl = `${baseUrl.replace(/\/$/, "")}/auth/slack/callback`;
