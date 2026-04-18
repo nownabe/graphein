@@ -3,6 +3,7 @@
  *
  * Prompts for environment-specific values (app name, URLs, etc.)
  * and outputs a complete YAML manifest to stdout.
+ * Selecting "Development" preset fills in sensible defaults for local dev.
  *
  * Usage: bun run scripts/generate-slack-manifest.ts
  */
@@ -142,6 +143,7 @@ function buildManifest(opts: ManifestOptions): Record<string, unknown> {
           "channels:history",
           "channels:read",
           "chat:write",
+          "reactions:read",
           "reactions:write",
           "users:read",
           "users:read.email",
@@ -169,9 +171,24 @@ function buildManifest(opts: ManifestOptions): Record<string, unknown> {
 
 console.log("=== Graphein Slack App Manifest Generator ===\n");
 
-const appName = ask("App name", "Graphein");
-const baseUrl = ask("Base URL (e.g. https://graphein.example.com)", "http://localhost:3000");
-const socketMode = askYesNo("Enable Socket Mode?", true);
+const useDev = askYesNo("Use development defaults?", false);
+
+let appName: string;
+let baseUrl: string;
+let socketMode: boolean;
+
+if (useDev) {
+  appName = "Graphein Dev";
+  baseUrl = "http://localhost:3000";
+  socketMode = true;
+  console.log(`\n  App name:    ${appName}`);
+  console.log(`  Base URL:    ${baseUrl}`);
+  console.log(`  Socket Mode: ${socketMode}`);
+} else {
+  appName = ask("App name", "Graphein");
+  baseUrl = ask("Base URL (e.g. https://graphein.example.com)", "http://localhost:3000");
+  socketMode = askYesNo("Enable Socket Mode?", true);
+}
 
 const redirectUrl = `${baseUrl.replace(/\/$/, "")}/auth/slack/callback`;
 console.log(`\n  Redirect URL: ${redirectUrl}`);
