@@ -132,3 +132,39 @@ export async function submitAddSnippetModal(opts: {
 
   return sendInteraction(payload);
 }
+
+/**
+ * Send a signed Slack event payload to the Graphein server's /slack/events endpoint.
+ * This simulates what Slack sends when a message is posted in a channel.
+ */
+export async function sendSlackMessageEvent(opts: {
+  channelId: string;
+  messageTs: string;
+  messageText: string;
+  slackUserId: string;
+}): Promise<Response> {
+  const eventPayload = {
+    type: "event_callback",
+    event: {
+      type: "message",
+      channel: opts.channelId,
+      user: opts.slackUserId,
+      text: opts.messageText,
+      ts: opts.messageTs,
+    },
+  };
+
+  const body = JSON.stringify(eventPayload);
+  const timestamp = String(Math.floor(Date.now() / 1000));
+  const signature = signRequest(body, timestamp);
+
+  return fetch(`${env.grapheinUrl}/slack/events`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-slack-request-timestamp": timestamp,
+      "x-slack-signature": signature,
+    },
+    body,
+  });
+}
