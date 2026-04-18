@@ -136,3 +136,13 @@ export async function deleteKudosBySlackMessage(
     messageTs,
   ]);
 }
+
+/** Ensure a kudos channel is registered in the DB. Inserts if not already present. */
+export async function ensureKudosChannel(slackChannelId: string): Promise<void> {
+  await query(
+    `INSERT INTO kudos_channels (slack_channel_id)
+     VALUES ($1)
+     ON CONFLICT (slack_channel_id) DO NOTHING`,
+    [slackChannelId],
+  );
+}
