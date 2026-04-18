@@ -9,21 +9,35 @@ argument-hint: "[description of the change]"
 You are creating a pull request following trunk-based development practices.
 The change description is: $ARGUMENTS
 
-## 1. Ensure Feature Branch
+## 1. Assess Current State
 
-- If currently on `main`, create a new branch from the latest `origin/main`:
-  ```
-  git fetch origin main
-  git switch -c <branch-name> origin/main
-  ```
-- Branch name should use a conventional commit prefix followed by a short descriptive name (e.g., `feat/add-user-auth`, `fix/task-ordering`, `chore/update-deps`).
-- If already on a feature branch, proceed.
+Run these checks in parallel to understand the situation:
 
-## 2. Check Working Tree
+```
+git status
+git branch --show-current
+git log --oneline main..HEAD
+gh pr view --json state,url --jq '{state: .state, url: .url}' 2>/dev/null || echo "no PR"
+```
 
-- Run `git status`. If there are uncommitted changes, ask the user what to do before proceeding.
+Based on the results, decide autonomously:
 
-## 3. Run Local Checks
+- **On `main` with uncommitted changes**: Create a new branch from `origin/main`, commit, and proceed.
+- **On a feature branch with no existing PR and uncommitted changes belong to this branch**: Commit and proceed.
+- **On a feature branch with an `OPEN` PR and uncommitted changes belong to this branch**: Commit, push, and update the PR.
+- **On a feature branch with a `CLOSED`/`MERGED` PR**: STOP and inform the user.
+- **On a feature branch whose existing commits are unrelated to the uncommitted changes**: Create a new branch from latest `origin/main`, apply the relevant changes there, commit, and proceed.
+
+Do NOT ask the user — judge the situation and proceed. Always fetch the latest `origin/main` before creating a new branch:
+
+```
+git fetch origin main
+git switch -c <branch-name> origin/main
+```
+
+Branch name should use a conventional commit prefix followed by a short descriptive name (e.g., `feat/add-user-auth`, `fix/task-ordering`, `chore/update-deps`).
+
+## 2. Run Local Checks
 
 Run `bun run check:all` before every push. This runs all checks: app (typecheck, test, css:build), format (oxfmt), lint (oxlint), and workflows (actionlint, ghalint, zizmor).
 
@@ -33,30 +47,19 @@ bun run check:all
 
 If any check fails, fix the issues and re-run. Do NOT skip checks or push with failures.
 
-## 4. Local Code Review
+## 3. Local Code Review
 
 Run the `/code-review` skill to perform an automated local code review before pushing. This will loop up to 5 rounds of review and fix until approved.
 
 If the review does not converge (not approved after 5 rounds), STOP and inform the user.
 
-## 5. Check Existing PR State
-
-Before pushing, check if there is an existing PR for this branch:
-
-```
-gh pr view --json state --jq '.state'
-```
-
-- If the PR is `CLOSED` or `MERGED`, STOP and inform the user. Do NOT push to a closed/merged PR's branch.
-- If no PR exists or the PR is `OPEN`, proceed.
-
-## 6. Push
+## 4. Push
 
 ```
 git push -u origin HEAD
 ```
 
-## 7. Create Pull Request
+## 5. Create Pull Request
 
 If a PR does not yet exist for this branch:
 
@@ -79,4 +82,4 @@ If a PR does not yet exist for this branch:
 - PRs should be small and focused on a single meaningful change.
 - NEVER merge the PR — merging is always done by a human via squash merge after CI passes.
 - If the branch is behind `main`, rebase onto the latest `main` before pushing.
-- Always run all checks (step 3) before every push, even for subsequent pushes to the same branch.
+- Always run all checks (step 2) before every push, even for subsequent pushes to the same branch.
