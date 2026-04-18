@@ -590,9 +590,23 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     const channelId = shortcut.channel.id;
     const messageTs = shortcut.message_ts;
     const triggerId = shortcut.trigger_id;
-    const authorSlackId = (shortcut.message as { user?: string }).user ?? shortcut.user.id;
+    const authorSlackId = (shortcut.message as { user?: string }).user;
 
     try {
+      // Reject bot/system messages that have no real user
+      if (!authorSlackId) {
+        await client.views.open({
+          trigger_id: triggerId,
+          view: infoModal(
+            "add_snippet_modal_info",
+            locale,
+            "slack.snippet.title",
+            "slack.snippet.notUserMessage",
+            "slack.snippet.close",
+          ),
+        });
+        return;
+      }
       // Quick validation (fast enough for trigger_id)
       const userMentionIds = [...new Set(extractUserMentions(messageText))];
       const usergroupMentionIds = [...new Set(extractUsergroupMentions(messageText))];
