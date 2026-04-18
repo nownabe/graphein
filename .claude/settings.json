@@ -24,7 +24,8 @@
       "Bash(bun run tools/run-sql.ts:*)",
       "mcp__chrome-devtools__*",
       "Skill(commit)",
-      "Skill(pr)"
+      "Skill(pr)",
+      "Skill(e2e)"
     ],
     "defaultMode": "acceptEdits"
   }
