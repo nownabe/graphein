@@ -5,6 +5,7 @@ ghalint = "1.5.4"
 zizmor = "1.23.1"
 oxfmt = "0.44.0"
 oxlint = "1.59.0"
+direnv = "2.37.1"
 
 [settings]
 lockfile = true

@@ -1,7 +1,7 @@
 /**
  * E2E test environment variables.
  *
- * Required variables (set in .env or shell):
+ * Required variables (set in .envrc or shell):
  *   E2E_GRAPHEIN_URL        — Graphein app URL (default: http://localhost:3000)
  *   E2E_SLACK_BOT_TOKEN     — Slack bot token for posting messages
  *   E2E_SLACK_CHANNEL_ID    — General test channel ID

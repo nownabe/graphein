@@ -160,7 +160,7 @@ Playwright-based E2E tests live in `test/e2e/`. They test the full Slack → Gra
 
 ### Environment Variables
 
-Set these in `.env` or your shell before running E2E tests:
+Set these in `.envrc` (direnv) or your shell before running E2E tests:
 
 | Variable                 | Description                                                                                                   |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------- |
