@@ -101,9 +101,24 @@ interface ManifestOptions {
   appName: string;
   redirectUrl: string;
   socketMode: boolean;
+  dev: boolean;
 }
 
 function buildManifest(opts: ManifestOptions): Record<string, unknown> {
+  const botScopes = [
+    "channels:history",
+    "channels:read",
+    "chat:write",
+    "reactions:write",
+    "users:read",
+    "users:read.email",
+    "usergroups:read",
+  ];
+
+  if (opts.dev) {
+    botScopes.push("reactions:read");
+  }
+
   return {
     display_information: {
       name: opts.appName,
@@ -139,16 +154,7 @@ function buildManifest(opts: ManifestOptions): Record<string, unknown> {
     oauth_config: {
       redirect_urls: [opts.redirectUrl],
       scopes: {
-        bot: [
-          "channels:history",
-          "channels:read",
-          "chat:write",
-          "reactions:read",
-          "reactions:write",
-          "users:read",
-          "users:read.email",
-          "usergroups:read",
-        ],
+        bot: botScopes,
       },
     },
     settings: {
@@ -193,7 +199,7 @@ if (useDev) {
 const redirectUrl = `${baseUrl.replace(/\/$/, "")}/auth/slack/callback`;
 console.log(`\n  Redirect URL: ${redirectUrl}`);
 
-const manifest = buildManifest({ appName, redirectUrl, socketMode });
+const manifest = buildManifest({ appName, redirectUrl, socketMode, dev: useDev });
 const yaml = toYaml(manifest);
 
 console.log("\n--- Generated Manifest (YAML) ---\n");
