@@ -1,6 +1,6 @@
 import { beforeAll } from "bun:test";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { createDb } from "../src/db/client";
+import { createDb } from "../../src/db/client";
 
 export const TEST_DATABASE_URL =
   process.env.TEST_DATABASE_URL ??

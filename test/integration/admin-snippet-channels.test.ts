@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { createTestApp, createTestUser, authRequest, cleanupDb } from "../helpers";
+import { createTestApp, createTestUser, authRequest, cleanupDb } from "./helpers";
 
 const { app, db } = createTestApp();
 
