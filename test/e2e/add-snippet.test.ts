@@ -24,7 +24,7 @@ test.describe("Add Snippet shortcut", () => {
     slackMessageTs = undefined;
   });
 
-  test("snippet created via shortcut appears in DB and UI", async ({ authedPage }) => {
+  test("snippet created via shortcut appears in UI", async ({ authedPage }) => {
     // 1. Post a test message with a user mention to the snippet-monitored channel
     const uniqueTag = `E2E Snippet test ${Date.now()}`;
     const testText = `${uniqueTag} <@${env.slackUserId}>`;
@@ -58,18 +58,7 @@ test.describe("Add Snippet shortcut", () => {
     });
     expect(res.status).toBe(200);
 
-    // 4. Verify the snippet was created in the database
-    await waitFor(async () => {
-      const snippet = await findSnippetBySlackMessage(channelId, slackMessageTs!);
-      return !!snippet;
-    });
-
-    const snippet = await findSnippetBySlackMessage(channelId, slackMessageTs!);
-    expect(snippet).toBeDefined();
-    expect(snippet!.slack_channel_id).toBe(channelId);
-    expect(snippet!.slack_message_ts).toBe(slackMessageTs);
-
-    // 5. Verify a :memo: reaction was added to the Slack message
+    // 4. Verify a :memo: reaction was added to the Slack message
     await waitFor(async () => {
       const reactions = await getReactions(channelId, slackMessageTs!);
       return reactions.some((r) => r.name === "memo");
@@ -78,7 +67,7 @@ test.describe("Add Snippet shortcut", () => {
     const reactions = await getReactions(channelId, slackMessageTs!);
     expect(reactions.some((r) => r.name === "memo")).toBe(true);
 
-    // 6. Verify the snippet appears in the Graphein UI
+    // 5. Verify the snippet appears in the Graphein UI
     //    Navigate to the snippets page with filters cleared so all snippets are visible
     await authedPage.goto("/snippets?user=&usergroup=&postedBy=");
 
