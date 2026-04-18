@@ -4,6 +4,7 @@ import { createUserService } from "./users/service";
 import { createTaskService } from "./tasks/service";
 import { createSnippetService } from "./snippets/service";
 import { createKudosService } from "./kudos/service";
+import { createUsergroupService } from "./usergroups/service";
 import { createSettingsService } from "./settings/service";
 import { createSessionHelpers } from "./auth/session";
 import { createGeminiClient } from "./llm/gemini";
@@ -29,6 +30,7 @@ const timezone = process.env.APP_TIMEZONE ?? "UTC";
 const db = createDb(requireEnv("DATABASE_URL"));
 const userService = createUserService(db);
 const taskService = createTaskService(db);
+const usergroupService = createUsergroupService(db);
 const snippetService = createSnippetService(db);
 const kudosService = createKudosService(db);
 const settingsService = createSettingsService(db);
@@ -44,7 +46,7 @@ const { boltApp, receiver } = createBolt(
     slackAppToken: process.env.SLACK_APP_TOKEN ?? "",
     baseUrl,
   },
-  { userService, taskService, snippetService, kudosService, geminiClient },
+  { userService, taskService, snippetService, kudosService, usergroupService, geminiClient },
 );
 const buildMrkdwnLabels = createLabelBuilder(boltApp, userService);
 const slackLabelResolver = createSlackLabelResolver(boltApp.client);
@@ -60,6 +62,7 @@ const app = createHonoApp({
   userService,
   taskService,
   snippetService,
+  usergroupService,
   kudosService,
   settingsService,
   buildMrkdwnLabels,
