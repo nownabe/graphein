@@ -19,5 +19,17 @@ services:
       POSTGRES_PASSWORD: graphein_test
       POSTGRES_DB: graphein_test
 
+  db-e2e:
+    image: postgres:17
+    ports:
+      - "15434:5432"
+    environment:
+      POSTGRES_USER: graphein_e2e
+      POSTGRES_PASSWORD: graphein_e2e
+      POSTGRES_DB: graphein_e2e
+    volumes:
+      - pgdata-e2e:/var/lib/postgresql/data
+
 volumes:
   pgdata:
+  pgdata-e2e:

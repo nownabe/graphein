@@ -154,24 +154,24 @@ Playwright-based E2E tests live in `test/e2e/`. They test the full Slack → Gra
 
 ### Prerequisites
 
-- Dev server running (`bun run dev`)
-- Database accessible (dev DB, not test DB)
+- Dev server running (`bun run dev`) with `DATABASE_URL` pointing to the E2E database
+- E2E database running (`bun run db:up` starts all databases including `db-e2e` on port 15434)
 - Slack workspace accessible (bot token with posting permissions)
 
 ### Environment Variables
 
 Set these in `.env` or your shell before running E2E tests:
 
-| Variable                 | Description                                         |
-| ------------------------ | --------------------------------------------------- |
-| `E2E_SLACK_BOT_TOKEN`    | Slack bot token for posting messages                |
-| `E2E_SLACK_CHANNEL_ID`   | General test channel ID                             |
-| `E2E_SLACK_USER_ID`      | Slack user ID for the test user                     |
-| `E2E_SNIPPET_CHANNEL_ID` | Snippet-monitored channel ID                        |
-| `E2E_KUDOS_CHANNEL_ID`   | Kudos-monitored channel ID                          |
-| `E2E_GRAPHEIN_URL`       | Graphein app URL (default: `http://localhost:3000`) |
-| `DATABASE_URL`           | Database connection string (dev DB)                 |
-| `JWT_SECRET`             | JWT signing secret (same as dev server)             |
+| Variable                 | Description                                                                                                   |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------- |
+| `E2E_SLACK_BOT_TOKEN`    | Slack bot token for posting messages                                                                          |
+| `E2E_SLACK_CHANNEL_ID`   | General test channel ID                                                                                       |
+| `E2E_SLACK_USER_ID`      | Slack user ID for the test user                                                                               |
+| `E2E_SNIPPET_CHANNEL_ID` | Snippet-monitored channel ID                                                                                  |
+| `E2E_KUDOS_CHANNEL_ID`   | Kudos-monitored channel ID                                                                                    |
+| `E2E_GRAPHEIN_URL`       | Graphein app URL (default: `http://localhost:3000`)                                                           |
+| `E2E_DATABASE_URL`       | E2E database connection string (default: `postgres://graphein_e2e:graphein_e2e@localhost:15434/graphein_e2e`) |
+| `JWT_SECRET`             | JWT signing secret (same as dev server)                                                                       |
 
 ### Running
 
@@ -185,12 +185,13 @@ bun run test:e2e -- --headed  # Run with visible browser
 - **Slack interactions use the Slack Web API** (not browser automation) — messages are posted via `chat.postMessage`, reactions checked via `reactions.get`, etc.
 - **Graphein UI verification uses Playwright** — the browser navigates to the web app and asserts on rendered content.
 - **Auth is handled via JWT cookies** — the `authenticateContext` helper creates a valid session token and sets it as a cookie, bypassing the Slack OIDC flow.
-- **DB verification uses the `postgres` driver directly** — helpers in `test/e2e/helpers/db.ts` query the dev database.
+- **DB verification uses the `postgres` driver directly** — helpers in `test/e2e/helpers/db.ts` query the E2E database. Migrations run automatically via `global-setup.ts`.
 
 ### Helpers
 
 | File                        | Purpose                                              |
 | --------------------------- | ---------------------------------------------------- |
+| `test/e2e/global-setup.ts`  | Run DB migrations before tests                       |
 | `test/e2e/fixtures.ts`      | Custom Playwright fixtures (`authedPage`)            |
 | `test/e2e/helpers/env.ts`   | Environment variable accessors                       |
 | `test/e2e/helpers/slack.ts` | Slack API helpers (post, delete, reactions, threads) |

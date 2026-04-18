@@ -8,7 +8,7 @@
  *   E2E_SLACK_USER_ID       — Slack user ID for the test user
  *   E2E_SNIPPET_CHANNEL_ID  — Snippet-monitored channel ID
  *   E2E_KUDOS_CHANNEL_ID    — Kudos-monitored channel ID
- *   DATABASE_URL             — Database connection string (uses dev DB)
+ *   E2E_DATABASE_URL         — E2E database connection string (default: localhost:15434)
  */
 
 function requireEnv(name: string): string {
@@ -42,7 +42,10 @@ export const env = {
     return requireEnv("E2E_KUDOS_CHANNEL_ID");
   },
   get databaseUrl() {
-    return requireEnv("DATABASE_URL");
+    return (
+      process.env.E2E_DATABASE_URL ??
+      "postgres://graphein_e2e:graphein_e2e@localhost:15434/graphein_e2e"
+    );
   },
   get jwtSecret() {
     return requireEnv("JWT_SECRET");
