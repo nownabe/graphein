@@ -46,10 +46,10 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       : { receiver: receiver! }),
   });
 
-  // Build and show the create-task modal (LLM call + Slack API lookups).
+  // Build and show the add-task modal (LLM call + Slack API lookups).
   // Shared by the shortcut handler (no duplicate) and the duplicate-confirm
   // view submission handler (user chose to create anyway).
-  async function showCreateTaskModal(params: {
+  async function showAddTaskModal(params: {
     client: WebClient;
     viewId: string;
     messageText: string;
@@ -173,7 +173,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       type: "input" as const,
       block_id: "users_block",
       optional: true,
-      label: { type: "plain_text" as const, text: t(locale, "slack.modal.assigneesLabel") },
+      label: { type: "plain_text" as const, text: t(locale, "slack.task.assigneesLabel") },
       element: {
         type: "multi_users_select" as const,
         action_id: "users",
@@ -192,7 +192,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             type: "input" as const,
             block_id: "groups_block",
             optional: true,
-            label: { type: "plain_text" as const, text: t(locale, "slack.modal.groupsLabel") },
+            label: { type: "plain_text" as const, text: t(locale, "slack.task.groupsLabel") },
             element: {
               type: "multi_static_select" as const,
               action_id: "groups",
@@ -207,7 +207,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       view_id: viewId,
       view: {
         type: "modal",
-        callback_id: "create_task_modal",
+        callback_id: "add_task_modal",
         private_metadata: JSON.stringify({
           channelId,
           messageTs,
@@ -217,14 +217,14 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           groupCandidates,
           locale,
         }),
-        title: { type: "plain_text", text: t(locale, "slack.modal.title") },
-        submit: { type: "plain_text", text: t(locale, "slack.modal.submit") },
-        close: { type: "plain_text", text: t(locale, "slack.modal.cancel") },
+        title: { type: "plain_text", text: t(locale, "slack.task.title") },
+        submit: { type: "plain_text", text: t(locale, "slack.task.submit") },
+        close: { type: "plain_text", text: t(locale, "slack.task.cancel") },
         blocks: [
           {
             type: "input",
             block_id: "title_block",
-            label: { type: "plain_text", text: t(locale, "slack.modal.titleLabel") },
+            label: { type: "plain_text", text: t(locale, "slack.task.titleLabel") },
             element: {
               type: "plain_text_input",
               action_id: "title",
@@ -235,7 +235,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             type: "input",
             block_id: "deadline_block",
             optional: true,
-            label: { type: "plain_text", text: t(locale, "slack.modal.deadlineLabel") },
+            label: { type: "plain_text", text: t(locale, "slack.task.deadlineLabel") },
             element: {
               type: "datetimepicker",
               action_id: "deadline",
@@ -250,7 +250,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: `*${t(locale, "slack.modal.originalMessage")}*\n>${messageText.replace(/\n/g, "\n>")}`,
+              text: `*${t(locale, "slack.task.originalMessage")}*\n>${messageText.replace(/\n/g, "\n>")}`,
             },
           },
         ],
@@ -258,8 +258,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     });
   }
 
-  // Message shortcut: create_task
-  boltApp.shortcut("create_task", async ({ shortcut, ack, client }) => {
+  // Message shortcut: add_task
+  boltApp.shortcut("add_task", async ({ shortcut, ack, client }) => {
     await ack();
 
     if (shortcut.type !== "message_action") return;
@@ -285,13 +285,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         trigger_id: triggerId,
         view: {
           type: "modal",
-          callback_id: "create_task_modal_loading",
-          title: { type: "plain_text", text: t(locale, "slack.modal.title") },
-          close: { type: "plain_text", text: t(locale, "slack.modal.cancel") },
+          callback_id: "add_task_modal_processing",
+          title: { type: "plain_text", text: t(locale, "slack.task.title") },
+          close: { type: "plain_text", text: t(locale, "slack.task.cancel") },
           blocks: [
             {
               type: "section",
-              text: { type: "mrkdwn", text: t(locale, "slack.modal.loading") },
+              text: { type: "mrkdwn", text: t(locale, "slack.task.loading") },
             },
           ],
         },
@@ -314,7 +314,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           view_id: viewId!,
           view: {
             type: "modal",
-            callback_id: "create_task_duplicate_confirm",
+            callback_id: "add_task_modal_duplicate_confirm",
             private_metadata: JSON.stringify({
               channelId,
               messageTs,
@@ -322,18 +322,18 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
               slackUserId: shortcut.user.id,
               locale,
             }),
-            title: { type: "plain_text", text: t(locale, "slack.modal.title") },
+            title: { type: "plain_text", text: t(locale, "slack.task.title") },
             submit: {
               type: "plain_text",
-              text: t(locale, "slack.modal.duplicateSubmit"),
+              text: t(locale, "slack.task.duplicateSubmit"),
             },
-            close: { type: "plain_text", text: t(locale, "slack.modal.cancel") },
+            close: { type: "plain_text", text: t(locale, "slack.task.cancel") },
             blocks: [
               {
                 type: "section",
                 text: {
                   type: "mrkdwn",
-                  text: `:warning: ${t(locale, "slack.modal.duplicate").replace("{taskLink}", `<${taskUrl}|${safeTitle}>`)}`,
+                  text: `:warning: ${t(locale, "slack.task.duplicate").replace("{taskLink}", `<${taskUrl}|${safeTitle}>`)}`,
                 },
               },
             ],
@@ -342,7 +342,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         return;
       }
 
-      await showCreateTaskModal({
+      await showAddTaskModal({
         client,
         viewId: viewId!,
         messageText,
@@ -352,7 +352,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         locale,
       });
     } catch (err) {
-      console.error("Error in create_task shortcut:", err);
+      console.error("Error in add_task shortcut:", err);
       // Update modal to show error instead of using ephemeral (avoids not_in_channel)
       if (viewId) {
         try {
@@ -360,13 +360,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             view_id: viewId,
             view: {
               type: "modal",
-              callback_id: "create_task_modal_error",
-              title: { type: "plain_text", text: t(locale, "slack.modal.title") },
-              close: { type: "plain_text", text: t(locale, "slack.modal.close") },
+              callback_id: "add_task_modal_error",
+              title: { type: "plain_text", text: t(locale, "slack.task.title") },
+              close: { type: "plain_text", text: t(locale, "slack.task.close") },
               blocks: [
                 {
                   type: "section",
-                  text: { type: "mrkdwn", text: t(locale, "slack.modal.error") },
+                  text: { type: "mrkdwn", text: t(locale, "slack.task.error") },
                 },
               ],
             },
@@ -379,8 +379,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
   });
 
   // Duplicate confirmation: user chose "Create anyway"
-  boltApp.view("create_task_duplicate_confirm", async ({ ack, view, client }) => {
-    // Respond with a loading modal while we prepare the create-task form
+  boltApp.view("add_task_modal_duplicate_confirm", async ({ ack, view, client }) => {
+    // Respond with a loading modal while we prepare the add-task form
     const metadata = JSON.parse(view.private_metadata);
     const locale = (metadata.locale ?? "en") as Locale;
 
@@ -388,20 +388,20 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       response_action: "update",
       view: {
         type: "modal",
-        callback_id: "create_task_modal_loading",
-        title: { type: "plain_text", text: t(locale, "slack.modal.title") },
-        close: { type: "plain_text", text: t(locale, "slack.modal.cancel") },
+        callback_id: "add_task_modal_processing",
+        title: { type: "plain_text", text: t(locale, "slack.task.title") },
+        close: { type: "plain_text", text: t(locale, "slack.task.cancel") },
         blocks: [
           {
             type: "section",
-            text: { type: "mrkdwn", text: t(locale, "slack.modal.loading") },
+            text: { type: "mrkdwn", text: t(locale, "slack.task.loading") },
           },
         ],
       },
     });
 
     try {
-      await showCreateTaskModal({
+      await showAddTaskModal({
         client,
         viewId: view.id,
         messageText: metadata.messageText,
@@ -417,13 +417,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           view_id: view.id,
           view: {
             type: "modal",
-            callback_id: "create_task_modal_error",
-            title: { type: "plain_text", text: t(locale, "slack.modal.title") },
-            close: { type: "plain_text", text: t(locale, "slack.modal.close") },
+            callback_id: "add_task_modal_error",
+            title: { type: "plain_text", text: t(locale, "slack.task.title") },
+            close: { type: "plain_text", text: t(locale, "slack.task.close") },
             blocks: [
               {
                 type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.modal.error") },
+                text: { type: "mrkdwn", text: t(locale, "slack.task.error") },
               },
             ],
           },
@@ -434,8 +434,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     }
   });
 
-  // Modal submission: create_task_modal
-  boltApp.view("create_task_modal", async ({ ack, view, client, body }) => {
+  // Modal submission: add_task_modal
+  boltApp.view("add_task_modal", async ({ ack, view, client, body }) => {
     await ack();
 
     const metadata = JSON.parse(view.private_metadata);
@@ -505,11 +505,11 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         const who =
           assigneeMentions.length > 0
             ? assigneeMentions.join(" ")
-            : t(loc, "slack.reply.fallbackAssignee");
+            : t(loc, "slack.task.replyFallbackAssignee");
         // Slack link labels can't contain `|` or `>`; escape defensively.
         const safeTitle = task.title.replace(/[|>]/g, " ");
         const taskLink = `<${config.baseUrl}/tasks#task-${task.id}|${safeTitle}>`;
-        const replyText = t(loc, "slack.reply.assigned")
+        const replyText = t(loc, "slack.task.replyAssigned")
           .replace("{taskLink}", taskLink)
           .replace("{who}", who);
         await client.chat.postMessage({
@@ -527,7 +527,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         await client.chat.postEphemeral({
           channel: metadata.channelId,
           user: body.user.id,
-          text: t(loc, "slack.modal.error"),
+          text: t(loc, "slack.task.error"),
         });
       } catch (ephemeralErr) {
         console.error("Failed to send ephemeral error message:", ephemeralErr);

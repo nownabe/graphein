@@ -48,11 +48,11 @@ function PeriodTabs({
   buildUrl: (params: Record<string, string>) => string;
 }) {
   const periods: { key: PeriodType; label: string }[] = [
-    { key: "day", label: t(locale, "snippets.period.day") },
-    { key: "week", label: t(locale, "snippets.period.week") },
-    { key: "month", label: t(locale, "snippets.period.month") },
-    { key: "quarter", label: t(locale, "snippets.period.quarter") },
-    { key: "year", label: t(locale, "snippets.period.year") },
+    { key: "day", label: t(locale, "snippet.period.day") },
+    { key: "week", label: t(locale, "snippet.period.week") },
+    { key: "month", label: t(locale, "snippet.period.month") },
+    { key: "quarter", label: t(locale, "snippet.period.quarter") },
+    { key: "year", label: t(locale, "snippet.period.year") },
   ];
 
   return (
@@ -492,7 +492,7 @@ export function SnippetsContentPartial({
             hx-swap="innerHTML"
             hx-push-url={prevUrl}
             class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
-            title={t(locale, "snippets.prev")}
+            title={t(locale, "snippet.prev")}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
               <path d="M10.354 3.354a.5.5 0 00-.708-.708l-5 5a.5.5 0 000 .708l5 5a.5.5 0 00.708-.708L5.707 8l4.647-4.646z" />
@@ -504,7 +504,7 @@ export function SnippetsContentPartial({
           {isNextDisabled ? (
             <span
               class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-sm)] text-edge"
-              title={t(locale, "snippets.next")}
+              title={t(locale, "snippet.next")}
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M5.646 3.354a.5.5 0 01.708-.708l5 5a.5.5 0 010 .708l-5 5a.5.5 0 01-.708-.708L10.293 8 5.646 3.354z" />
@@ -518,7 +518,7 @@ export function SnippetsContentPartial({
               hx-swap="innerHTML"
               hx-push-url={nextUrl}
               class="w-8 h-8 flex items-center justify-center rounded-[var(--radius-sm)] text-muted hover:text-ink hover:bg-surface-hover transition-colors"
-              title={t(locale, "snippets.next")}
+              title={t(locale, "snippet.next")}
             >
               <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
                 <path d="M5.646 3.354a.5.5 0 01.708-.708l5 5a.5.5 0 010 .708l-5 5a.5.5 0 01-.708-.708L10.293 8 5.646 3.354z" />
@@ -530,27 +530,27 @@ export function SnippetsContentPartial({
 
       <div class="flex flex-wrap items-end gap-4 mb-4 relative z-10">
         <MentionsFilter
-          label={t(locale, "snippets.filter.mentions")}
+          label={t(locale, "snippet.filter.mentions")}
           userOptions={mentionedUsers}
           usergroupOptions={mentionedUsergroups}
           activeUserIds={activeMentionedUsers}
           activeUsergroupIds={activeMentionedUsergroups}
-          searchPlaceholder={t(locale, "snippets.filter.mentions")}
-          noResultsLabel={t(locale, "snippets.filter.noResults")}
-          okLabel={t(locale, "snippets.filter.ok")}
-          clearLabel={t(locale, "snippets.filter.clear")}
-          userSectionLabel={t(locale, "snippets.filter.sectionUsers")}
-          groupSectionLabel={t(locale, "snippets.filter.sectionGroups")}
-          selectedSectionLabel={t(locale, "snippets.filter.sectionSelected")}
+          searchPlaceholder={t(locale, "snippet.filter.mentions")}
+          noResultsLabel={t(locale, "snippet.filter.noResults")}
+          okLabel={t(locale, "snippet.filter.ok")}
+          clearLabel={t(locale, "snippet.filter.clear")}
+          userSectionLabel={t(locale, "snippet.filter.sectionUsers")}
+          groupSectionLabel={t(locale, "snippet.filter.sectionGroups")}
+          selectedSectionLabel={t(locale, "snippet.filter.sectionSelected")}
         />
         <SingleSelectFilter
           name="postedBy"
-          label={t(locale, "snippets.filter.postedBy")}
+          label={t(locale, "snippet.filter.postedBy")}
           options={posters}
           activeValue={activePostedBy}
-          allLabel={t(locale, "snippets.filter.all")}
-          searchPlaceholder={t(locale, "snippets.filter.searchPoster")}
-          noResultsLabel={t(locale, "snippets.filter.noResults")}
+          allLabel={t(locale, "snippet.filter.all")}
+          searchPlaceholder={t(locale, "snippet.filter.searchPoster")}
+          noResultsLabel={t(locale, "snippet.filter.noResults")}
         />
         {hasActiveFilters &&
           (() => {
@@ -572,20 +572,18 @@ export function SnippetsContentPartial({
                 hx-push-url={resetUrlClean}
                 class="text-xs font-semibold text-accent hover:text-ink transition-colors self-end pb-2.5 cursor-pointer"
               >
-                {t(locale, "snippets.filter.clearAll")}
+                {t(locale, "snippet.filter.clearAll")}
               </a>
             );
           })()}
       </div>
 
       <p class="text-sm text-secondary mb-6">
-        {total} {t(locale, total === 1 ? "snippets.count.one" : "snippets.count.other")}
+        {total} {t(locale, total === 1 ? "snippet.count.one" : "snippet.count.other")}
       </p>
 
       {snippetList.length === 0 ? (
-        <p class="text-center text-muted py-16 whitespace-pre-line">
-          {t(locale, "snippets.empty")}
-        </p>
+        <p class="text-center text-muted py-16 whitespace-pre-line">{t(locale, "snippet.empty")}</p>
       ) : (
         <div class="space-y-3 stagger-in">
           {snippetList.map((s) => (
