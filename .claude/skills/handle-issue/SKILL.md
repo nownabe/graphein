@@ -28,9 +28,7 @@ allowed-tools:
   - Write
   - Glob
   - Grep
-  - Skill(commit)
   - Skill(pr)
-  - Skill(code-review)
 argument-hint: "<issue number or URL>"
 ---
 
@@ -99,23 +97,9 @@ bun run check:all
 
 If any check fails, fix the issue and re-run until all checks pass.
 
-## 5. Commit
+## 5. Create PR
 
-Use the `/commit` skill to create well-structured commits. For complex changes, make multiple logical commits rather than one large commit.
-
-If the issue number is known, reference it in the commit body (e.g., `Refs #42`).
-
-**After committing, you MUST continue to step 6. The workflow is NOT complete until the PR is created.**
-
-## 6. Code Review
-
-Run the `/code-review` skill to perform an automated local code review. Fix any issues found.
-
-**After code review, you MUST continue to step 7. The workflow is NOT complete until the PR is created.**
-
-## 7. Create PR
-
-Use the `/pr` skill to push and create a pull request.
+Use the `/pr` skill to commit, review, push, and create a pull request. The `/pr` skill handles committing, running checks, code review, pushing, and PR creation — all in one step.
 
 Ensure the PR body includes:
 
@@ -126,7 +110,6 @@ Ensure the PR body includes:
 
 ## Important Rules
 
-- **You MUST complete ALL steps 1–7. Never stop after committing — always proceed through code review and PR creation.**
 - Never merge the PR — that is always done by a human.
 - Keep changes minimal and focused on the issue scope.
 - If the issue requires database schema changes, generate migrations with `bun run db:generate`.
