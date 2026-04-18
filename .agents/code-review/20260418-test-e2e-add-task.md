@@ -61,3 +61,12 @@ Status: APPROVED
 Reviewed commit: [86fbdba](https://github.com/nownabe/graphein/commit/86fbdbadcd27ed96e89ad08b934b20d2d474ab77)
 
 The rewrite from direct DB insertion to signed HTTP requests is well-executed. The `slack-interaction.ts` helper correctly constructs HMAC-SHA256 signed payloads matching the real Slack format, and the payload structure (private_metadata fields, state.values block/action IDs) aligns with the actual modal defined in `bolt.ts`. The E2E server lifecycle (spawn in global-setup, kill by PID in global-teardown via `globalThis`) is sound since Playwright runs both in the same process. The test now exercises the full server-side flow including user resolution, task creation, and thread reply posting. No issues found.
+
+### Round 4
+
+#### Review
+
+Status: APPROVED
+Reviewed commit: [bfd6c9e](https://github.com/nownabe/graphein/commit/bfd6c9e8097faa74a41d4b74e4f4b113dfcc4990)
+
+Good simplification: removed direct DB assertions (findTaskBySlackMessage, countTaskAssignees) in favor of UI-only verification via Playwright. This better aligns with E2E test philosophy -- verifying user-visible behavior rather than implementation details. The added permalink link assertion via XPath ancestor traversal provides meaningful coverage that the task card renders correctly with its Slack link. No issues found.
