@@ -1117,24 +1117,41 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
               err,
             );
           }
-        }
 
-        // Show success
-        await client.views.update({
-          view_id: view.id,
-          view: {
-            type: "modal",
-            callback_id: "add_kudos_modal_done",
-            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.kudos.success") },
-              },
-            ],
-          },
-        });
+          // Show success
+          await client.views.update({
+            view_id: view.id,
+            view: {
+              type: "modal",
+              callback_id: "add_kudos_modal_done",
+              title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+              close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+              blocks: [
+                {
+                  type: "section",
+                  text: { type: "mrkdwn", text: t(locale, "slack.kudos.success") },
+                },
+              ],
+            },
+          });
+        } else {
+          // Race condition: automatic event handler already created the kudos
+          await client.views.update({
+            view_id: view.id,
+            view: {
+              type: "modal",
+              callback_id: "add_kudos_modal_done",
+              title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+              close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+              blocks: [
+                {
+                  type: "section",
+                  text: { type: "mrkdwn", text: t(locale, "slack.kudos.duplicate") },
+                },
+              ],
+            },
+          });
+        }
       } else {
         // No entries could be resolved
         await client.views.update({
