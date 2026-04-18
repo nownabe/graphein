@@ -1,13 +1,13 @@
 import type { Hono } from "hono";
-import { createHonoApp } from "../src/app";
-import { createDb } from "../src/db/client";
-import type { Database } from "../src/db/client";
-import { createUserService } from "../src/users/service";
-import { createTaskService } from "../src/tasks/service";
-import { createSnippetService } from "../src/snippets/service";
-import { createUsergroupService } from "../src/usergroups/service";
-import { createSettingsService } from "../src/settings/service";
-import { createSessionHelpers } from "../src/auth/session";
+import { createHonoApp } from "../../src/app";
+import { createDb } from "../../src/db/client";
+import type { Database } from "../../src/db/client";
+import { createUserService } from "../../src/users/service";
+import { createTaskService } from "../../src/tasks/service";
+import { createSnippetService } from "../../src/snippets/service";
+import { createUsergroupService } from "../../src/usergroups/service";
+import { createSettingsService } from "../../src/settings/service";
+import { createSessionHelpers } from "../../src/auth/session";
 import {
   users,
   tasks,
@@ -19,7 +19,7 @@ import {
   snippetChannels,
   usergroups,
   appSettings,
-} from "../src/db/schema";
+} from "../../src/db/schema";
 import { TEST_DATABASE_URL } from "./setup";
 
 const JWT_SECRET = "test-secret";
