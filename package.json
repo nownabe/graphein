@@ -5,14 +5,15 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "db:up": "docker compose up -d db db-test",
+    "db:up": "docker compose up -d db db-test db-e2e",
     "db:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "css": "tailwindcss -i src/views/global.css -o public/styles.css --watch",
     "css:build": "tailwindcss -i src/views/global.css -o public/styles.css --minify",
     "test": "bun test",
-    "test:integration": "bun test --test-root ./test --preload ./test/setup.ts --max-concurrency 1 integration",
+    "test:integration": "bun test --test-root ./test/integration --preload ./test/setup.ts --max-concurrency 1",
+    "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
     "check:all": "bun run check:app && bun run check:format && bun run check:lint && bun run check:workflows",
     "check:app": "bun run typecheck && bun run test && bun run test:integration && bun run css:build",
@@ -30,6 +31,7 @@
     "postgres": "^3.4.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@tailwindcss/cli": "4.2.2",
     "@types/bun": "1.3.12",
     "drizzle-kit": "0.31.10",
