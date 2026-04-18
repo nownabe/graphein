@@ -27,3 +27,20 @@ Fixed files:
 
 1. Deactivated author now updates modal with `noEntries` message before returning, instead of leaving modal stuck in loading state.
 2. Moved success modal inside the `resolvedEntries.length > 0` block and added an `else` branch showing `noEntries` message when no entries could be resolved.
+
+### Round 2
+
+#### Review
+
+Status: NEEDS_FIX
+Reviewed commit: [f3ce66f](https://github.com/nownabe/graphein/commit/f3ce66f928fab7523e6e021a419738f6fbed8026)
+
+1. **Success modal shown on duplicate race condition** (`src/slack/bolt.ts`, lines 1104-1137): When `createKudos` returns `null` (because `onConflictDoNothing` triggered due to a concurrent insert from the automatic event handler), the `if (created)` block at line 1104 is skipped but execution falls through to the success modal at line 1122. The user sees "Kudos added successfully" even though nothing was persisted. Move the success modal (lines 1122-1137) inside the `if (created)` block and add an `else` branch that shows the `slack.kudos.duplicate` message.
+
+#### Fix
+
+Fixed files:
+
+- src/slack/bolt.ts
+
+Moved success modal inside the `if (created)` block and added an `else` branch showing `slack.kudos.duplicate` message when `createKudos` returns null due to race condition.
