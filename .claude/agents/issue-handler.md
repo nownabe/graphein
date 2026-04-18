@@ -86,6 +86,7 @@ Ensure the PR body includes:
 
 ## Important Rules
 
+- **You are running inside an isolated git worktree.** Stay in the worktree directory and perform all work there. Do not attempt to leave the worktree or switch to the original repository directory.
 - Never merge the PR — that is always done by a human.
 - Keep changes minimal and focused on the issue scope.
 - If the issue requires database schema changes, generate migrations with `bun run db:generate`.
