@@ -110,6 +110,41 @@ API keys are managed through the Web UI under `/settings/api-keys`, protected by
 
 ---
 
+## OpenAPI
+
+### Approach
+
+Use [`@hono/zod-openapi`](https://github.com/honojs/middleware/tree/main/packages/zod-openapi) to define API routes with Zod schemas. This provides:
+
+- **Type-safe request/response validation** — Zod schemas validate query parameters, path parameters, and response bodies at runtime
+- **Auto-generated OpenAPI 3.0 spec** — the spec is derived from route definitions, ensuring docs never drift from code
+- **Interactive API reference** — served via [Scalar](https://scalar.com) at `/api/v1/reference`
+
+### Integration with Existing App
+
+The API uses `OpenAPIHono` as a sub-app mounted onto the existing `Hono` app. The Web UI routes remain plain `Hono` and are unaffected.
+
+```ts
+// src/app.ts
+import { createApiRoutes } from "./api/routes";
+
+const apiRoutes = createApiRoutes({ ... });
+app.route("/api/v1", apiRoutes);
+```
+
+### Endpoints
+
+| Path | Description |
+|------|-------------|
+| `GET /api/v1/doc` | OpenAPI 3.0 JSON spec |
+| `GET /api/v1/reference` | Scalar API reference UI |
+
+### Schema Organization
+
+Zod schemas are defined alongside their route files. Shared schemas (pagination, error responses, common embedded objects) live in `src/api/schemas.ts`.
+
+---
+
 ## API Endpoints
 
 **Base path**: `/api/v1`
@@ -620,20 +655,29 @@ src/
 ├── db/
 │   └── schema.ts         # api_keys table added here (alongside existing tables)
 ├── api/
+│   ├── routes.ts         # OpenAPIHono app, mounts sub-routes, /doc and /reference endpoints
 │   ├── middleware.ts     # Bearer token auth, rate limiting, role resolution
+│   ├── schemas.ts        # Shared Zod schemas (pagination, error, embedded objects)
 │   ├── tasks.ts          # /api/v1/tasks, /api/v1/tasks/owned/* routes
 │   ├── snippets.ts       # /api/v1/snippets routes
 │   ├── kudos.ts          # /api/v1/kudos routes
-│   ├── admin.ts          # /api/v1/admin/* routes (users, snippetChannels, kudosChannels)
-│   └── serializers.ts    # DB row -> JSON response (camelCase keys)
+│   └── admin.ts          # /api/v1/admin/* routes (users, snippetChannels, kudosChannels)
 ├── api-keys/
 │   ├── service.ts        # create, list, revoke, verify, hash lookup
 │   └── routes.tsx        # Web UI routes (/settings/api-keys)
 ```
 
-The API routes reuse existing `taskService`, `snippetService`, `kudosService`, and `userService` for data access. The `serializers.ts` module converts DB rows to the JSON response format with camelCase keys, following [AIP-140](https://google.aip.dev/140).
+The API routes use `OpenAPIHono` with `@hono/zod-openapi`. Each route file defines Zod schemas for request/response and registers routes via `app.openapi()`. The OpenAPI spec is auto-generated at `/api/v1/doc` and an interactive reference UI is served at `/api/v1/reference` via Scalar. Existing services (`taskService`, `snippetService`, `kudosService`, `userService`) are reused for data access.
 
 ---
+
+## Dependencies
+
+| Package | Purpose |
+|---------|---------|
+| `@hono/zod-openapi` | OpenAPI route definitions with Zod validation |
+| `zod` | Schema definition and runtime validation |
+| `@scalar/hono-api-reference` | Interactive API reference UI |
 
 ## References
 
@@ -641,3 +685,5 @@ The API routes reuse existing `taskService`, `snippetService`, `kudosService`, a
 - [AIP-140: Field names](https://google.aip.dev/140) — field naming conventions; JSON output uses camelCase via [protobuf JSON mapping](https://protobuf.dev/programming-guides/json/)
 - [AIP-158: Pagination](https://google.aip.dev/158) — `pageSize`, `pageToken`, `nextPageToken`, `totalSize`
 - [AIP-190: Naming conventions](https://google.aip.dev/190) — general naming guidelines
+- [@hono/zod-openapi](https://github.com/honojs/middleware/tree/main/packages/zod-openapi) — Hono + Zod + OpenAPI integration
+- [Scalar](https://scalar.com) — API reference UI
