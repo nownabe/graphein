@@ -44,8 +44,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       return userService.findOrCreateUser({
         slackUserId: slackUid,
         email: result.user.profile.email,
-        displayName:
-          result.user.profile.display_name || result.user.profile.real_name || slackUid,
+        displayName: result.user.profile.display_name || result.user.profile.real_name || slackUid,
         avatarUrl: result.user.profile.image_72 ?? null,
       });
     }
@@ -946,7 +945,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             const memberDbIds: string[] = [];
             for (const slackUid of membersRes.users ?? []) {
               try {
-                const member = await resolveSlackUserToDb(client,slackUid);
+                const member = await resolveSlackUserToDb(client, slackUid);
                 if (member) memberDbIds.push(member.id);
               } catch {
                 // Skip unresolvable members
@@ -976,7 +975,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           const userMatch = mention.match(/<@(U[A-Z0-9]+)>/);
           if (userMatch) {
             try {
-              const user = await resolveSlackUserToDb(client,userMatch[1]);
+              const user = await resolveSlackUserToDb(client, userMatch[1]);
               if (user && user.deactivatedAt == null) mentionedUserIds.push(user.id);
             } catch {
               // Skip
@@ -994,7 +993,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
               });
               for (const slackUid of membersRes.users ?? []) {
                 try {
-                  const member = await resolveSlackUserToDb(client,slackUid);
+                  const member = await resolveSlackUserToDb(client, slackUid);
                   if (member && member.deactivatedAt == null) mentionedUserIds.push(member.id);
                 } catch {
                   // Skip
