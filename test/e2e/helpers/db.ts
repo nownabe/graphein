@@ -109,6 +109,23 @@ export async function deleteSnippetBySlackMessage(
   ]);
 }
 
+/** Ensure a user exists in the DB, creating one if needed. Returns the user row. */
+export async function ensureUser(
+  slackUserId: string,
+  defaults: { email: string; displayName: string },
+): Promise<Record<string, unknown>> {
+  const existing = await findUserBySlackId(slackUserId);
+  if (existing) return existing;
+
+  const rows = await query(
+    `INSERT INTO users (slack_user_id, email, display_name)
+     VALUES ($1, $2, $3)
+     RETURNING *`,
+    [slackUserId, defaults.email, defaults.displayName],
+  );
+  return rows[0];
+}
+
 /** Delete kudos by Slack message reference (test cleanup). */
 export async function deleteKudosBySlackMessage(
   channelId: string,

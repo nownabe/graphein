@@ -42,10 +42,7 @@ export const env = {
     return requireEnv("E2E_KUDOS_CHANNEL_ID");
   },
   get databaseUrl() {
-    return (
-      process.env.E2E_DATABASE_URL ??
-      "postgres://graphein_e2e:graphein_e2e@localhost:15434/graphein_e2e"
-    );
+    return requireEnv("E2E_DATABASE_URL");
   },
   get jwtSecret() {
     return requireEnv("JWT_SECRET");

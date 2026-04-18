@@ -87,11 +87,9 @@ test.describe("Add Task shortcut", () => {
 
     // 6. Verify in Graphein UI: navigate to Tasks page and confirm the new task appears
     await authedPage.goto("/tasks");
-    await authedPage.waitForLoadState("networkidle");
-
     // The task title should be visible on the page
     const taskElement = authedPage.locator(`text=${taskTitle}`);
-    await expect(taskElement).toBeVisible({ timeout: 10_000 });
+    await expect(taskElement).toBeVisible();
   });
 
   test("task with thread reply appears with confirmation", async ({ authedPage }) => {
@@ -139,9 +137,8 @@ test.describe("Add Task shortcut", () => {
 
     // 5. Verify the task appears in the UI
     await authedPage.goto("/tasks");
-    await authedPage.waitForLoadState("networkidle");
 
     const taskElement = authedPage.locator(`text=${taskTitle}`);
-    await expect(taskElement).toBeVisible({ timeout: 10_000 });
+    await expect(taskElement).toBeVisible();
   });
 });
