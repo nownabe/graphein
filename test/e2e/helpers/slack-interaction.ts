@@ -168,3 +168,41 @@ export async function sendSlackMessageEvent(opts: {
     body,
   });
 }
+
+/**
+ * Simulate a view_submission for the "add_kudos_modal" callback.
+ * This is what Slack sends when a user confirms adding kudos via the shortcut modal.
+ */
+export async function submitAddKudosModal(opts: {
+  channelId: string;
+  messageTs: string;
+  messageText: string;
+  authorSlackId: string;
+  slackUserId: string;
+}): Promise<Response> {
+  const privateMetadata = JSON.stringify({
+    channelId: opts.channelId,
+    messageTs: opts.messageTs,
+    messageText: opts.messageText,
+    authorSlackId: opts.authorSlackId,
+    locale: "en",
+  });
+
+  const payload = {
+    type: "view_submission",
+    user: {
+      id: opts.slackUserId,
+      name: "e2e-test-user",
+    },
+    view: {
+      id: `V_e2e_kudos_${Date.now()}`,
+      callback_id: "add_kudos_modal",
+      private_metadata: privateMetadata,
+      state: {
+        values: {},
+      },
+    },
+  };
+
+  return sendInteraction(payload);
+}
