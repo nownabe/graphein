@@ -59,6 +59,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     client: WebClient,
     resolver: MentionLabelResolver,
     groupId: string,
+    options?: { expandMembers?: boolean },
   ) {
     const groupHandle = await resolver.usergroup(groupId);
     let groupName = groupHandle ?? groupId;
@@ -75,25 +76,31 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       groupHandle ?? undefined,
     );
 
-    // Resolve group members and sync membership when stale
-    const allMemberDbIds: string[] = [];
+    const needsExpand = options?.expandMembers ?? false;
     const activeMemberDbIds: string[] = [];
+
     try {
       const isStale = await usergroupService.isUsergroupMembershipStale(usergroup.id);
-      const membersRes = await client.usergroups.users.list({ usergroup: groupId });
-      for (const slackUid of membersRes.users ?? []) {
-        try {
-          const member = await resolveSlackUserToDb(client, slackUid);
-          if (member) {
-            allMemberDbIds.push(member.id);
-            if (member.deactivatedAt == null) activeMemberDbIds.push(member.id);
+
+      if (isStale || needsExpand) {
+        const membersRes = await client.usergroups.users.list({ usergroup: groupId });
+        const allMemberDbIds: string[] = [];
+        for (const slackUid of membersRes.users ?? []) {
+          try {
+            const member = await resolveSlackUserToDb(client, slackUid);
+            if (member) {
+              allMemberDbIds.push(member.id);
+              if (needsExpand && member.deactivatedAt == null) {
+                activeMemberDbIds.push(member.id);
+              }
+            }
+          } catch {
+            // Skip unresolvable members
           }
-        } catch {
-          // Skip unresolvable members
         }
-      }
-      if (isStale) {
-        await usergroupService.syncUsergroupMembers(usergroup.id, allMemberDbIds);
+        if (isStale) {
+          await usergroupService.syncUsergroupMembers(usergroup.id, allMemberDbIds);
+        }
       }
     } catch {
       // Non-critical
@@ -995,6 +1002,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                 client,
                 resolver,
                 groupMatch[1],
+                { expandMembers: true },
               );
               mentionedUsergroupIds.push(usergroup.id);
               for (const id of activeMemberDbIds) {
@@ -1295,6 +1303,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                           client,
                           resolver,
                           groupMatch[1],
+                          { expandMembers: true },
                         );
                         mentionedUsergroupIds.push(usergroup.id);
                         for (const id of activeMemberDbIds) {
