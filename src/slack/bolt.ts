@@ -953,6 +953,21 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
       if (author.deactivatedAt != null) {
         console.debug(`[kudos-shortcut] Skipping message from deactivated user ${authorSlackId}`);
+        await client.views.update({
+          view_id: view.id,
+          view: {
+            type: "modal",
+            callback_id: "add_kudos_modal_done",
+            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.kudos.noEntries") },
+              },
+            ],
+          },
+        });
         return;
       }
 
@@ -1103,21 +1118,41 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             );
           }
         }
-      }
 
-      // Show success
-      await client.views.update({
-        view_id: view.id,
-        view: {
-          type: "modal",
-          callback_id: "add_kudos_modal_done",
-          title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-          close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-          blocks: [
-            { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.kudos.success") } },
-          ],
-        },
-      });
+        // Show success
+        await client.views.update({
+          view_id: view.id,
+          view: {
+            type: "modal",
+            callback_id: "add_kudos_modal_done",
+            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.kudos.success") },
+              },
+            ],
+          },
+        });
+      } else {
+        // No entries could be resolved
+        await client.views.update({
+          view_id: view.id,
+          view: {
+            type: "modal",
+            callback_id: "add_kudos_modal_done",
+            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.kudos.noEntries") },
+              },
+            ],
+          },
+        });
+      }
     } catch (err) {
       console.error("[kudos-shortcut] Error creating kudos from modal:", err);
       try {
