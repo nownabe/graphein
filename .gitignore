@@ -9,6 +9,8 @@ dist/
 public/styles.css
 
 # Environment
+.env
+.env.local
 .envrc
 
 # Drizzle
