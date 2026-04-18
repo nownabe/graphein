@@ -708,6 +708,16 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
       if (!author || author.deactivatedAt != null) {
         console.debug(`[snippet-shortcut] Skipping message from deactivated user ${authorSlackId}`);
+        await client.views.update({
+          view_id: view.id,
+          view: infoModal(
+            "add_snippet_modal_done",
+            locale,
+            "slack.snippet.title",
+            "slack.snippet.deactivatedAuthor",
+            "slack.snippet.close",
+          ),
+        });
         return;
       }
 
