@@ -75,23 +75,24 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       groupHandle ?? undefined,
     );
 
-    // Sync group membership (skip if synced within TTL)
+    // Resolve group members and sync membership when stale
     const allMemberDbIds: string[] = [];
     const activeMemberDbIds: string[] = [];
     try {
-      if (await usergroupService.isUsergroupMembershipStale(usergroup.id)) {
-        const membersRes = await client.usergroups.users.list({ usergroup: groupId });
-        for (const slackUid of membersRes.users ?? []) {
-          try {
-            const member = await resolveSlackUserToDb(client, slackUid);
-            if (member) {
-              allMemberDbIds.push(member.id);
-              if (member.deactivatedAt == null) activeMemberDbIds.push(member.id);
-            }
-          } catch {
-            // Skip unresolvable members
+      const isStale = await usergroupService.isUsergroupMembershipStale(usergroup.id);
+      const membersRes = await client.usergroups.users.list({ usergroup: groupId });
+      for (const slackUid of membersRes.users ?? []) {
+        try {
+          const member = await resolveSlackUserToDb(client, slackUid);
+          if (member) {
+            allMemberDbIds.push(member.id);
+            if (member.deactivatedAt == null) activeMemberDbIds.push(member.id);
           }
+        } catch {
+          // Skip unresolvable members
         }
+      }
+      if (isStale) {
         await usergroupService.syncUsergroupMembers(usergroup.id, allMemberDbIds);
       }
     } catch {
