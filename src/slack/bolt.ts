@@ -2,6 +2,7 @@ import { App } from "@slack/bolt";
 import type { WebClient } from "@slack/web-api";
 import { HonoReceiver } from "./receiver";
 import {
+  type MentionLabelResolver,
   createSlackLabelResolver,
   hydrateMentionLabels,
   extractUserMentions,
@@ -49,6 +50,48 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       });
     }
     return null;
+  }
+
+  async function resolveUsergroupToDb(
+    client: WebClient,
+    resolver: MentionLabelResolver,
+    groupId: string,
+  ) {
+    const groupHandle = await resolver.usergroup(groupId);
+    let groupName = groupHandle ?? groupId;
+    try {
+      const groupsRes = await client.usergroups.list({ include_disabled: false });
+      const group = (groupsRes.usergroups ?? []).find((g) => g.id === groupId);
+      if (group) groupName = group.name ?? groupName;
+    } catch {
+      // Use handle as fallback
+    }
+    const usergroup = await snippetService.findOrCreateUsergroup(
+      groupId,
+      groupName,
+      groupHandle ?? undefined,
+    );
+
+    // Sync group membership (skip if synced within TTL)
+    try {
+      if (await snippetService.isUsergroupMembershipStale(usergroup.id)) {
+        const membersRes = await client.usergroups.users.list({ usergroup: groupId });
+        const memberDbIds: string[] = [];
+        for (const slackUid of membersRes.users ?? []) {
+          try {
+            const member = await resolveSlackUserToDb(client, slackUid);
+            if (member) memberDbIds.push(member.id);
+          } catch {
+            // Skip unresolvable members
+          }
+        }
+        await snippetService.syncUsergroupMembers(usergroup.id, memberDbIds);
+      }
+    } catch {
+      // Non-critical
+    }
+
+    return usergroup;
   }
 
   function infoModal(
@@ -650,40 +693,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       const mentionedDbUsergroupIds: string[] = [];
       for (const groupId of usergroupMentionIds) {
         try {
-          const groupHandle = await resolver.usergroup(groupId);
-          let groupName = groupHandle ?? groupId;
-          try {
-            const groupsRes = await client.usergroups.list({ include_disabled: false });
-            const group = (groupsRes.usergroups ?? []).find((g) => g.id === groupId);
-            if (group) groupName = group.name ?? groupName;
-          } catch {
-            // Use handle as fallback
-          }
-          const usergroup = await snippetService.findOrCreateUsergroup(
-            groupId,
-            groupName,
-            groupHandle ?? undefined,
-          );
+          const usergroup = await resolveUsergroupToDb(client, resolver, groupId);
           mentionedDbUsergroupIds.push(usergroup.id);
-
-          // Sync group membership
-          try {
-            if (await snippetService.isUsergroupMembershipStale(usergroup.id)) {
-              const membersRes = await client.usergroups.users.list({ usergroup: groupId });
-              const memberDbIds: string[] = [];
-              for (const memberSlackUid of membersRes.users ?? []) {
-                try {
-                  const member = await resolveSlackUserToDb(client, memberSlackUid);
-                  if (member) memberDbIds.push(member.id);
-                } catch {
-                  // Skip unresolvable members
-                }
-              }
-              await snippetService.syncUsergroupMembers(usergroup.id, memberDbIds);
-            }
-          } catch {
-            // Non-critical
-          }
         } catch {
           // Skip unresolvable groups
         }
@@ -922,43 +933,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         return;
       }
 
-      async function resolveUsergroupToDbLocal(groupId: string) {
-        const groupHandle = await resolver.usergroup(groupId);
-        let groupName = groupHandle ?? groupId;
-        try {
-          const groupsRes = await client.usergroups.list({ include_disabled: false });
-          const group = (groupsRes.usergroups ?? []).find((g) => g.id === groupId);
-          if (group) groupName = group.name ?? groupName;
-        } catch {
-          // Use handle as fallback
-        }
-        const usergroup = await snippetService.findOrCreateUsergroup(
-          groupId,
-          groupName,
-          groupHandle ?? undefined,
-        );
 
-        // Sync group membership
-        try {
-          if (await snippetService.isUsergroupMembershipStale(usergroup.id)) {
-            const membersRes = await client.usergroups.users.list({ usergroup: groupId });
-            const memberDbIds: string[] = [];
-            for (const slackUid of membersRes.users ?? []) {
-              try {
-                const member = await resolveSlackUserToDb(client, slackUid);
-                if (member) memberDbIds.push(member.id);
-              } catch {
-                // Skip unresolvable members
-              }
-            }
-            await snippetService.syncUsergroupMembers(usergroup.id, memberDbIds);
-          }
-        } catch {
-          // Non-critical
-        }
-
-        return usergroup;
-      }
 
       // Resolve each entry's target mentions
       const resolvedEntries: {
@@ -986,7 +961,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           const groupMatch = mention.match(/<!subteam\^(S[A-Z0-9]+)/);
           if (groupMatch) {
             try {
-              const usergroup = await resolveUsergroupToDbLocal(groupMatch[1]);
+              const usergroup = await resolveUsergroupToDb(client, resolver, groupMatch[1]);
               mentionedUsergroupIds.push(usergroup.id);
               const membersRes = await client.usergroups.users.list({
                 usergroup: groupMatch[1],
@@ -1139,44 +1114,6 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       // Shared helpers for resolving users and usergroups
       const resolver = createSlackLabelResolver(client);
 
-      async function resolveUsergroupToDb(groupId: string) {
-        const groupHandle = await resolver.usergroup(groupId);
-        let groupName = groupHandle ?? groupId;
-        try {
-          const groupsRes = await client.usergroups.list({ include_disabled: false });
-          const group = (groupsRes.usergroups ?? []).find((g) => g.id === groupId);
-          if (group) groupName = group.name ?? groupName;
-        } catch {
-          // Use handle as fallback
-        }
-        const usergroup = await snippetService.findOrCreateUsergroup(
-          groupId,
-          groupName,
-          groupHandle ?? undefined,
-        );
-
-        // Sync group membership (skip if synced within TTL)
-        try {
-          if (await snippetService.isUsergroupMembershipStale(usergroup.id)) {
-            const membersRes = await client.usergroups.users.list({ usergroup: groupId });
-            const memberDbIds: string[] = [];
-            for (const slackUid of membersRes.users ?? []) {
-              try {
-                const member = await resolveSlackUserToDb(client, slackUid);
-                if (member) memberDbIds.push(member.id);
-              } catch {
-                // Skip unresolvable members
-              }
-            }
-            await snippetService.syncUsergroupMembers(usergroup.id, memberDbIds);
-          }
-        } catch {
-          // Non-critical
-        }
-
-        return usergroup;
-      }
-
       // Snippet processing
       if (isSnippetMonitored) {
         try {
@@ -1213,7 +1150,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
               const mentionedDbUsergroupIds: string[] = [];
               for (const groupId of usergroupMentionIds) {
                 try {
-                  const usergroup = await resolveUsergroupToDb(groupId);
+                  const usergroup = await resolveUsergroupToDb(client, resolver, groupId);
                   mentionedDbUsergroupIds.push(usergroup.id);
                 } catch {
                   // Skip unresolvable groups
@@ -1328,7 +1265,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                     const groupMatch = mention.match(/<!subteam\^(S[A-Z0-9]+)/);
                     if (groupMatch) {
                       try {
-                        const usergroup = await resolveUsergroupToDb(groupMatch[1]);
+                        const usergroup = await resolveUsergroupToDb(client, resolver, groupMatch[1]);
                         mentionedUsergroupIds.push(usergroup.id);
                         // Expand group members into mentionedUserIds at write time
                         // so read queries don't depend on current membership.
