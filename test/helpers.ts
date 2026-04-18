@@ -5,6 +5,7 @@ import type { Database } from "../src/db/client";
 import { createUserService } from "../src/users/service";
 import { createTaskService } from "../src/tasks/service";
 import { createSnippetService } from "../src/snippets/service";
+import { createUsergroupService } from "../src/usergroups/service";
 import { createSettingsService } from "../src/settings/service";
 import { createSessionHelpers } from "../src/auth/session";
 import {
@@ -30,6 +31,7 @@ export function createTestApp() {
   const db = createDb(TEST_DATABASE_URL);
   const userService = createUserService(db);
   const taskService = createTaskService(db);
+  const usergroupService = createUsergroupService(db);
   const snippetService = createSnippetService(db);
   const settingsService = createSettingsService(db);
 
@@ -43,6 +45,7 @@ export function createTestApp() {
     userService,
     taskService,
     snippetService,
+    usergroupService,
     settingsService,
     buildMrkdwnLabels: async () => ({ users: {}, channels: {}, usergroups: {} }),
     resolveChannelName: async () => undefined,

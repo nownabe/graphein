@@ -3,6 +3,7 @@ import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
 import type { SnippetService } from "./service";
 import type { UserService } from "../users/service";
+import type { UsergroupService } from "../usergroups/service";
 import type { SettingsService } from "../settings/service";
 import type { BuildMrkdwnLabels } from "../config";
 import {
@@ -18,6 +19,7 @@ import { SnippetsPage, SnippetsContentPartial } from "../views/pages/snippets";
 export interface SnippetRoutesDeps {
   authMiddleware: MiddlewareHandler;
   snippetService: SnippetService;
+  usergroupService: UsergroupService;
   userService: UserService;
   settingsService: SettingsService;
   buildMrkdwnLabels: BuildMrkdwnLabels;
@@ -31,6 +33,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
   const {
     authMiddleware,
     snippetService,
+    usergroupService,
     userService,
     settingsService,
     buildMrkdwnLabels,
@@ -91,7 +94,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       usergroupIds = usergroupParam ? usergroupParam.split(",").filter(Boolean) : [];
     } else {
       userIds = [currentUserId];
-      usergroupIds = await snippetService.getUsergroupIdsByMember(currentUserId);
+      usergroupIds = await usergroupService.getUsergroupIdsByMember(currentUserId);
     }
 
     const fiscalQuarterStartMonth = await settingsService.getFiscalQuarterStartMonth();
@@ -154,7 +157,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
       const existingIds = new Set(mentionedUsergroupOptions.map((o) => o.id));
       const missingIds = usergroupIds.filter((id) => !existingIds.has(id));
       if (missingIds.length > 0) {
-        const missingGroups = await snippetService.getUsergroupsByIds(missingIds);
+        const missingGroups = await usergroupService.getUsergroupsByIds(missingIds);
         for (const g of missingGroups) {
           mentionedUsergroupOptions.push({
             id: g.id,

@@ -13,6 +13,7 @@ import type { UserService } from "../users/service";
 import type { TaskService } from "../tasks/service";
 import type { SnippetService } from "../snippets/service";
 import type { KudosService } from "../kudos/service";
+import type { UsergroupService } from "../usergroups/service";
 import { parseKudosMessage } from "../kudos/parser";
 import type { GeminiClient } from "../llm/gemini";
 import { t } from "../i18n";
@@ -31,11 +32,13 @@ export interface BoltDeps {
   taskService: TaskService;
   snippetService: SnippetService;
   kudosService: KudosService;
+  usergroupService: UsergroupService;
   geminiClient: GeminiClient;
 }
 
 export function createBolt(config: BoltConfig, deps: BoltDeps) {
-  const { userService, taskService, snippetService, kudosService, geminiClient } = deps;
+  const { userService, taskService, snippetService, kudosService, usergroupService, geminiClient } =
+    deps;
 
   const receiver = config.slackSocketMode ? undefined : new HonoReceiver(config.slackSigningSecret);
 
@@ -66,7 +69,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     } catch {
       // Use handle as fallback
     }
-    const usergroup = await snippetService.findOrCreateUsergroup(
+    const usergroup = await usergroupService.findOrCreateUsergroup(
       groupId,
       groupName,
       groupHandle ?? undefined,
@@ -74,7 +77,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
     // Sync group membership (skip if synced within TTL)
     try {
-      if (await snippetService.isUsergroupMembershipStale(usergroup.id)) {
+      if (await usergroupService.isUsergroupMembershipStale(usergroup.id)) {
         const membersRes = await client.usergroups.users.list({ usergroup: groupId });
         const memberDbIds: string[] = [];
         for (const slackUid of membersRes.users ?? []) {
@@ -85,7 +88,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             // Skip unresolvable members
           }
         }
-        await snippetService.syncUsergroupMembers(usergroup.id, memberDbIds);
+        await usergroupService.syncUsergroupMembers(usergroup.id, memberDbIds);
       }
     } catch {
       // Non-critical
@@ -189,13 +192,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           });
           // Sync group membership to DB (skips if synced within TTL)
           try {
-            const usergroup = await snippetService.findOrCreateUsergroup(
+            const usergroup = await usergroupService.findOrCreateUsergroup(
               groupId,
               groupHandle ?? groupId,
               groupHandle ?? undefined,
             );
-            if (await snippetService.isUsergroupMembershipStale(usergroup.id)) {
-              await snippetService.syncUsergroupMembers(usergroup.id, userIds);
+            if (await usergroupService.isUsergroupMembershipStale(usergroup.id)) {
+              await usergroupService.syncUsergroupMembers(usergroup.id, userIds);
             }
           } catch {
             // Non-critical

@@ -19,6 +19,7 @@ export function createHonoApp(config: HonoAppConfig) {
     userService,
     taskService,
     snippetService,
+    usergroupService,
     kudosService,
     settingsService,
     buildMrkdwnLabels,
@@ -68,6 +69,7 @@ export function createHonoApp(config: HonoAppConfig) {
   const snippetRoutes = createSnippetRoutes({
     authMiddleware,
     snippetService,
+    usergroupService,
     userService,
     settingsService,
     buildMrkdwnLabels: config.buildMrkdwnLabels,
