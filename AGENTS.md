@@ -158,3 +158,4 @@ All documentation, code comments, commit messages, issues, and pull requests mus
 - Slack entity IDs are stored raw in DB; labels are resolved at render time
 - Task creator is automatically added as task owner
 - Admins can perform all owner actions on any task regardless of ownership
+- Use the Read tool to read files instead of `sed`, `cat`, `head`, `tail`, or other shell commands
