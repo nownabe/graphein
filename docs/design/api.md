@@ -37,33 +37,33 @@ Authorization: Bearer gph_a1b2c3d4e5f6...
 
 ### Key Properties
 
-| Property | Description |
-|----------|-------------|
-| Name | User-assigned label (e.g. "CI bot") |
-| Role | `user` or `admin` (admin-only option) |
-| Expiration | Optional; `NULL` means never expires |
-| Revocation | Can be revoked at any time |
-| Per-user limit | Maximum 10 active keys per user |
+| Property       | Description                           |
+| -------------- | ------------------------------------- |
+| Name           | User-assigned label (e.g. "CI bot")   |
+| Role           | `user` or `admin` (admin-only option) |
+| Expiration     | Optional; `NULL` means never expires  |
+| Revocation     | Can be revoked at any time            |
+| Per-user limit | Maximum 10 active keys per user       |
 
 ### Key Issuance
 
 The key's role is determined at creation time based on the issuing user's role:
 
-| User role | Allowed key roles |
-|-----------|-------------------|
-| admin | `admin` or `user` (selectable) |
-| user | `user` only |
+| User role | Allowed key roles              |
+| --------- | ------------------------------ |
+| admin     | `admin` or `user` (selectable) |
+| user      | `user` only                    |
 
 ### Request-Time Validation
 
 On each API request, the middleware checks both the key's role and the user's current role:
 
-| User role | Key role | Result |
-|-----------|----------|--------|
-| admin | admin | Proceed as `admin` |
-| admin | user | Proceed as `user` |
-| user | user | Proceed as `user` |
-| user | admin | **Auto-revoke the key**, return 401 |
+| User role | Key role | Result                              |
+| --------- | -------- | ----------------------------------- |
+| admin     | admin    | Proceed as `admin`                  |
+| admin     | user     | Proceed as `user`                   |
+| user      | user     | Proceed as `user`                   |
+| user      | admin    | **Auto-revoke the key**, return 401 |
 
 If an admin user is later demoted to `user`, their `admin`-role keys are automatically revoked on next use (sets `revoked_at`) and the request fails with 401. This ensures admin-scoped keys never silently downgrade — the owner must explicitly create a new `user`-role key.
 
@@ -88,13 +88,13 @@ CREATE TABLE api_keys (
 );
 ```
 
-| Column | Description |
-|--------|-------------|
-| `key_hash` | SHA-256 hash of the raw API key (32 bytes, fixed-length binary) |
+| Column       | Description                                                                |
+| ------------ | -------------------------------------------------------------------------- |
+| `key_hash`   | SHA-256 hash of the raw API key (32 bytes, fixed-length binary)            |
 | `key_prefix` | First 12 characters (e.g. `gph_a1b2c3d4`) for display in the management UI |
-| `role` | `"user"` or `"admin"` |
-| `expires_at` | `NULL` = never expires |
-| `revoked_at` | `NULL` = active; set on revocation |
+| `role`       | `"user"` or `"admin"`                                                      |
+| `expires_at` | `NULL` = never expires                                                     |
+| `revoked_at` | `NULL` = active; set on revocation                                         |
 
 ---
 
@@ -124,14 +124,14 @@ Returns tasks assigned to the authenticated user, with the user's own completion
 
 All filters are combined with **AND**.
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `status` | `active` \| `archived` | `active` | Task archive status |
-| `done` | `true` \| `false` | _(any)_ | The user's own completion status |
-| `deadlineBefore` | ISO 8601 | | Tasks with deadline before this time |
-| `deadlineAfter` | ISO 8601 | | Tasks with deadline after this time |
-| `pageSize` | integer | 50 | Max results per page (max 100) |
-| `pageToken` | string | | Cursor for the next page |
+| Param            | Type                   | Default  | Description                          |
+| ---------------- | ---------------------- | -------- | ------------------------------------ |
+| `status`         | `active` \| `archived` | `active` | Task archive status                  |
+| `done`           | `true` \| `false`      | _(any)_  | The user's own completion status     |
+| `deadlineBefore` | ISO 8601               |          | Tasks with deadline before this time |
+| `deadlineAfter`  | ISO 8601               |          | Tasks with deadline after this time  |
+| `pageSize`       | integer                | 50       | Max results per page (max 100)       |
+| `pageToken`      | string                 |          | Cursor for the next page             |
 
 #### Authorization
 
@@ -171,20 +171,20 @@ Returns tasks owned by the authenticated user, with aggregated progress.
 
 All filters are combined with **AND**.
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `status` | `active` \| `archived` | `active` | Task archive status |
-| `deadlineBefore` | ISO 8601 | | Tasks with deadline before this time |
-| `deadlineAfter` | ISO 8601 | | Tasks with deadline after this time |
-| `pageSize` | integer | 50 | Max results per page (max 100) |
-| `pageToken` | string | | Cursor for the next page |
+| Param            | Type                   | Default  | Description                          |
+| ---------------- | ---------------------- | -------- | ------------------------------------ |
+| `status`         | `active` \| `archived` | `active` | Task archive status                  |
+| `deadlineBefore` | ISO 8601               |          | Tasks with deadline before this time |
+| `deadlineAfter`  | ISO 8601               |          | Tasks with deadline after this time  |
+| `pageSize`       | integer                | 50       | Max results per page (max 100)       |
+| `pageToken`      | string                 |          | Cursor for the next page             |
 
 #### Authorization
 
-| Effective role | Scope |
-|----------------|-------|
-| `user` | Only tasks where the user is an owner |
-| `admin` | All tasks |
+| Effective role | Scope                                 |
+| -------------- | ------------------------------------- |
+| `user`         | Only tasks where the user is an owner |
+| `admin`        | All tasks                             |
 
 #### Response
 
@@ -223,18 +223,18 @@ Returns the assignee list with completion status for a specific owned task. Inte
 
 All filters are combined with **AND**.
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `done` | `true` \| `false` | _(any)_ | Filter by completion status |
-| `pageSize` | integer | 50 | Max results per page (max 100) |
-| `pageToken` | string | | Cursor for the next page |
+| Param       | Type              | Default | Description                    |
+| ----------- | ----------------- | ------- | ------------------------------ |
+| `done`      | `true` \| `false` | _(any)_ | Filter by completion status    |
+| `pageSize`  | integer           | 50      | Max results per page (max 100) |
+| `pageToken` | string            |         | Cursor for the next page       |
 
 #### Authorization
 
-| Effective role | Scope |
-|----------------|-------|
-| `user` | Only if the user is an owner of the task |
-| `admin` | Any task |
+| Effective role | Scope                                    |
+| -------------- | ---------------------------------------- |
+| `user`         | Only if the user is an owner of the task |
+| `admin`        | Any task                                 |
 
 Returns 403 if the user is not an owner (and not admin). Returns 404 if the task does not exist.
 
@@ -266,10 +266,10 @@ Archives a task. Idempotent — archiving an already-archived task returns 200.
 
 #### Authorization
 
-| Effective role | Scope |
-|----------------|-------|
-| `user` | Only if the user is an owner of the task |
-| `admin` | Any task |
+| Effective role | Scope                                    |
+| -------------- | ---------------------------------------- |
+| `user`         | Only if the user is an owner of the task |
+| `admin`        | Any task                                 |
 
 Returns 403 if the user is not an owner (and not admin). Returns 404 if the task does not exist.
 
@@ -290,10 +290,10 @@ Unarchives a task. Idempotent — unarchiving an already-active task returns 200
 
 #### Authorization
 
-| Effective role | Scope |
-|----------------|-------|
-| `user` | Only if the user is an owner of the task |
-| `admin` | Any task |
+| Effective role | Scope                                    |
+| -------------- | ---------------------------------------- |
+| `user`         | Only if the user is an owner of the task |
+| `admin`        | Any task                                 |
 
 Returns 403 if the user is not an owner (and not admin). Returns 404 if the task does not exist.
 
@@ -316,15 +316,15 @@ Returns snippets. All users (regardless of role) can see all snippets.
 
 All filters are combined with **AND**, except `mentionedUser` and `mentionedUsergroup` which are combined with **OR** when both are specified.
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `postedBy` | UUID | | Filter by poster |
-| `mentionedUser` | UUID | | Filter by mentioned user |
-| `mentionedUsergroup` | UUID | | Filter by mentioned usergroup |
-| `periodStart` | ISO 8601 | | Snippets posted at or after this time |
-| `periodEnd` | ISO 8601 | | Snippets posted before this time |
-| `pageSize` | integer | 50 | Max results per page (max 100) |
-| `pageToken` | string | | Cursor for the next page |
+| Param                | Type     | Default | Description                           |
+| -------------------- | -------- | ------- | ------------------------------------- |
+| `postedBy`           | UUID     |         | Filter by poster                      |
+| `mentionedUser`      | UUID     |         | Filter by mentioned user              |
+| `mentionedUsergroup` | UUID     |         | Filter by mentioned usergroup         |
+| `periodStart`        | ISO 8601 |         | Snippets posted at or after this time |
+| `periodEnd`          | ISO 8601 |         | Snippets posted before this time      |
+| `pageSize`           | integer  | 50      | Max results per page (max 100)        |
+| `pageToken`          | string   |         | Cursor for the next page              |
 
 #### Response
 
@@ -341,12 +341,8 @@ All filters are combined with **AND**, except `mentionedUser` and `mentionedUser
         "displayName": "Alice",
         "avatarUrl": "https://..."
       },
-      "mentionedUsers": [
-        { "id": "uuid", "displayName": "Bob" }
-      ],
-      "mentionedUsergroups": [
-        { "id": "uuid", "name": "Backend Team", "handle": "backend" }
-      ]
+      "mentionedUsers": [{ "id": "uuid", "displayName": "Bob" }],
+      "mentionedUsergroups": [{ "id": "uuid", "name": "Backend Team", "handle": "backend" }]
     }
   ],
   "totalSize": 10,
@@ -362,14 +358,14 @@ Returns kudos entries. All users (regardless of role) can see all kudos.
 
 All filters are combined with **AND**.
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `postedBy` | UUID | | Filter by sender |
-| `user` | UUID | | Filter by recipient (mentioned user) |
-| `periodStart` | ISO 8601 | | Kudos posted at or after this time |
-| `periodEnd` | ISO 8601 | | Kudos posted before this time |
-| `pageSize` | integer | 50 | Max results per page (max 100) |
-| `pageToken` | string | | Cursor for the next page |
+| Param         | Type     | Default | Description                          |
+| ------------- | -------- | ------- | ------------------------------------ |
+| `postedBy`    | UUID     |         | Filter by sender                     |
+| `user`        | UUID     |         | Filter by recipient (mentioned user) |
+| `periodStart` | ISO 8601 |         | Kudos posted at or after this time   |
+| `periodEnd`   | ISO 8601 |         | Kudos posted before this time        |
+| `pageSize`    | integer  | 50      | Max results per page (max 100)       |
+| `pageToken`   | string   |         | Cursor for the next page             |
 
 #### Response
 
@@ -399,11 +395,11 @@ Returns all users. Requires `admin` effective role.
 
 #### Query Parameters
 
-| Param | Type | Default | Description |
-|-------|------|---------|-------------|
-| `query` | string | | Search by display name or email (case-insensitive partial match) |
-| `pageSize` | integer | 50 | Max results per page (max 100) |
-| `pageToken` | string | | Cursor for the next page |
+| Param       | Type    | Default | Description                                                      |
+| ----------- | ------- | ------- | ---------------------------------------------------------------- |
+| `query`     | string  |         | Search by display name or email (case-insensitive partial match) |
+| `pageSize`  | integer | 50      | Max results per page (max 100)                                   |
+| `pageToken` | string  |         | Cursor for the next page                                         |
 
 #### Response
 
@@ -572,13 +568,13 @@ All errors return a consistent JSON structure:
 }
 ```
 
-| HTTP Status | Code | Description |
-|-------------|------|-------------|
-| 401 | `unauthorized` | Missing, invalid, expired, or revoked API key |
-| 403 | `forbidden` | Insufficient permissions |
-| 404 | `not_found` | Resource not found |
-| 422 | `validation_error` | Invalid query parameters |
-| 429 | `rate_limited` | Rate limit exceeded |
+| HTTP Status | Code               | Description                                   |
+| ----------- | ------------------ | --------------------------------------------- |
+| 401         | `unauthorized`     | Missing, invalid, expired, or revoked API key |
+| 403         | `forbidden`        | Insufficient permissions                      |
+| 404         | `not_found`        | Resource not found                            |
+| 422         | `validation_error` | Invalid query parameters                      |
+| 429         | `rate_limited`     | Rate limit exceeded                           |
 
 ---
 
