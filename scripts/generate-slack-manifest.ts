@@ -116,10 +116,10 @@ function buildManifest(opts: ManifestOptions): Record<string, unknown> {
       },
       shortcuts: [
         {
-          name: `${opts.appName}: Add Task`,
+          name: `${opts.appName}: Create Task`,
           type: "message",
-          callback_id: "add_task",
-          description: "Add a message to Graphein as a task",
+          callback_id: "create_task",
+          description: "Create a task on Graphein from this message",
         },
         {
           name: `${opts.appName}: Add Snippet`,
