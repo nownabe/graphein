@@ -35,10 +35,11 @@ After creating the app:
 ### 2. Configure Environment Variables
 
 ```bash
-cp .env.example .env
+cp .envrc.example .envrc
+direnv allow
 ```
 
-Edit `.env`:
+Edit `.envrc`:
 
 | Variable               | Description                                                        |
 | ---------------------- | ------------------------------------------------------------------ |

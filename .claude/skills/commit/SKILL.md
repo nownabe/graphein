@@ -32,7 +32,7 @@ If no arguments are provided, consider all changes as candidates.
 2. Run `git status` and `git diff` (staged + unstaged) to understand the changes.
 3. Run `git log --oneline -10` to check recent commit message style.
 4. Draft a commit message following the commit message rules below.
-5. Stage files with `git add`. If `$ARGUMENTS` specifies files or paths, stage ONLY those — do not include unrelated changes. Otherwise, stage all relevant files (prefer specific files over `git add -A`). Never stage files that likely contain secrets (`.env`, credentials, tokens) — warn instead.
+5. Stage files with `git add`. If `$ARGUMENTS` specifies files or paths, stage ONLY those — do not include unrelated changes. Otherwise, stage all relevant files (prefer specific files over `git add -A`). Never stage files that likely contain secrets (`.envrc`, credentials, tokens) — warn instead.
 6. Create the commit by passing the message directly with `-m`:
    ```
    git commit -m "subject line" -m "optional body"
