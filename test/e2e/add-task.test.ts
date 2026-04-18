@@ -18,9 +18,14 @@ test.describe("Add Task shortcut", () => {
     if (slackMessageTs) {
       await deleteTaskBySlackMessage(channelId, slackMessageTs);
       try {
+        // Delete thread replies before the parent message
+        const replies = await getThreadReplies(channelId, slackMessageTs);
+        for (const reply of replies) {
+          await deleteMessage(channelId, reply.ts);
+        }
         await deleteMessage(channelId, slackMessageTs);
       } catch {
-        // Message may already be deleted
+        // Messages may already be deleted
       }
     }
     slackMessageTs = undefined;
