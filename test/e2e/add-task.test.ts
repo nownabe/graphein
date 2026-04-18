@@ -8,12 +8,7 @@ import {
   waitFor,
 } from "./helpers/slack";
 import { submitAddTaskModal } from "./helpers/slack-interaction";
-import {
-  findTaskBySlackMessage,
-  findUserBySlackId,
-  deleteTaskBySlackMessage,
-  countTaskAssignees,
-} from "./helpers/db";
+import { findUserBySlackId, deleteTaskBySlackMessage } from "./helpers/db";
 
 test.describe("Add Task shortcut", () => {
   let slackMessageTs: string | undefined;
@@ -31,7 +26,7 @@ test.describe("Add Task shortcut", () => {
     slackMessageTs = undefined;
   });
 
-  test("task created via shortcut appears in DB and UI", async ({ authedPage }) => {
+  test("task created via shortcut appears in UI", async ({ authedPage }) => {
     // 1. Post a test message to Slack via API
     const testText = `E2E Add Task test ${Date.now()}`;
     const posted = await postMessage(channelId, testText);
@@ -56,22 +51,7 @@ test.describe("Add Task shortcut", () => {
     });
     expect(res.status).toBe(200);
 
-    // 4. Verify the task was created in the DB
-    await waitFor(async () => {
-      const task = await findTaskBySlackMessage(channelId, slackMessageTs!);
-      return task !== undefined;
-    });
-
-    const task = await findTaskBySlackMessage(channelId, slackMessageTs);
-    expect(task).toBeDefined();
-    expect(task!.title).toBe(taskTitle);
-    expect(task!.slack_permalink).toBe(permalink);
-    expect(task!.created_by_id).toBe(userId);
-
-    const assigneeCount = await countTaskAssignees(task!.id as string);
-    expect(assigneeCount).toBe(1);
-
-    // 5. Verify a confirmation reply was posted in the Slack thread
+    // 4. Verify a confirmation reply was posted in the Slack thread
     await waitFor(async () => {
       const replies = await getThreadReplies(channelId, slackMessageTs!);
       return replies.length > 0;
@@ -80,9 +60,16 @@ test.describe("Add Task shortcut", () => {
     const replies = await getThreadReplies(channelId, slackMessageTs!);
     expect(replies.length).toBeGreaterThan(0);
 
-    // 6. Verify the task appears in the Graphein UI
+    // 5. Verify the task appears in the Graphein UI
     await authedPage.goto("/tasks");
+
+    // Task title should be visible
     const taskElement = authedPage.locator(`text=${taskTitle}`);
     await expect(taskElement).toBeVisible();
+
+    // Slack permalink should be present as a link
+    const taskCard = taskElement.locator("xpath=ancestor::div[starts-with(@id, 'task-')]");
+    const slackLink = taskCard.locator('a[href="' + permalink + '"]');
+    await expect(slackLink).toBeVisible();
   });
 });

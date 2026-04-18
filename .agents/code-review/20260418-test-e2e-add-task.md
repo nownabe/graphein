@@ -48,3 +48,16 @@ Status: APPROVED
 Reviewed commit: [5ed909e](https://github.com/nownabe/graphein/commit/5ed909ea6c2bd2ec9bd21dba84ef4792ac81da81)
 
 All three round 1 issues have been correctly addressed: `slackMessageTs` is now typed as `string | undefined` and reset after cleanup, thread reply `ts` is tracked and deleted in `afterEach` before the parent message, and `getSlackClient` uses the existing static import. TypeScript compiles cleanly. No new issues found.
+
+---
+
+_Major rewrite: replaced direct DB insertion with signed HTTP requests, added E2E server auto-start/teardown, unified env vars._
+
+### Round 3
+
+#### Review
+
+Status: APPROVED
+Reviewed commit: [86fbdba](https://github.com/nownabe/graphein/commit/86fbdbadcd27ed96e89ad08b934b20d2d474ab77)
+
+The rewrite from direct DB insertion to signed HTTP requests is well-executed. The `slack-interaction.ts` helper correctly constructs HMAC-SHA256 signed payloads matching the real Slack format, and the payload structure (private_metadata fields, state.values block/action IDs) aligns with the actual modal defined in `bolt.ts`. The E2E server lifecycle (spawn in global-setup, kill by PID in global-teardown via `globalThis`) is sound since Playwright runs both in the same process. The test now exercises the full server-side flow including user resolution, task creation, and thread reply posting. No issues found.
