@@ -127,6 +127,12 @@ function buildManifest(opts: ManifestOptions): Record<string, unknown> {
           callback_id: "add_snippet",
           description: "Add a message to Graphein as a snippet",
         },
+        {
+          name: `${opts.appName}: Add Kudos`,
+          type: "message",
+          callback_id: "add_kudos",
+          description: "Add a message to Graphein as kudos",
+        },
       ],
     },
     oauth_config: {

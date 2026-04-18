@@ -822,6 +822,323 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     }
   });
 
+  // ── Add Kudos shortcut (message action) ──
+  // Mirrors the add_snippet shortcut pattern: user right-clicks a message → modal confirmation → kudos created.
+  // Useful as a fallback when the automatic kudos message event fails.
+  boltApp.shortcut("add_kudos", async ({ shortcut, ack, client }) => {
+    await ack();
+
+    if (shortcut.type !== "message_action") return;
+
+    const existingUser = await userService.findUserBySlackUserId(shortcut.user.id);
+    const locale = (existingUser?.locale ?? "en") as Locale;
+
+    const messageText =
+      blocksToMrkdwn((shortcut.message as { blocks?: unknown }).blocks) ??
+      shortcut.message.text ??
+      "";
+    const channelId = shortcut.channel.id;
+    const messageTs = shortcut.message_ts;
+    const triggerId = shortcut.trigger_id;
+    const authorSlackId = (shortcut.message as { user?: string }).user ?? shortcut.user.id;
+
+    try {
+      // Check if the message contains kudos entries
+      const parsedEntries = parseKudosMessage(messageText);
+      if (parsedEntries.length === 0) {
+        await client.views.open({
+          trigger_id: triggerId,
+          view: {
+            type: "modal",
+            callback_id: "add_kudos_modal_info",
+            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.kudos.noEntries") },
+              },
+            ],
+          },
+        });
+        return;
+      }
+
+      const existing = await kudosService.findKudosBySlackMessage(channelId, messageTs);
+      if (existing) {
+        await client.views.open({
+          trigger_id: triggerId,
+          view: {
+            type: "modal",
+            callback_id: "add_kudos_modal_info",
+            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+            blocks: [
+              {
+                type: "section",
+                text: { type: "mrkdwn", text: t(locale, "slack.kudos.duplicate") },
+              },
+            ],
+          },
+        });
+        return;
+      }
+
+      // Show confirmation modal with original message preview
+      await client.views.open({
+        trigger_id: triggerId,
+        view: {
+          type: "modal",
+          callback_id: "add_kudos_modal",
+          private_metadata: JSON.stringify({
+            channelId,
+            messageTs,
+            messageText,
+            authorSlackId,
+            locale,
+          }),
+          title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+          submit: { type: "plain_text", text: t(locale, "slack.kudos.submit") },
+          close: { type: "plain_text", text: t(locale, "slack.kudos.cancel") },
+          blocks: [
+            {
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: `*${t(locale, "slack.kudos.originalMessage")}*\n>${messageText.replace(/\n/g, "\n>")}`,
+              },
+            },
+          ],
+        },
+      });
+    } catch (err) {
+      console.error("Error in add_kudos shortcut:", err);
+    }
+  });
+
+  // Modal submission: add_kudos_modal
+  boltApp.view("add_kudos_modal", async ({ ack, view, client }) => {
+    const metadata = JSON.parse(view.private_metadata);
+    const { channelId, messageTs, messageText, authorSlackId } = metadata;
+    const locale = (metadata.locale ?? "en") as Locale;
+
+    // Ack with loading view
+    await ack({
+      response_action: "update",
+      view: {
+        type: "modal",
+        callback_id: "add_kudos_modal_processing",
+        title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+        blocks: [
+          { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.kudos.loading") } },
+        ],
+      },
+    });
+
+    try {
+      const resolver = createSlackLabelResolver(client);
+      const parsedEntries = parseKudosMessage(messageText);
+
+      // Resolve message author
+      const authorInfo = await client.users.info({ user: authorSlackId });
+      const author = await userService.findOrCreateUser({
+        slackUserId: authorSlackId,
+        email: authorInfo.user?.profile?.email ?? "",
+        displayName:
+          authorInfo.user?.profile?.display_name ||
+          authorInfo.user?.profile?.real_name ||
+          authorSlackId,
+        avatarUrl: authorInfo.user?.profile?.image_72 ?? null,
+      });
+
+      if (author.deactivatedAt != null) {
+        console.debug(`[kudos-shortcut] Skipping message from deactivated user ${authorSlackId}`);
+        return;
+      }
+
+      async function resolveSlackUserToDbLocal(slackUid: string) {
+        const result = await client.users.info({ user: slackUid });
+        if (result.user?.profile?.email) {
+          return userService.findOrCreateUser({
+            slackUserId: slackUid,
+            email: result.user.profile.email,
+            displayName:
+              result.user.profile.display_name || result.user.profile.real_name || slackUid,
+            avatarUrl: result.user.profile.image_72 ?? null,
+          });
+        }
+        return null;
+      }
+
+      async function resolveUsergroupToDbLocal(groupId: string) {
+        const groupHandle = await resolver.usergroup(groupId);
+        let groupName = groupHandle ?? groupId;
+        try {
+          const groupsRes = await client.usergroups.list({ include_disabled: false });
+          const group = (groupsRes.usergroups ?? []).find((g) => g.id === groupId);
+          if (group) groupName = group.name ?? groupName;
+        } catch {
+          // Use handle as fallback
+        }
+        const usergroup = await snippetService.findOrCreateUsergroup(
+          groupId,
+          groupName,
+          groupHandle ?? undefined,
+        );
+
+        // Sync group membership
+        try {
+          if (await snippetService.isUsergroupMembershipStale(usergroup.id)) {
+            const membersRes = await client.usergroups.users.list({ usergroup: groupId });
+            const memberDbIds: string[] = [];
+            for (const slackUid of membersRes.users ?? []) {
+              try {
+                const member = await resolveSlackUserToDbLocal(slackUid);
+                if (member) memberDbIds.push(member.id);
+              } catch {
+                // Skip unresolvable members
+              }
+            }
+            await snippetService.syncUsergroupMembers(usergroup.id, memberDbIds);
+          }
+        } catch {
+          // Non-critical
+        }
+
+        return usergroup;
+      }
+
+      // Resolve each entry's target mentions
+      const resolvedEntries: {
+        message: string;
+        mentionedUserIds: string[];
+        mentionedUsergroupIds: string[];
+      }[] = [];
+
+      for (const entry of parsedEntries) {
+        const mentionedUserIds: string[] = [];
+        const mentionedUsergroupIds: string[] = [];
+
+        for (const mention of entry.targetMentions) {
+          const userMatch = mention.match(/<@(U[A-Z0-9]+)>/);
+          if (userMatch) {
+            try {
+              const user = await resolveSlackUserToDbLocal(userMatch[1]);
+              if (user && user.deactivatedAt == null) mentionedUserIds.push(user.id);
+            } catch {
+              // Skip
+            }
+            continue;
+          }
+
+          const groupMatch = mention.match(/<!subteam\^(S[A-Z0-9]+)/);
+          if (groupMatch) {
+            try {
+              const usergroup = await resolveUsergroupToDbLocal(groupMatch[1]);
+              mentionedUsergroupIds.push(usergroup.id);
+              const membersRes = await client.usergroups.users.list({
+                usergroup: groupMatch[1],
+              });
+              for (const slackUid of membersRes.users ?? []) {
+                try {
+                  const member = await resolveSlackUserToDbLocal(slackUid);
+                  if (member && member.deactivatedAt == null) mentionedUserIds.push(member.id);
+                } catch {
+                  // Skip
+                }
+              }
+            } catch {
+              // Skip
+            }
+          }
+        }
+
+        const hydratedMessage = await hydrateMentionLabels(entry.message, resolver);
+
+        if (mentionedUserIds.length > 0 || mentionedUsergroupIds.length > 0) {
+          resolvedEntries.push({
+            message: hydratedMessage,
+            mentionedUserIds,
+            mentionedUsergroupIds,
+          });
+        }
+      }
+
+      if (resolvedEntries.length > 0) {
+        let permalink: string | undefined;
+        try {
+          const permalinkRes = await client.chat.getPermalink({
+            channel: channelId,
+            message_ts: messageTs,
+          });
+          permalink = permalinkRes.permalink ?? undefined;
+        } catch {
+          // Non-critical
+        }
+
+        const postedAt = new Date(Number(messageTs.split(".")[0]) * 1000);
+        const created = await kudosService.createKudos({
+          slackMessageTs: messageTs,
+          slackChannelId: channelId,
+          slackPermalink: permalink,
+          postedAt,
+          postedById: author.id,
+          entries: resolvedEntries,
+        });
+
+        if (created) {
+          console.log(
+            `[kudos-shortcut] Created kudos for message ${messageTs} in channel ${channelId} (${resolvedEntries.length} entries)`,
+          );
+          try {
+            await client.reactions.add({
+              channel: channelId,
+              timestamp: messageTs,
+              name: "tada",
+            });
+          } catch (err) {
+            console.warn(
+              `[kudos-shortcut] Failed to add reaction to ${channelId}/${messageTs}:`,
+              err,
+            );
+          }
+        }
+      }
+
+      // Show success
+      await client.views.update({
+        view_id: view.id,
+        view: {
+          type: "modal",
+          callback_id: "add_kudos_modal_done",
+          title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+          close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+          blocks: [
+            { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.kudos.success") } },
+          ],
+        },
+      });
+    } catch (err) {
+      console.error("[kudos-shortcut] Error creating kudos from modal:", err);
+      try {
+        await client.views.update({
+          view_id: view.id,
+          view: {
+            type: "modal",
+            callback_id: "add_kudos_modal_error",
+            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
+            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
+            blocks: [
+              { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.kudos.error") } },
+            ],
+          },
+        });
+      } catch (updateErr) {
+        console.error("Failed to update kudos modal with error:", updateErr);
+      }
+    }
+  });
+
   // Message event listener for snippet and kudos capture
   boltApp.message(async ({ message, client }) => {
     try {

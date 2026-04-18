@@ -192,6 +192,19 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.snippet.noMentions":
       "このメッセージにはメンションが含まれていないため、日報として追加できません。",
 
+    // Slack kudos shortcut
+    "slack.kudos.title": "Kudosを追加",
+    "slack.kudos.submit": "追加",
+    "slack.kudos.cancel": "キャンセル",
+    "slack.kudos.close": "閉じる",
+    "slack.kudos.loading": "処理中です...",
+    "slack.kudos.originalMessage": "メッセージ:",
+    "slack.kudos.success": "Kudosを追加しました。",
+    "slack.kudos.duplicate": "このメッセージはすでにKudosとして登録されています。",
+    "slack.kudos.error": "Kudosの追加中にエラーが発生しました。もう一度お試しください。",
+    "slack.kudos.noEntries":
+      "このメッセージにはKudosのエントリが含まれていません。メンションで始まる行が必要です。",
+
     // Admin snippet channels
     "admin.snippetChannels.title": "日報チャンネル管理",
     "admin.snippetChannels.description": "日報を自動取得するSlackチャンネルを設定します。",
@@ -434,6 +447,19 @@ const messages: Record<Locale, Record<string, string>> = {
     "slack.snippet.duplicate": "This message has already been added as a snippet.",
     "slack.snippet.error": "An error occurred while adding the snippet. Please try again.",
     "slack.snippet.noMentions": "This message has no mentions and cannot be added as a snippet.",
+
+    // Slack kudos shortcut
+    "slack.kudos.title": "Add Kudos",
+    "slack.kudos.submit": "Add",
+    "slack.kudos.cancel": "Cancel",
+    "slack.kudos.close": "Close",
+    "slack.kudos.loading": "Processing...",
+    "slack.kudos.originalMessage": "Message:",
+    "slack.kudos.success": "Kudos added successfully.",
+    "slack.kudos.duplicate": "This message has already been added as kudos.",
+    "slack.kudos.error": "An error occurred while adding kudos. Please try again.",
+    "slack.kudos.noEntries":
+      "This message has no kudos entries. Lines must start with a mention.",
 
     // Admin snippet channels
     "admin.snippetChannels.title": "Snippet Channels",
