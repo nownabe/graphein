@@ -38,6 +38,19 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
   const receiver = config.slackSocketMode ? undefined : new HonoReceiver(config.slackSigningSecret);
 
+  async function resolveSlackUserToDb(client: WebClient, slackUid: string) {
+    const result = await client.users.info({ user: slackUid });
+    if (result.user?.profile?.email) {
+      return userService.findOrCreateUser({
+        slackUserId: slackUid,
+        email: result.user.profile.email,
+        displayName: result.user.profile.display_name || result.user.profile.real_name || slackUid,
+        avatarUrl: result.user.profile.image_72 ?? null,
+      });
+    }
+    return null;
+  }
+
   function infoModal(
     callbackId: string,
     locale: Locale,
@@ -112,16 +125,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         const slackUserIds: string[] = [];
         for (const slackUid of usersResult.users ?? []) {
           try {
-            const result = await client.users.info({ user: slackUid });
-            if (result.user?.profile?.email) {
-              const user = await userService.findOrCreateUser({
-                slackUserId: slackUid,
-
-                email: result.user.profile.email,
-                displayName:
-                  result.user.profile.display_name || result.user.profile.real_name || slackUid,
-                avatarUrl: result.user.profile.image_72 ?? null,
-              });
+            const user = await resolveSlackUserToDb(client, slackUid);
+            if (user) {
               // Skip deactivated users
               if (user.deactivatedAt != null) continue;
               userIds.push(user.id);
@@ -178,16 +183,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     const details = await geminiClient.generateTaskDetails(messageText, postedAt);
 
     // Creator is the person who triggered the shortcut
-    const creatorInfo = await client.users.info({ user: slackUserId });
-    const creator = await userService.findOrCreateUser({
-      slackUserId,
-      email: creatorInfo.user?.profile?.email ?? "",
-      displayName:
-        creatorInfo.user?.profile?.display_name ||
-        creatorInfo.user?.profile?.real_name ||
-        slackUserId,
-      avatarUrl: creatorInfo.user?.profile?.image_72 ?? null,
-    });
+    const creator = await resolveSlackUserToDb(client, slackUserId);
+    if (!creator) return;
 
     // Build users select block (native Slack user picker)
     const usersBlock = {
@@ -450,15 +447,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
     for (const slackUid of selectedUserIds) {
       try {
-        const result = await client.users.info({ user: slackUid });
-        if (result.user?.profile?.email) {
-          const user = await userService.findOrCreateUser({
-            slackUserId: slackUid,
-            email: result.user.profile.email,
-            displayName:
-              result.user.profile.display_name || result.user.profile.real_name || slackUid,
-            avatarUrl: result.user.profile.image_72 ?? null,
-          });
+        const user = await resolveSlackUserToDb(client, slackUid);
+        if (user) {
           // Skip deactivated users
           if (user.deactivatedAt != null) continue;
           if (!assigneeIds.includes(user.id)) {
@@ -649,17 +639,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       const mentionedDbUserIds: string[] = [];
       for (const slackUid of userMentionIds) {
         try {
-          const result = await client.users.info({ user: slackUid });
-          if (result.user?.profile?.email) {
-            const user = await userService.findOrCreateUser({
-              slackUserId: slackUid,
-              email: result.user.profile.email,
-              displayName:
-                result.user.profile.display_name || result.user.profile.real_name || slackUid,
-              avatarUrl: result.user.profile.image_72 ?? null,
-            });
-            if (user.deactivatedAt == null) mentionedDbUserIds.push(user.id);
-          }
+          const user = await resolveSlackUserToDb(client, slackUid);
+          if (user && user.deactivatedAt == null) mentionedDbUserIds.push(user.id);
         } catch {
           // Skip unresolvable users
         }
@@ -692,19 +673,8 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
               const memberDbIds: string[] = [];
               for (const memberSlackUid of membersRes.users ?? []) {
                 try {
-                  const memberResult = await client.users.info({ user: memberSlackUid });
-                  if (memberResult.user?.profile?.email) {
-                    const member = await userService.findOrCreateUser({
-                      slackUserId: memberSlackUid,
-                      email: memberResult.user.profile.email,
-                      displayName:
-                        memberResult.user.profile.display_name ||
-                        memberResult.user.profile.real_name ||
-                        memberSlackUid,
-                      avatarUrl: memberResult.user.profile.image_72 ?? null,
-                    });
-                    if (member) memberDbIds.push(member.id);
-                  }
+                  const member = await resolveSlackUserToDb(client, memberSlackUid);
+                  if (member) memberDbIds.push(member.id);
                 } catch {
                   // Skip unresolvable members
                 }
@@ -720,18 +690,9 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       }
 
       // Resolve message author
-      const authorInfo = await client.users.info({ user: authorSlackId });
-      const author = await userService.findOrCreateUser({
-        slackUserId: authorSlackId,
-        email: authorInfo.user?.profile?.email ?? "",
-        displayName:
-          authorInfo.user?.profile?.display_name ||
-          authorInfo.user?.profile?.real_name ||
-          authorSlackId,
-        avatarUrl: authorInfo.user?.profile?.image_72 ?? null,
-      });
+      const author = await resolveSlackUserToDb(client, authorSlackId);
 
-      if (author.deactivatedAt != null) {
+      if (!author || author.deactivatedAt != null) {
         console.debug(`[snippet-shortcut] Skipping message from deactivated user ${authorSlackId}`);
         return;
       }
@@ -944,18 +905,9 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       const parsedEntries = parseKudosMessage(messageText);
 
       // Resolve message author
-      const authorInfo = await client.users.info({ user: authorSlackId });
-      const author = await userService.findOrCreateUser({
-        slackUserId: authorSlackId,
-        email: authorInfo.user?.profile?.email ?? "",
-        displayName:
-          authorInfo.user?.profile?.display_name ||
-          authorInfo.user?.profile?.real_name ||
-          authorSlackId,
-        avatarUrl: authorInfo.user?.profile?.image_72 ?? null,
-      });
+      const author = await resolveSlackUserToDb(client, authorSlackId);
 
-      if (author.deactivatedAt != null) {
+      if (!author || author.deactivatedAt != null) {
         console.debug(`[kudos-shortcut] Skipping message from deactivated user ${authorSlackId}`);
         await client.views.update({
           view_id: view.id,
@@ -968,20 +920,6 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           ),
         });
         return;
-      }
-
-      async function resolveSlackUserToDbLocal(slackUid: string) {
-        const result = await client.users.info({ user: slackUid });
-        if (result.user?.profile?.email) {
-          return userService.findOrCreateUser({
-            slackUserId: slackUid,
-            email: result.user.profile.email,
-            displayName:
-              result.user.profile.display_name || result.user.profile.real_name || slackUid,
-            avatarUrl: result.user.profile.image_72 ?? null,
-          });
-        }
-        return null;
       }
 
       async function resolveUsergroupToDbLocal(groupId: string) {
@@ -1007,7 +945,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             const memberDbIds: string[] = [];
             for (const slackUid of membersRes.users ?? []) {
               try {
-                const member = await resolveSlackUserToDbLocal(slackUid);
+                const member = await resolveSlackUserToDb(client, slackUid);
                 if (member) memberDbIds.push(member.id);
               } catch {
                 // Skip unresolvable members
@@ -1037,7 +975,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           const userMatch = mention.match(/<@(U[A-Z0-9]+)>/);
           if (userMatch) {
             try {
-              const user = await resolveSlackUserToDbLocal(userMatch[1]);
+              const user = await resolveSlackUserToDb(client, userMatch[1]);
               if (user && user.deactivatedAt == null) mentionedUserIds.push(user.id);
             } catch {
               // Skip
@@ -1055,7 +993,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
               });
               for (const slackUid of membersRes.users ?? []) {
                 try {
-                  const member = await resolveSlackUserToDbLocal(slackUid);
+                  const member = await resolveSlackUserToDb(client, slackUid);
                   if (member && member.deactivatedAt == null) mentionedUserIds.push(member.id);
                 } catch {
                   // Skip
@@ -1201,20 +1139,6 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       // Shared helpers for resolving users and usergroups
       const resolver = createSlackLabelResolver(client);
 
-      async function resolveSlackUserToDb(slackUid: string) {
-        const result = await client.users.info({ user: slackUid });
-        if (result.user?.profile?.email) {
-          return userService.findOrCreateUser({
-            slackUserId: slackUid,
-            email: result.user.profile.email,
-            displayName:
-              result.user.profile.display_name || result.user.profile.real_name || slackUid,
-            avatarUrl: result.user.profile.image_72 ?? null,
-          });
-        }
-        return null;
-      }
-
       async function resolveUsergroupToDb(groupId: string) {
         const groupHandle = await resolver.usergroup(groupId);
         let groupName = groupHandle ?? groupId;
@@ -1238,7 +1162,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
             const memberDbIds: string[] = [];
             for (const slackUid of membersRes.users ?? []) {
               try {
-                const member = await resolveSlackUserToDb(slackUid);
+                const member = await resolveSlackUserToDb(client, slackUid);
                 if (member) memberDbIds.push(member.id);
               } catch {
                 // Skip unresolvable members
@@ -1279,7 +1203,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
               const mentionedDbUserIds: string[] = [];
               for (const slackUid of userMentionIds) {
                 try {
-                  const user = await resolveSlackUserToDb(slackUid);
+                  const user = await resolveSlackUserToDb(client, slackUid);
                   if (user && user.deactivatedAt == null) mentionedDbUserIds.push(user.id);
                 } catch {
                   // Skip unresolvable users
@@ -1296,18 +1220,9 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                 }
               }
 
-              const authorInfo = await client.users.info({ user: message.user });
-              const author = await userService.findOrCreateUser({
-                slackUserId: message.user,
-                email: authorInfo.user?.profile?.email ?? "",
-                displayName:
-                  authorInfo.user?.profile?.display_name ||
-                  authorInfo.user?.profile?.real_name ||
-                  message.user,
-                avatarUrl: authorInfo.user?.profile?.image_72 ?? null,
-              });
+              const author = await resolveSlackUserToDb(client, message.user);
 
-              if (author.deactivatedAt != null) {
+              if (!author || author.deactivatedAt != null) {
                 console.debug(`[snippet] Skipping message from deactivated user ${message.user}`);
               } else {
                 let permalink: string | undefined;
@@ -1378,18 +1293,9 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
               );
             } else {
               // Resolve message author
-              const authorInfo = await client.users.info({ user: message.user });
-              const author = await userService.findOrCreateUser({
-                slackUserId: message.user,
-                email: authorInfo.user?.profile?.email ?? "",
-                displayName:
-                  authorInfo.user?.profile?.display_name ||
-                  authorInfo.user?.profile?.real_name ||
-                  message.user,
-                avatarUrl: authorInfo.user?.profile?.image_72 ?? null,
-              });
+              const author = await resolveSlackUserToDb(client, message.user);
 
-              if (author.deactivatedAt != null) {
+              if (!author || author.deactivatedAt != null) {
                 console.debug(`[kudos] Skipping message from deactivated user ${message.user}`);
               } else {
                 // Resolve each entry's target mentions
@@ -1408,7 +1314,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                     const userMatch = mention.match(/<@(U[A-Z0-9]+)>/);
                     if (userMatch) {
                       try {
-                        const user = await resolveSlackUserToDb(userMatch[1]);
+                        const user = await resolveSlackUserToDb(client, userMatch[1]);
                         if (user && user.deactivatedAt == null) mentionedUserIds.push(user.id);
                       } catch {
                         // Skip
@@ -1431,7 +1337,7 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
                         });
                         for (const slackUid of membersRes.users ?? []) {
                           try {
-                            const member = await resolveSlackUserToDb(slackUid);
+                            const member = await resolveSlackUserToDb(client, slackUid);
                             if (member && member.deactivatedAt == null)
                               mentionedUserIds.push(member.id);
                           } catch {
