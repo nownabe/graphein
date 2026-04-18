@@ -54,9 +54,15 @@ Your role is purely orchestration: launch sub-agents, read their results, and co
 
    ## Context
 
-   [Brief description of the changes — from PR title/body if available, otherwise from recent commit messages]
-
    Issue: [Issue link or "N/A"]
+
+   ### Background
+
+   [Why these changes are being made — motivation, problem being solved, or user need. Extract from PR body, issue description, or commit messages. If unclear, write "N/A".]
+
+   ### Summary
+
+   [Brief description of the changes — from PR title/body if available, otherwise from recent commit messages]
 
    ## Reviews
    ```
