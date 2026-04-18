@@ -11,7 +11,7 @@ The three Slack message shortcuts (task, snippet, kudos) had inconsistent naming
 ### Summary
 
 - Unified verb to `add` across all shortcuts (`create_task` → `add_task`)
-- Aligned modal callback_id pattern to `{shortcut}_modal_{state}`
+- Aligned modal callback*id pattern to `{shortcut}\_modal*{state}`
 - Renamed i18n prefix `slack.modal.*` → `slack.task.*` to match `slack.snippet.*` / `slack.kudos.*`
 - Renamed page-level i18n prefix `snippets.*` → `snippet.*` to match `task.*` / `kudos.*`
 
