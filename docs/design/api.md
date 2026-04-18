@@ -134,9 +134,9 @@ app.route("/api/v1", apiRoutes);
 
 ### Endpoints
 
-| Path | Description |
-|------|-------------|
-| `GET /api/v1/doc` | OpenAPI 3.0 JSON spec |
+| Path                    | Description             |
+| ----------------------- | ----------------------- |
+| `GET /api/v1/doc`       | OpenAPI 3.0 JSON spec   |
 | `GET /api/v1/reference` | Scalar API reference UI |
 
 ### Schema Organization
@@ -673,11 +673,11 @@ The API routes use `OpenAPIHono` with `@hono/zod-openapi`. Each route file defin
 
 ## Dependencies
 
-| Package | Purpose |
-|---------|---------|
-| `@hono/zod-openapi` | OpenAPI route definitions with Zod validation |
-| `zod` | Schema definition and runtime validation |
-| `@scalar/hono-api-reference` | Interactive API reference UI |
+| Package                      | Purpose                                       |
+| ---------------------------- | --------------------------------------------- |
+| `@hono/zod-openapi`          | OpenAPI route definitions with Zod validation |
+| `zod`                        | Schema definition and runtime validation      |
+| `@scalar/hono-api-reference` | Interactive API reference UI                  |
 
 ## References
 
