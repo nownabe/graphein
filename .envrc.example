@@ -1,25 +1,24 @@
+export JWT_SECRET=xxx
+export BASE_URL=https://xxx.ngrok-free.app
 export DATABASE_URL=postgres://graphein:graphein@localhost:15432/graphein
+export APP_TIMEZONE=""
 
 export SLACK_BOT_TOKEN=xoxb-xxx
 export SLACK_SIGNING_SECRET=xxx
 export SLACK_CLIENT_ID=xxx
 export SLACK_CLIENT_SECRET=xxx
 export SLACK_TEAM_ID=xxx
-
-export GEMINI_API_KEY=xxx
-
-export JWT_SECRET=xxx
-export BASE_URL=https://xxx.ngrok-free.app
-
 export SLACK_SOCKET_MODE="true"
 export SLACK_APP_TOKEN="xapp-"
 
-export APP_TIMEZONE=""
+export GEMINI_API_KEY=xxx
 
 # E2E
+
+export E2E_JWT_SECRET="$JWT_SECRET"
 export E2E_DATABASE_URL="postgres://graphein_e2e:graphein_e2e@localhost:15434/graphein_e2e"
-export E2E_GRAPHEIN_URL="http://localhost:3000"
 export E2E_SLACK_BOT_TOKEN="$SLACK_BOT_TOKEN"
+export E2E_SLACK_SIGNING_SECRET="$SLACK_SIGNING_SECRET"
 export E2E_SLACK_CHANNEL_ID=""
 export E2E_SLACK_USER_ID=""
 export E2E_SNIPPET_CHANNEL_ID=""

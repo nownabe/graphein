@@ -5,32 +5,22 @@ import {
   deleteMessage,
   getPermalink,
   getThreadReplies,
-  getSlackClient,
   waitFor,
 } from "./helpers/slack";
+import { submitAddTaskModal } from "./helpers/slack-interaction";
 import {
   findTaskBySlackMessage,
   findUserBySlackId,
   deleteTaskBySlackMessage,
   countTaskAssignees,
-  query,
 } from "./helpers/db";
 
 test.describe("Add Task shortcut", () => {
   let slackMessageTs: string | undefined;
-  let replyTs: string | undefined;
   const channelId = env.slackChannelId;
 
   test.afterEach(async () => {
-    // Clean up: delete thread replies, the task from DB, and the Slack message
     if (slackMessageTs) {
-      if (replyTs) {
-        try {
-          await deleteMessage(channelId, replyTs);
-        } catch {
-          // Reply may already be deleted
-        }
-      }
       await deleteTaskBySlackMessage(channelId, slackMessageTs);
       try {
         await deleteMessage(channelId, slackMessageTs);
@@ -39,105 +29,59 @@ test.describe("Add Task shortcut", () => {
       }
     }
     slackMessageTs = undefined;
-    replyTs = undefined;
   });
 
   test("task created via shortcut appears in DB and UI", async ({ authedPage }) => {
-    // 1. Post a test message to Slack (simulates the source message)
+    // 1. Post a test message to Slack via API
     const testText = `E2E Add Task test ${Date.now()}`;
     const posted = await postMessage(channelId, testText);
     slackMessageTs = posted.ts;
 
-    // 2. Get the permalink for the message
+    // 2. Get permalink and look up test user
     const permalink = await getPermalink(channelId, slackMessageTs);
-
-    // 3. Look up the test user in the DB (required for created_by_id)
     const user = await findUserBySlackId(env.slackUserId);
     expect(user).toBeDefined();
     const userId = user!.id as string;
 
-    // 4. Simulate task creation (what the Slack shortcut + modal submission does)
-    //    We insert directly into the DB because Slack shortcuts cannot be triggered
-    //    programmatically. This tests the data flow from DB to UI.
+    // 3. Simulate Slack modal submission by sending a signed view_submission request
     const taskTitle = `E2E Task: ${testText}`;
-    const insertedRows = await query<{ id: string }>(
-      `INSERT INTO tasks (title, description, slack_message_ts, slack_channel_id, slack_permalink, created_by_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id`,
-      [taskTitle, testText, slackMessageTs, channelId, permalink, userId],
-    );
-    const taskId = insertedRows[0].id;
-    expect(taskId).toBeDefined();
+    const res = await submitAddTaskModal({
+      channelId,
+      messageTs: slackMessageTs,
+      messageText: testText,
+      permalink,
+      createdById: userId,
+      title: taskTitle,
+      slackUserId: env.slackUserId,
+    });
+    expect(res.status).toBe(200);
 
-    // Add the creator as task owner (matches createTask behavior)
-    await query("INSERT INTO task_owners (task_id, user_id) VALUES ($1, $2)", [taskId, userId]);
+    // 4. Verify the task was created in the DB
+    await waitFor(async () => {
+      const task = await findTaskBySlackMessage(channelId, slackMessageTs!);
+      return task !== undefined;
+    });
 
-    // Add the creator as an assignee (typical shortcut behavior assigns the triggering user)
-    await query("INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)", [taskId, userId]);
-
-    // 5. Verify in DB: task exists with correct fields
     const task = await findTaskBySlackMessage(channelId, slackMessageTs);
     expect(task).toBeDefined();
     expect(task!.title).toBe(taskTitle);
     expect(task!.slack_permalink).toBe(permalink);
     expect(task!.created_by_id).toBe(userId);
 
-    const assigneeCount = await countTaskAssignees(taskId);
+    const assigneeCount = await countTaskAssignees(task!.id as string);
     expect(assigneeCount).toBe(1);
 
-    // 6. Verify in Graphein UI: navigate to Tasks page and confirm the new task appears
-    await authedPage.goto("/tasks");
-    // The task title should be visible on the page
-    const taskElement = authedPage.locator(`text=${taskTitle}`);
-    await expect(taskElement).toBeVisible();
-  });
-
-  test("task with thread reply appears with confirmation", async ({ authedPage }) => {
-    // 1. Post a test message to Slack
-    const testText = `E2E Add Task reply test ${Date.now()}`;
-    const posted = await postMessage(channelId, testText);
-    slackMessageTs = posted.ts;
-
-    const permalink = await getPermalink(channelId, slackMessageTs);
-    const user = await findUserBySlackId(env.slackUserId);
-    expect(user).toBeDefined();
-    const userId = user!.id as string;
-
-    // 2. Create the task in DB
-    const taskTitle = `E2E Reply Task: ${testText}`;
-    const insertedRows = await query<{ id: string }>(
-      `INSERT INTO tasks (title, description, slack_message_ts, slack_channel_id, slack_permalink, created_by_id)
-       VALUES ($1, $2, $3, $4, $5, $6)
-       RETURNING id`,
-      [taskTitle, testText, slackMessageTs, channelId, permalink, userId],
-    );
-    const taskId = insertedRows[0].id;
-
-    await query("INSERT INTO task_owners (task_id, user_id) VALUES ($1, $2)", [taskId, userId]);
-    await query("INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)", [taskId, userId]);
-
-    // 3. Post a confirmation reply in the thread (simulates what the bot does after task creation)
-    const slackClient = getSlackClient();
-    const replyResult = await slackClient.chat.postMessage({
-      channel: channelId,
-      thread_ts: slackMessageTs,
-      text: `Task created: ${taskTitle}`,
-    });
-    replyTs = replyResult.ts ?? undefined;
-
-    // 4. Verify the thread reply exists
+    // 5. Verify a confirmation reply was posted in the Slack thread
     await waitFor(async () => {
-      const replies = await getThreadReplies(channelId, slackMessageTs);
+      const replies = await getThreadReplies(channelId, slackMessageTs!);
       return replies.length > 0;
     });
 
-    const replies = await getThreadReplies(channelId, slackMessageTs);
+    const replies = await getThreadReplies(channelId, slackMessageTs!);
     expect(replies.length).toBeGreaterThan(0);
-    expect(replies.some((r) => r.text.includes("Task created"))).toBe(true);
 
-    // 5. Verify the task appears in the UI
+    // 6. Verify the task appears in the Graphein UI
     await authedPage.goto("/tasks");
-
     const taskElement = authedPage.locator(`text=${taskTitle}`);
     await expect(taskElement).toBeVisible();
   });
