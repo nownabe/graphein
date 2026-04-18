@@ -38,6 +38,27 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
   const receiver = config.slackSocketMode ? undefined : new HonoReceiver(config.slackSigningSecret);
 
+  function infoModal(
+    callbackId: string,
+    locale: Locale,
+    titleKey: string,
+    messageKey: string,
+    closeKey?: string,
+  ) {
+    return {
+      type: "modal" as const,
+      callback_id: callbackId,
+      title: { type: "plain_text" as const, text: t(locale, titleKey) },
+      ...(closeKey ? { close: { type: "plain_text" as const, text: t(locale, closeKey) } } : {}),
+      blocks: [
+        {
+          type: "section" as const,
+          text: { type: "mrkdwn" as const, text: t(locale, messageKey) },
+        },
+      ],
+    };
+  }
+
   const boltApp = new App({
     token: config.slackBotToken,
     signingSecret: config.slackSigningSecret,
@@ -283,18 +304,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     try {
       const loadingRes = await client.views.open({
         trigger_id: triggerId,
-        view: {
-          type: "modal",
-          callback_id: "add_task_modal_processing",
-          title: { type: "plain_text", text: t(locale, "slack.task.title") },
-          close: { type: "plain_text", text: t(locale, "slack.task.cancel") },
-          blocks: [
-            {
-              type: "section",
-              text: { type: "mrkdwn", text: t(locale, "slack.task.loading") },
-            },
-          ],
-        },
+        view: infoModal(
+          "add_task_modal_processing",
+          locale,
+          "slack.task.title",
+          "slack.task.loading",
+          "slack.task.cancel",
+        ),
       });
       viewId = loadingRes.view?.id;
     } catch (err) {
@@ -358,18 +374,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         try {
           await client.views.update({
             view_id: viewId,
-            view: {
-              type: "modal",
-              callback_id: "add_task_modal_error",
-              title: { type: "plain_text", text: t(locale, "slack.task.title") },
-              close: { type: "plain_text", text: t(locale, "slack.task.close") },
-              blocks: [
-                {
-                  type: "section",
-                  text: { type: "mrkdwn", text: t(locale, "slack.task.error") },
-                },
-              ],
-            },
+            view: infoModal(
+              "add_task_modal_error",
+              locale,
+              "slack.task.title",
+              "slack.task.error",
+              "slack.task.close",
+            ),
           });
         } catch (updateErr) {
           console.error("Failed to update modal with error:", updateErr);
@@ -386,18 +397,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
 
     await ack({
       response_action: "update",
-      view: {
-        type: "modal",
-        callback_id: "add_task_modal_processing",
-        title: { type: "plain_text", text: t(locale, "slack.task.title") },
-        close: { type: "plain_text", text: t(locale, "slack.task.cancel") },
-        blocks: [
-          {
-            type: "section",
-            text: { type: "mrkdwn", text: t(locale, "slack.task.loading") },
-          },
-        ],
-      },
+      view: infoModal(
+        "add_task_modal_processing",
+        locale,
+        "slack.task.title",
+        "slack.task.loading",
+        "slack.task.cancel",
+      ),
     });
 
     try {
@@ -415,18 +421,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       try {
         await client.views.update({
           view_id: view.id,
-          view: {
-            type: "modal",
-            callback_id: "add_task_modal_error",
-            title: { type: "plain_text", text: t(locale, "slack.task.title") },
-            close: { type: "plain_text", text: t(locale, "slack.task.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.task.error") },
-              },
-            ],
-          },
+          view: infoModal(
+            "add_task_modal_error",
+            locale,
+            "slack.task.title",
+            "slack.task.error",
+            "slack.task.close",
+          ),
         });
       } catch (updateErr) {
         console.error("Failed to update modal with error:", updateErr);
@@ -563,18 +564,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       if (userMentionIds.length === 0 && usergroupMentionIds.length === 0) {
         await client.views.open({
           trigger_id: triggerId,
-          view: {
-            type: "modal",
-            callback_id: "add_snippet_modal_info",
-            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
-            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.snippet.noMentions") },
-              },
-            ],
-          },
+          view: infoModal(
+            "add_snippet_modal_info",
+            locale,
+            "slack.snippet.title",
+            "slack.snippet.noMentions",
+            "slack.snippet.close",
+          ),
         });
         return;
       }
@@ -583,18 +579,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       if (existing) {
         await client.views.open({
           trigger_id: triggerId,
-          view: {
-            type: "modal",
-            callback_id: "add_snippet_modal_info",
-            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
-            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.snippet.duplicate") },
-              },
-            ],
-          },
+          view: infoModal(
+            "add_snippet_modal_info",
+            locale,
+            "slack.snippet.title",
+            "slack.snippet.duplicate",
+            "slack.snippet.close",
+          ),
         });
         return;
       }
@@ -640,14 +631,12 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     // Ack with loading view to avoid 3-second timeout
     await ack({
       response_action: "update",
-      view: {
-        type: "modal",
-        callback_id: "add_snippet_modal_processing",
-        title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
-        blocks: [
-          { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.snippet.loading") } },
-        ],
-      },
+      view: infoModal(
+        "add_snippet_modal_processing",
+        locale,
+        "slack.snippet.title",
+        "slack.snippet.loading",
+      ),
     });
 
     try {
@@ -791,30 +780,26 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       // Show success
       await client.views.update({
         view_id: view.id,
-        view: {
-          type: "modal",
-          callback_id: "add_snippet_modal_done",
-          title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
-          close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
-          blocks: [
-            { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.snippet.success") } },
-          ],
-        },
+        view: infoModal(
+          "add_snippet_modal_done",
+          locale,
+          "slack.snippet.title",
+          "slack.snippet.success",
+          "slack.snippet.close",
+        ),
       });
     } catch (err) {
       console.error("[snippet-shortcut] Error creating snippet from modal:", err);
       try {
         await client.views.update({
           view_id: view.id,
-          view: {
-            type: "modal",
-            callback_id: "add_snippet_modal_error",
-            title: { type: "plain_text", text: t(locale, "slack.snippet.title") },
-            close: { type: "plain_text", text: t(locale, "slack.snippet.close") },
-            blocks: [
-              { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.snippet.error") } },
-            ],
-          },
+          view: infoModal(
+            "add_snippet_modal_error",
+            locale,
+            "slack.snippet.title",
+            "slack.snippet.error",
+            "slack.snippet.close",
+          ),
         });
       } catch (updateErr) {
         console.error("Failed to update snippet modal with error:", updateErr);
@@ -847,18 +832,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       if (!authorSlackId) {
         await client.views.open({
           trigger_id: triggerId,
-          view: {
-            type: "modal",
-            callback_id: "add_kudos_modal_info",
-            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.kudos.notUserMessage") },
-              },
-            ],
-          },
+          view: infoModal(
+            "add_kudos_modal_info",
+            locale,
+            "slack.kudos.title",
+            "slack.kudos.notUserMessage",
+            "slack.kudos.close",
+          ),
         });
         return;
       }
@@ -868,18 +848,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       if (!isKudosMonitored) {
         await client.views.open({
           trigger_id: triggerId,
-          view: {
-            type: "modal",
-            callback_id: "add_kudos_modal_info",
-            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.kudos.notKudosChannel") },
-              },
-            ],
-          },
+          view: infoModal(
+            "add_kudos_modal_info",
+            locale,
+            "slack.kudos.title",
+            "slack.kudos.notKudosChannel",
+            "slack.kudos.close",
+          ),
         });
         return;
       }
@@ -889,18 +864,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       if (parsedEntries.length === 0) {
         await client.views.open({
           trigger_id: triggerId,
-          view: {
-            type: "modal",
-            callback_id: "add_kudos_modal_info",
-            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.kudos.noEntries") },
-              },
-            ],
-          },
+          view: infoModal(
+            "add_kudos_modal_info",
+            locale,
+            "slack.kudos.title",
+            "slack.kudos.noEntries",
+            "slack.kudos.close",
+          ),
         });
         return;
       }
@@ -909,18 +879,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       if (existing) {
         await client.views.open({
           trigger_id: triggerId,
-          view: {
-            type: "modal",
-            callback_id: "add_kudos_modal_info",
-            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.kudos.duplicate") },
-              },
-            ],
-          },
+          view: infoModal(
+            "add_kudos_modal_info",
+            locale,
+            "slack.kudos.title",
+            "slack.kudos.duplicate",
+            "slack.kudos.close",
+          ),
         });
         return;
       }
@@ -966,14 +931,12 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
     // Ack with loading view
     await ack({
       response_action: "update",
-      view: {
-        type: "modal",
-        callback_id: "add_kudos_modal_processing",
-        title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-        blocks: [
-          { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.kudos.loading") } },
-        ],
-      },
+      view: infoModal(
+        "add_kudos_modal_processing",
+        locale,
+        "slack.kudos.title",
+        "slack.kudos.loading",
+      ),
     });
 
     try {
@@ -996,18 +959,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
         console.debug(`[kudos-shortcut] Skipping message from deactivated user ${authorSlackId}`);
         await client.views.update({
           view_id: view.id,
-          view: {
-            type: "modal",
-            callback_id: "add_kudos_modal_done",
-            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.kudos.noEntries") },
-              },
-            ],
-          },
+          view: infoModal(
+            "add_kudos_modal_done",
+            locale,
+            "slack.kudos.title",
+            "slack.kudos.noEntries",
+            "slack.kudos.close",
+          ),
         });
         return;
       }
@@ -1162,53 +1120,38 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
           // Show success
           await client.views.update({
             view_id: view.id,
-            view: {
-              type: "modal",
-              callback_id: "add_kudos_modal_done",
-              title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-              close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-              blocks: [
-                {
-                  type: "section",
-                  text: { type: "mrkdwn", text: t(locale, "slack.kudos.success") },
-                },
-              ],
-            },
+            view: infoModal(
+              "add_kudos_modal_done",
+              locale,
+              "slack.kudos.title",
+              "slack.kudos.success",
+              "slack.kudos.close",
+            ),
           });
         } else {
           // Race condition: automatic event handler already created the kudos
           await client.views.update({
             view_id: view.id,
-            view: {
-              type: "modal",
-              callback_id: "add_kudos_modal_done",
-              title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-              close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-              blocks: [
-                {
-                  type: "section",
-                  text: { type: "mrkdwn", text: t(locale, "slack.kudos.duplicate") },
-                },
-              ],
-            },
+            view: infoModal(
+              "add_kudos_modal_done",
+              locale,
+              "slack.kudos.title",
+              "slack.kudos.duplicate",
+              "slack.kudos.close",
+            ),
           });
         }
       } else {
         // No entries could be resolved
         await client.views.update({
           view_id: view.id,
-          view: {
-            type: "modal",
-            callback_id: "add_kudos_modal_done",
-            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-            blocks: [
-              {
-                type: "section",
-                text: { type: "mrkdwn", text: t(locale, "slack.kudos.noEntries") },
-              },
-            ],
-          },
+          view: infoModal(
+            "add_kudos_modal_done",
+            locale,
+            "slack.kudos.title",
+            "slack.kudos.noEntries",
+            "slack.kudos.close",
+          ),
         });
       }
     } catch (err) {
@@ -1216,15 +1159,13 @@ export function createBolt(config: BoltConfig, deps: BoltDeps) {
       try {
         await client.views.update({
           view_id: view.id,
-          view: {
-            type: "modal",
-            callback_id: "add_kudos_modal_error",
-            title: { type: "plain_text", text: t(locale, "slack.kudos.title") },
-            close: { type: "plain_text", text: t(locale, "slack.kudos.close") },
-            blocks: [
-              { type: "section", text: { type: "mrkdwn", text: t(locale, "slack.kudos.error") } },
-            ],
-          },
+          view: infoModal(
+            "add_kudos_modal_error",
+            locale,
+            "slack.kudos.title",
+            "slack.kudos.error",
+            "slack.kudos.close",
+          ),
         });
       } catch (updateErr) {
         console.error("Failed to update kudos modal with error:", updateErr);
