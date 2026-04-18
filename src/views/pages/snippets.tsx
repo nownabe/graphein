@@ -201,7 +201,7 @@ function SingleSelectFilter({
           </svg>
         </button>
         <div
-          class="ss-popover absolute z-30 left-0 top-full mt-1 w-64 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden"
+          class="ss-popover absolute z-[5] left-0 top-full mt-1 w-64 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden"
           style="display:none;box-shadow:0 8px 24px rgba(0,0,0,0.15)"
         >
           <div class="p-2 border-b border-edge">
@@ -406,7 +406,7 @@ function MentionsFilter({
           </svg>
         </button>
         <div
-          class="ms-popover absolute z-30 left-0 top-full mt-1 w-64 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden"
+          class="ms-popover absolute z-[5] left-0 top-full mt-1 w-64 bg-surface border border-edge rounded-[var(--radius-sm)] overflow-hidden"
           style="display:none;box-shadow:0 8px 24px rgba(0,0,0,0.15)"
         >
           <div class="p-2 border-b border-edge">
@@ -528,7 +528,7 @@ export function SnippetsContentPartial({
         </div>
       </div>
 
-      <div class="flex flex-wrap items-end gap-4 mb-4 relative z-10">
+      <div class="flex flex-wrap items-end gap-4 mb-4 relative">
         <MentionsFilter
           label={t(locale, "snippet.filter.mentions")}
           userOptions={mentionedUsers}
