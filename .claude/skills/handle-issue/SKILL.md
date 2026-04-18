@@ -105,9 +105,13 @@ Use the `/commit` skill to create well-structured commits. For complex changes, 
 
 If the issue number is known, reference it in the commit body (e.g., `Refs #42`).
 
+**After committing, you MUST continue to step 6. The workflow is NOT complete until the PR is created.**
+
 ## 6. Code Review
 
 Run the `/code-review` skill to perform an automated local code review. Fix any issues found.
+
+**After code review, you MUST continue to step 7. The workflow is NOT complete until the PR is created.**
 
 ## 7. Create PR
 
@@ -118,8 +122,11 @@ Ensure the PR body includes:
 - A reference to the issue: `Closes #<number>` (or `Refs #<number>` if the PR only partially addresses the issue)
 - A clear description of what was implemented
 
+**The workflow is complete only after the PR URL is output.**
+
 ## Important Rules
 
+- **You MUST complete ALL steps 1–7. Never stop after committing — always proceed through code review and PR creation.**
 - Never merge the PR — that is always done by a human.
 - Keep changes minimal and focused on the issue scope.
 - If the issue requires database schema changes, generate migrations with `bun run db:generate`.
