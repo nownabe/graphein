@@ -5,6 +5,7 @@ import {
   deleteMessage,
   getPermalink,
   getThreadReplies,
+  getSlackClient,
   waitFor,
 } from "./helpers/slack";
 import {
@@ -16,12 +17,20 @@ import {
 } from "./helpers/db";
 
 test.describe("Add Task shortcut", () => {
-  let slackMessageTs: string;
+  let slackMessageTs: string | undefined;
+  let replyTs: string | undefined;
   const channelId = env.slackChannelId;
 
   test.afterEach(async () => {
-    // Clean up: delete the task from DB and the Slack message
+    // Clean up: delete thread replies, the task from DB, and the Slack message
     if (slackMessageTs) {
+      if (replyTs) {
+        try {
+          await deleteMessage(channelId, replyTs);
+        } catch {
+          // Reply may already be deleted
+        }
+      }
       await deleteTaskBySlackMessage(channelId, slackMessageTs);
       try {
         await deleteMessage(channelId, slackMessageTs);
@@ -29,6 +38,8 @@ test.describe("Add Task shortcut", () => {
         // Message may already be deleted
       }
     }
+    slackMessageTs = undefined;
+    replyTs = undefined;
   });
 
   test("task created via shortcut appears in DB and UI", async ({ authedPage }) => {
@@ -108,12 +119,13 @@ test.describe("Add Task shortcut", () => {
     await query("INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2)", [taskId, userId]);
 
     // 3. Post a confirmation reply in the thread (simulates what the bot does after task creation)
-    const slackClient = (await import("./helpers/slack")).getSlackClient();
-    await slackClient.chat.postMessage({
+    const slackClient = getSlackClient();
+    const replyResult = await slackClient.chat.postMessage({
       channel: channelId,
       thread_ts: slackMessageTs,
       text: `Task created: ${taskTitle}`,
     });
+    replyTs = replyResult.ts ?? undefined;
 
     // 4. Verify the thread reply exists
     await waitFor(async () => {
