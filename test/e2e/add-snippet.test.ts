@@ -63,13 +63,13 @@ test.describe("Add Snippet shortcut", () => {
       const reactions = await getReactions(channelId, slackMessageTs!);
       return reactions.some((r) => r.name === "memo");
     });
-
     const reactions = await getReactions(channelId, slackMessageTs!);
     expect(reactions.some((r) => r.name === "memo")).toBe(true);
 
     // 5. Verify the snippet appears in the Graphein UI
-    //    Navigate to the snippets page with filters cleared so all snippets are visible
-    await authedPage.goto("/snippets?user=&usergroup=&postedBy=");
+    //    Pass today's date explicitly since the default view shows the previous period
+    const today = new Date().toISOString().split("T")[0];
+    await authedPage.goto(`/snippets?period=day&date=${today}&user=&usergroup=&postedBy=`);
 
     // The snippet content (which includes the unique tag) should be visible
     const snippetElement = authedPage.locator(`text=${uniqueTag}`);
