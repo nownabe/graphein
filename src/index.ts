@@ -55,6 +55,7 @@ const slackLabelResolver = createSlackLabelResolver(boltApp.client);
 
 // Create Hono app
 const app = createHonoApp({
+  db,
   devMode,
   baseUrl,
   slackClientId: requireEnv("SLACK_CLIENT_ID"),

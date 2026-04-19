@@ -1,5 +1,13 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
+import type { Database } from "../db/client";
+import type { TaskService } from "../tasks/service";
+import { createTaskApiRoutes } from "./tasks";
+
+interface ApiRouteDeps {
+  taskService: TaskService;
+  db: Database;
+}
 
 /**
  * Creates the OpenAPIHono sub-app for the JSON API.
@@ -8,7 +16,7 @@ import { Scalar } from "@scalar/hono-api-reference";
  * Auth and rate-limit middleware are applied in `app.ts` before requests reach
  * these routes, so the sub-app itself does not apply them.
  */
-export function createApiRoutes() {
+export function createApiRoutes(deps: ApiRouteDeps) {
   const app = new OpenAPIHono();
 
   // --- OpenAPI spec endpoint ---
@@ -24,6 +32,13 @@ export function createApiRoutes() {
 
   // --- Scalar API reference UI ---
   app.get("/reference", Scalar({ url: "/api/v1/doc" }));
+
+  // --- Task API routes ---
+  const taskApiRoutes = createTaskApiRoutes({
+    taskService: deps.taskService,
+    db: deps.db,
+  });
+  app.route("/", taskApiRoutes);
 
   return app;
 }

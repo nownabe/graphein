@@ -125,7 +125,7 @@ export function createHonoApp(config: HonoAppConfig) {
   });
 
   // API routes (OpenAPIHono sub-app)
-  const apiRoutes = createApiRoutes();
+  const apiRoutes = createApiRoutes({ taskService, db: config.db });
   app.route("/api/v1", apiRoutes);
 
   app.get("/healthz", (c) => c.text("ok"));

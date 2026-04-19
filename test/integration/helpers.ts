@@ -46,6 +46,7 @@ export function createTestApp() {
   const kudosService = createKudosService(db);
 
   const app = createHonoApp({
+    db,
     devMode: false,
     baseUrl: BASE_URL,
     slackClientId: "",
