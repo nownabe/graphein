@@ -6,8 +6,9 @@
  *   bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>]
  *   bun run tools/create-pr-and-wait.ts wait <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
  *
- * Both subcommands poll every 30s (up to 10 times = ~5 min) and exit when an
- * actionable state is reached:
+ * Both subcommands poll every 30s (up to 10 times = ~5 min). When a change is
+ * detected the tool waits a few seconds for all related data to settle, then
+ * re-fetches everything and exits with the final result.
  *
  *   Exit 0 — approved:     LGTM received and all CI checks passed
  *   Exit 2 — ci_failed:    one or more CI checks failed
@@ -19,6 +20,7 @@ import { parseArgs } from "util";
 
 const POLL_INTERVAL_SEC = 30;
 const MAX_POLLS = 10;
+const SETTLE_DELAY_SEC = 5;
 
 // ---------------------------------------------------------------------------
 // helpers
@@ -72,23 +74,84 @@ type CheckOutput = {
 };
 
 // ---------------------------------------------------------------------------
-// single check
+// snapshot — lightweight counts for change detection
 // ---------------------------------------------------------------------------
 
-async function checkOnce(
-  prNumber: string,
-  reviewer: string,
-  since: Date | null,
-): Promise<CheckOutput> {
+type Snapshot = {
+  ciFinished: boolean;
+  ciHasFail: boolean;
+  commentCount: number;
+  reviewCount: number;
+  reviewCommentCount: number;
+};
+
+async function takeSnapshot(prNumber: string, since: Date | null): Promise<Snapshot> {
   const [checksRes, commentsRes, reviewsRes, reviewCommentsRes] = await Promise.all([
-    gh("pr", "checks", prNumber, "--json", "name,state,link"),
+    gh("pr", "checks", prNumber, "--json", "state"),
     gh("api", `repos/{owner}/{repo}/issues/${prNumber}/comments`),
     gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/reviews`),
     gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/comments`),
   ]);
 
-  // Also get PR URL
-  const prViewRes = await gh("pr", "view", prNumber, "--json", "url", "--jq", ".url");
+  // CI
+  let ciFinished = false;
+  let ciHasFail = false;
+  if (checksRes.exitCode === 0 && checksRes.stdout) {
+    const checks = (tryParseJson(checksRes.stdout) as Array<{ state: string }>) ?? [];
+    if (checks.length > 0) {
+      const failStates = ["FAILURE", "ERROR", "STARTUP_FAILURE"];
+      ciFinished = checks.every((c) => c.state === "SUCCESS" || failStates.includes(c.state));
+      ciHasFail = checks.some((c) => failStates.includes(c.state));
+    }
+  }
+
+  // Counts (filtered by since)
+  const isAfterSince = (dateStr: string) => !since || new Date(dateStr) > since;
+
+  const comments =
+    (commentsRes.exitCode === 0 ? (tryParseJson(commentsRes.stdout) as any[]) : null) ?? [];
+  const reviews =
+    (reviewsRes.exitCode === 0 ? (tryParseJson(reviewsRes.stdout) as any[]) : null) ?? [];
+  const reviewComments =
+    (reviewCommentsRes.exitCode === 0 ? (tryParseJson(reviewCommentsRes.stdout) as any[]) : null) ??
+    [];
+
+  return {
+    ciFinished,
+    ciHasFail,
+    commentCount: comments.filter((c: any) => isAfterSince(c.created_at)).length,
+    reviewCount: reviews.filter((r: any) => isAfterSince(r.submitted_at)).length,
+    reviewCommentCount: reviewComments.filter((rc: any) => isAfterSince(rc.created_at)).length,
+  };
+}
+
+function snapshotChanged(prev: Snapshot, curr: Snapshot): boolean {
+  return (
+    curr.ciFinished !== prev.ciFinished ||
+    curr.ciHasFail !== prev.ciHasFail ||
+    curr.commentCount !== prev.commentCount ||
+    curr.reviewCount !== prev.reviewCount ||
+    curr.reviewCommentCount !== prev.reviewCommentCount
+  );
+}
+
+// ---------------------------------------------------------------------------
+// full fetch — collect all data for the final result
+// ---------------------------------------------------------------------------
+
+async function collectResult(
+  prNumber: string,
+  reviewer: string,
+  since: Date | null,
+): Promise<CheckOutput> {
+  const [checksRes, commentsRes, reviewsRes, reviewCommentsRes, prViewRes] = await Promise.all([
+    gh("pr", "checks", prNumber, "--json", "name,state,link"),
+    gh("api", `repos/{owner}/{repo}/issues/${prNumber}/comments`),
+    gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/reviews`),
+    gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/comments`),
+    gh("pr", "view", prNumber, "--json", "url", "--jq", ".url"),
+  ]);
+
   const prUrl = prViewRes.exitCode === 0 ? prViewRes.stdout : "";
 
   // --- CI checks ---
@@ -194,27 +257,33 @@ async function checkOnce(
 }
 
 // ---------------------------------------------------------------------------
-// poll loop — shared by create and wait
+// poll loop — detect change, settle, then collect final result
 // ---------------------------------------------------------------------------
 
 async function pollLoop(prNumber: string, reviewer: string, since: Date | null): Promise<never> {
+  // Take initial snapshot as baseline
+  let baseline = await takeSnapshot(prNumber, since);
+
   for (let i = 0; i < MAX_POLLS; i++) {
-    if (i > 0) {
-      await Bun.sleep(POLL_INTERVAL_SEC * 1000);
-    }
+    await Bun.sleep(POLL_INTERVAL_SEC * 1000);
 
-    const result = await checkOnce(prNumber, reviewer, since);
+    const current = await takeSnapshot(prNumber, since);
 
-    if (result.status !== "pending") {
+    if (snapshotChanged(baseline, current)) {
+      // Change detected — wait for related data to settle before collecting
+      console.error("Change detected, waiting for data to settle...");
+      await Bun.sleep(SETTLE_DELAY_SEC * 1000);
+
+      const result = await collectResult(prNumber, reviewer, since);
       console.log(JSON.stringify(result, null, 2));
       process.exit(statusToExitCode(result.status));
     }
   }
 
-  // Timed out — still pending
-  const finalResult = await checkOnce(prNumber, reviewer, since);
-  console.log(JSON.stringify(finalResult, null, 2));
-  process.exit(statusToExitCode(finalResult.status));
+  // Timed out — collect final result anyway
+  const result = await collectResult(prNumber, reviewer, since);
+  console.log(JSON.stringify(result, null, 2));
+  process.exit(statusToExitCode(result.status));
 }
 
 function statusToExitCode(status: CheckOutput["status"]): number {
