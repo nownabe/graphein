@@ -156,7 +156,7 @@ All documentation, code comments, commit messages, issues, and pull requests mus
   # Resume polling after fixing CI failures or addressing review feedback
   bun run tools/create-pr-and-wait.ts wait <pr-number> --since <iso-timestamp>
   ```
-  Exit codes: `0` = approved (LGTM + CI pass), `2` = CI failed, `3` = has review feedback, `4` = pending (poll again).
+  The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, or `pending`. Non-zero exit only on errors.
 
 ## E2E Tests
 

@@ -10,10 +10,13 @@
  * detected the tool waits a few seconds for all related data to settle, then
  * re-fetches everything and exits with the final result.
  *
- *   Exit 0 — approved:     LGTM received and all CI checks passed
- *   Exit 2 — ci_failed:    one or more CI checks failed
- *   Exit 3 — has_feedback: review comments or PR comments to address
- *   Exit 4 — pending:      nothing actionable yet (poll timed out, call `wait` again)
+ * The JSON output includes a `status` field indicating the result:
+ *   approved      LGTM received and all CI checks passed
+ *   ci_failed     one or more CI checks failed
+ *   has_feedback  review comments or PR comments to address
+ *   pending       nothing actionable yet (poll timed out, call `wait` again)
+ *
+ * Exit code is always 0 on success. Non-zero only on errors (e.g., PR creation failure).
  */
 
 import { parseArgs } from "util";
@@ -276,27 +279,14 @@ async function pollLoop(prNumber: string, reviewer: string, since: Date | null):
 
       const result = await collectResult(prNumber, reviewer, since);
       console.log(JSON.stringify(result, null, 2));
-      process.exit(statusToExitCode(result.status));
+      process.exit(0);
     }
   }
 
   // Timed out — collect final result anyway
   const result = await collectResult(prNumber, reviewer, since);
   console.log(JSON.stringify(result, null, 2));
-  process.exit(statusToExitCode(result.status));
-}
-
-function statusToExitCode(status: CheckOutput["status"]): number {
-  switch (status) {
-    case "approved":
-      return 0;
-    case "ci_failed":
-      return 2;
-    case "has_feedback":
-      return 3;
-    case "pending":
-      return 4;
-  }
+  process.exit(0);
 }
 
 // ---------------------------------------------------------------------------
@@ -413,10 +403,7 @@ Subcommands:
 Both subcommands poll every ${POLL_INTERVAL_SEC}s (up to ${MAX_POLLS} times) and exit when
 an actionable state is reached.
 
-Exit codes:
-  0  approved      LGTM received and all CI checks passed
-  2  ci_failed     one or more CI checks failed
-  3  has_feedback  review comments or PR comments to address
-  4  pending       nothing actionable yet — call \`wait\` again`);
+The JSON output includes a "status" field: approved, ci_failed, has_feedback, or pending.
+Exit code is always 0 on success. Non-zero only on errors.`);
     process.exit(1);
 }

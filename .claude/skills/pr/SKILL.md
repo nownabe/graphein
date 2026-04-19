@@ -81,9 +81,9 @@ If a PR does not yet exist for this branch:
    - The tool creates the PR, then automatically polls every 30s (up to ~5 min) for CI and review status
 
 3. **Handle the result based on the `status` field in the JSON output:**
-   - **`approved`** (exit 0): CI passed and LGTM received. Output the PR URL and stop.
+   - **`approved`**: CI passed and LGTM received. Output the PR URL and stop.
 
-   - **`ci_failed`** (exit 2): One or more CI checks failed.
+   - **`ci_failed`**: One or more CI checks failed.
      1. Extract the run ID from the failed check URL (format: `.../actions/runs/<run-id>/...`).
      2. Get failure details:
         ```bash
@@ -95,7 +95,7 @@ If a PR does not yet exist for this branch:
      5. Commit the fix (using `/commit` skill) and push (`git push`).
      6. Resume waiting (see below).
 
-   - **`has_feedback`** (exit 3): PR comments or review comments received.
+   - **`has_feedback`**: PR comments or review comments received.
      1. Read each feedback item from the JSON output (`feedback` array).
      2. For `review_comment` items, note the `path` and `line` fields to locate the code.
      3. Address each comment by making the appropriate code changes.
@@ -103,7 +103,7 @@ If a PR does not yet exist for this branch:
      5. Commit the fixes (using `/commit` skill) and push (`git push`).
      6. Resume waiting (see below).
 
-   - **`pending`** (exit 4): CI still running, no feedback yet. Resume waiting (see below).
+   - **`pending`**: CI still running, no feedback yet. Resume waiting (see below).
 
 4. **Resume waiting** after fixing issues or on pending timeout. Use `wait` with `--since` set to the current UTC timestamp to filter out already-addressed feedback. Set a 600000ms timeout:
 
