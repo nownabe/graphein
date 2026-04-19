@@ -146,6 +146,32 @@ describe("API auth middleware", () => {
     expect(body.keyHash).toMatch(/^[a-f0-9]{64}$/);
   });
 
+  test("accepts lowercase bearer scheme", async () => {
+    const service = createMockApiKeyService({
+      verifyApiKey: async () => ({ user: MOCK_USER as never, role: "user" }),
+    });
+    const { app } = buildApp(service);
+
+    const res = await app.request("/api/test", {
+      headers: { Authorization: "bearer gph_validkey123" },
+    });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.user).toBe("user-1");
+  });
+
+  test("accepts mixed-case bearer scheme", async () => {
+    const service = createMockApiKeyService({
+      verifyApiKey: async () => ({ user: MOCK_USER as never, role: "user" }),
+    });
+    const { app } = buildApp(service);
+
+    const res = await app.request("/api/test", {
+      headers: { Authorization: "BEARER gph_validkey123" },
+    });
+    expect(res.status).toBe(200);
+  });
+
   test("sets admin role when key has admin scope", async () => {
     const service = createMockApiKeyService({
       verifyApiKey: async () => ({ user: MOCK_USER as never, role: "admin" }),
@@ -289,6 +315,85 @@ describe("API rate limiting", () => {
     // Without auth header, auth middleware blocks the request with 401
     const res = await app.request("/api/test");
     expect(res.status).toBe(401);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Manually composed middleware (mirrors app.ts nesting pattern)
+// ---------------------------------------------------------------------------
+
+describe("Composed middleware with path exclusion (mirrors app.ts)", () => {
+  function buildManualApp(apiKeyService: ApiKeyService) {
+    const app = new Hono();
+    const authMiddleware = createApiAuthMiddleware(apiKeyService);
+    const rateLimiter = createRateLimiter();
+    const rateLimitMiddleware = createApiRateLimitMiddleware(rateLimiter);
+
+    app.use("/api/*", async (c, next) => {
+      if (new URL(c.req.url).pathname === "/api/doc") return next();
+      return authMiddleware(c, next);
+    });
+    app.use("/api/*", async (c, next) => {
+      if (new URL(c.req.url).pathname === "/api/doc") return next();
+      return rateLimitMiddleware(c, next);
+    });
+    app.get("/api/test", (c) => c.json({ ok: true }));
+    app.get("/api/doc", (c) => c.json({ docs: true }));
+
+    return { app, rateLimiter };
+  }
+
+  test("returns 401 for unauthenticated request", async () => {
+    const service = createMockApiKeyService();
+    const { app } = buildManualApp(service);
+
+    const res = await app.request("/api/test");
+    expect(res.status).toBe(401);
+    const body = await res.json();
+    expect(body.error.code).toBe("unauthorized");
+  });
+
+  test("returns 200 for authenticated request", async () => {
+    const service = createMockApiKeyService({
+      verifyApiKey: async () => ({ user: MOCK_USER as never, role: "user" }),
+    });
+    const { app } = buildManualApp(service);
+
+    const res = await app.request("/api/test", {
+      headers: { Authorization: "Bearer gph_validkey" },
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get("X-RateLimit-Limit")).toBe("60");
+  });
+
+  test("returns 429 when rate limited", async () => {
+    const service = createMockApiKeyService({
+      verifyApiKey: async () => ({ user: MOCK_USER as never, role: "user" }),
+    });
+    const { app } = buildManualApp(service);
+
+    for (let i = 0; i < 60; i++) {
+      await app.request("/api/test", {
+        headers: { Authorization: "Bearer gph_validkey" },
+      });
+    }
+
+    const res = await app.request("/api/test", {
+      headers: { Authorization: "Bearer gph_validkey" },
+    });
+    expect(res.status).toBe(429);
+    const body = await res.json();
+    expect(body.error.code).toBe("rate_limit_exceeded");
+  });
+
+  test("skips auth for excluded paths", async () => {
+    const service = createMockApiKeyService();
+    const { app } = buildManualApp(service);
+
+    const res = await app.request("/api/doc");
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.docs).toBe(true);
   });
 });
 

@@ -110,14 +110,17 @@ export function createHonoApp(config: HonoAppConfig) {
   // API auth + rate limiting for /api/v1/* (excluding doc and reference)
   const { authMiddleware: apiAuth, rateLimitMiddleware: apiRateLimit } =
     createApiMiddleware(apiKeyService);
+  const isApiDocPath = (url: string) => {
+    const path = new URL(url).pathname;
+    return path === "/api/v1/doc" || path === "/api/v1/reference";
+  };
   app.use("/api/v1/*", async (c, next) => {
-    const path = new URL(c.req.url).pathname;
-    if (path === "/api/v1/doc" || path === "/api/v1/reference") {
-      return next();
-    }
-    await apiAuth(c, async () => {
-      await apiRateLimit(c, next);
-    });
+    if (isApiDocPath(c.req.url)) return next();
+    return apiAuth(c, next);
+  });
+  app.use("/api/v1/*", async (c, next) => {
+    if (isApiDocPath(c.req.url)) return next();
+    return apiRateLimit(c, next);
   });
 
   app.get("/healthz", (c) => c.text("ok"));

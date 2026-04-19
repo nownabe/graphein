@@ -21,34 +21,15 @@ declare module "hono" {
 }
 
 // ---------------------------------------------------------------------------
-// Standard error response helper
-// ---------------------------------------------------------------------------
-
-function errorResponse(
-  code: string,
-  message: string,
-  status: number,
-  headers?: Record<string, string>,
-) {
-  return new Response(JSON.stringify({ error: { code, message } }), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      ...headers,
-    },
-  });
-}
-
-// ---------------------------------------------------------------------------
 // Bearer token extraction
 // ---------------------------------------------------------------------------
 
-const BEARER_PREFIX = "Bearer ";
-
 function extractBearerToken(header: string | undefined): string | null {
   if (!header) return null;
-  if (!header.startsWith(BEARER_PREFIX)) return null;
-  const token = header.slice(BEARER_PREFIX.length);
+  if (header.length < 8) return null; // "Bearer " + at least 1 char
+  const scheme = header.slice(0, 7);
+  if (scheme.toLowerCase() !== "bearer ") return null;
+  const token = header.slice(7);
   if (token.length === 0) return null;
   return token;
 }
@@ -104,12 +85,18 @@ export function createApiAuthMiddleware(apiKeyService: ApiKeyService) {
     const token = extractBearerToken(authHeader);
 
     if (!token) {
-      return errorResponse("unauthorized", "Missing or invalid Authorization header", 401);
+      return c.json(
+        { error: { code: "unauthorized", message: "Missing or invalid Authorization header" } },
+        401,
+      );
     }
 
     const result = await apiKeyService.verifyApiKey(token);
     if (!result) {
-      return errorResponse("unauthorized", "Invalid or expired API key", 401);
+      return c.json(
+        { error: { code: "unauthorized", message: "Invalid or expired API key" } },
+        401,
+      );
     }
 
     c.set("apiUser", result.user);
@@ -137,12 +124,16 @@ export function createApiRateLimitMiddleware(rateLimiter: ReturnType<typeof crea
 
     if (remaining < 0) {
       const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
-      return errorResponse("rate_limit_exceeded", "Rate limit exceeded. Try again later.", 429, {
-        "Retry-After": String(retryAfter),
-        "X-RateLimit-Limit": String(RATE_LIMIT),
-        "X-RateLimit-Remaining": "0",
-        "X-RateLimit-Reset": String(resetAtSeconds),
-      });
+      c.header("Retry-After", String(retryAfter));
+      c.header("X-RateLimit-Limit", String(RATE_LIMIT));
+      c.header("X-RateLimit-Remaining", "0");
+      c.header("X-RateLimit-Reset", String(resetAtSeconds));
+      return c.json(
+        {
+          error: { code: "rate_limit_exceeded", message: "Rate limit exceeded. Try again later." },
+        },
+        429,
+      );
     }
 
     // Set rate limit headers on the response
