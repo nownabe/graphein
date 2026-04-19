@@ -10,6 +10,7 @@ import { createTaskRoutes } from "./tasks/routes.tsx";
 import { createAdminRoutes } from "./admin/routes.tsx";
 import { createSnippetRoutes } from "./snippets/routes.tsx";
 import { createKudosRoutes } from "./kudos/routes.tsx";
+import { createApiKeyRoutes } from "./api-keys/routes.tsx";
 import { clickjackingMiddleware } from "./auth/clickjacking";
 import type { HonoAppConfig } from "./config";
 
@@ -22,6 +23,7 @@ export function createHonoApp(config: HonoAppConfig) {
     usergroupService,
     kudosService,
     settingsService,
+    apiKeyService,
     buildMrkdwnLabels,
   } = config;
 
@@ -83,6 +85,12 @@ export function createHonoApp(config: HonoAppConfig) {
     settingsService,
     buildMrkdwnLabels: config.buildMrkdwnLabels,
     timezone: config.timezone,
+    devMode: config.devMode,
+  });
+
+  const apiKeyRoutes = createApiKeyRoutes({
+    authMiddleware,
+    apiKeyService,
     devMode: config.devMode,
   });
 
@@ -180,6 +188,9 @@ export function createHonoApp(config: HonoAppConfig) {
 
   // Kudos routes
   app.route("/", kudosRoutes);
+
+  // API key routes
+  app.route("/", apiKeyRoutes);
 
   // Task routes (includes home page)
   app.route("/", taskRoutes);

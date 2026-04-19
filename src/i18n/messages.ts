@@ -254,6 +254,38 @@ const messages: Record<Locale, Record<string, string>> = {
     "kudos.prev": "前へ",
     "kudos.next": "次へ",
 
+    // Nav settings
+    "nav.settings": "設定",
+
+    // API Keys
+    "apiKeys.title": "APIキー",
+    "apiKeys.description": "APIキーを作成・管理します。キーを使用してAPIにアクセスできます。",
+    "apiKeys.empty": "APIキーはまだありません",
+    "apiKeys.create.title": "新しいAPIキーを作成",
+    "apiKeys.create.name": "名前",
+    "apiKeys.create.namePlaceholder": "キーの用途を入力...",
+    "apiKeys.create.expiration": "有効期限",
+    "apiKeys.create.role": "ロール",
+    "apiKeys.create.submit": "作成",
+    "apiKeys.expiration.7days": "7日間",
+    "apiKeys.expiration.30days": "30日間",
+    "apiKeys.expiration.90days": "90日間",
+    "apiKeys.expiration.never": "無期限",
+    "apiKeys.role.user": "ユーザー",
+    "apiKeys.role.admin": "管理者",
+    "apiKeys.status.revoked": "無効化済み",
+    "apiKeys.status.expired": "期限切れ",
+    "apiKeys.createdAt": "作成日",
+    "apiKeys.expiresAt": "有効期限",
+    "apiKeys.lastUsedAt": "最終使用",
+    "apiKeys.revoke": "無効化",
+    "apiKeys.confirm.revoke": "このAPIキーを無効化しますか？この操作は取り消せません。",
+    "apiKeys.created.title": "APIキーが作成されました",
+    "apiKeys.created.warning": "このキーは二度と表示されません。安全な場所に保管してください。",
+    "apiKeys.copy": "コピー",
+    "apiKeys.error.limitExceeded": "有効なAPIキーは最大10個までです。",
+    "apiKeys.error.adminRequired": "管理者ロールのキーを作成する権限がありません。",
+
     // Admin settings
     "admin.tab.settings": "設定",
     "admin.settings.title": "設定",
@@ -517,6 +549,39 @@ const messages: Record<Locale, Record<string, string>> = {
     "kudos.count.other": "kudos entries",
     "kudos.prev": "Previous",
     "kudos.next": "Next",
+
+    // Nav settings
+    "nav.settings": "Settings",
+
+    // API Keys
+    "apiKeys.title": "API Keys",
+    "apiKeys.description": "Create and manage API keys to access the API programmatically.",
+    "apiKeys.empty": "No API keys yet",
+    "apiKeys.create.title": "Create a new API key",
+    "apiKeys.create.name": "Name",
+    "apiKeys.create.namePlaceholder": "What is this key for?",
+    "apiKeys.create.expiration": "Expiration",
+    "apiKeys.create.role": "Role",
+    "apiKeys.create.submit": "Create",
+    "apiKeys.expiration.7days": "7 days",
+    "apiKeys.expiration.30days": "30 days",
+    "apiKeys.expiration.90days": "90 days",
+    "apiKeys.expiration.never": "No expiration",
+    "apiKeys.role.user": "User",
+    "apiKeys.role.admin": "Admin",
+    "apiKeys.status.revoked": "Revoked",
+    "apiKeys.status.expired": "Expired",
+    "apiKeys.createdAt": "Created",
+    "apiKeys.expiresAt": "Expires",
+    "apiKeys.lastUsedAt": "Last used",
+    "apiKeys.revoke": "Revoke",
+    "apiKeys.confirm.revoke":
+      "Are you sure you want to revoke this API key? This cannot be undone.",
+    "apiKeys.created.title": "API key created",
+    "apiKeys.created.warning": "This key will not be shown again. Store it in a safe place.",
+    "apiKeys.copy": "Copy",
+    "apiKeys.error.limitExceeded": "You can have at most 10 active API keys.",
+    "apiKeys.error.adminRequired": "You do not have permission to create admin-scoped keys.",
 
     // Admin settings
     "admin.tab.settings": "Settings",
