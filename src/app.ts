@@ -12,6 +12,7 @@ import { createSnippetRoutes } from "./snippets/routes.tsx";
 import { createKudosRoutes } from "./kudos/routes.tsx";
 import { createApiKeyRoutes } from "./api-keys/routes.tsx";
 import { clickjackingMiddleware } from "./auth/clickjacking";
+import { createApiMiddleware } from "./api/middleware";
 import type { HonoAppConfig } from "./config";
 
 export function createHonoApp(config: HonoAppConfig) {
@@ -105,6 +106,19 @@ export function createHonoApp(config: HonoAppConfig) {
 
   // CSRF protection for all state-changing requests
   app.use("*", csrfMw);
+
+  // API auth + rate limiting for /api/v1/* (excluding doc and reference)
+  const { authMiddleware: apiAuth, rateLimitMiddleware: apiRateLimit } =
+    createApiMiddleware(apiKeyService);
+  app.use("/api/v1/*", async (c, next) => {
+    const path = new URL(c.req.url).pathname;
+    if (path === "/api/v1/doc" || path === "/api/v1/reference") {
+      return next();
+    }
+    await apiAuth(c, async () => {
+      await apiRateLimit(c, next);
+    });
+  });
 
   app.get("/healthz", (c) => c.text("ok"));
 
