@@ -1,20 +1,14 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { Hono } from "hono";
-import { createTaskApiRoutes } from "./tasks";
-import { createApiAuthMiddleware } from "./middleware";
-import { createDb } from "../db/client";
-import type { Database } from "../db/client";
-import { createTaskService } from "../tasks/service";
-import { users, tasks, taskAssignees, taskOwners, apiKeys } from "../db/schema";
-import type { ApiKeyService } from "../api-keys/service";
-
-// ---------------------------------------------------------------------------
-// Test setup
-// ---------------------------------------------------------------------------
-
-const TEST_DATABASE_URL =
-  process.env.TEST_DATABASE_URL ??
-  "postgres://graphein_test:graphein_test@localhost:15433/graphein_test";
+import { createTaskApiRoutes } from "../../src/api/tasks";
+import { createApiAuthMiddleware } from "../../src/api/middleware";
+import { createDb } from "../../src/db/client";
+import type { Database } from "../../src/db/client";
+import { createTaskService } from "../../src/tasks/service";
+import { users, tasks, taskAssignees, taskOwners } from "../../src/db/schema";
+import type { ApiKeyService } from "../../src/api-keys/service";
+import { TEST_DATABASE_URL } from "./setup";
+import { cleanupDb } from "./helpers";
 
 let db: Database;
 let taskService: ReturnType<typeof createTaskService>;
@@ -90,20 +84,11 @@ async function addAssignee(taskId: string, userId: string, done = false) {
 beforeEach(async () => {
   db = createDb(TEST_DATABASE_URL);
   taskService = createTaskService(db);
-  // Clean tables
-  await db.delete(apiKeys);
-  await db.delete(taskAssignees);
-  await db.delete(taskOwners);
-  await db.delete(tasks);
-  await db.delete(users);
+  await cleanupDb(db);
 });
 
 afterEach(async () => {
-  await db.delete(apiKeys);
-  await db.delete(taskAssignees);
-  await db.delete(taskOwners);
-  await db.delete(tasks);
-  await db.delete(users);
+  await cleanupDb(db);
 });
 
 // ---------------------------------------------------------------------------
