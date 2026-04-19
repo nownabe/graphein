@@ -103,7 +103,8 @@ async function takeSnapshot(prNumber: string, since: Date | null): Promise<Snaps
     const checks = (tryParseJson(checksRes.stdout) as Array<{ state: string }>) ?? [];
     if (checks.length > 0) {
       const failStates = ["FAILURE", "ERROR", "STARTUP_FAILURE"];
-      ciFinished = checks.every((c) => c.state === "SUCCESS" || failStates.includes(c.state));
+      const doneStates = ["SUCCESS", "SKIPPED", ...failStates];
+      ciFinished = checks.every((c) => doneStates.includes(c.state));
       ciHasFail = checks.some((c) => failStates.includes(c.state));
     }
   }
@@ -170,7 +171,8 @@ async function collectResult(
 
     if (checks && checks.length > 0) {
       const failStates = ["FAILURE", "ERROR", "STARTUP_FAILURE"];
-      const allSuccess = checks.every((c) => c.state === "SUCCESS");
+      const passStates = ["SUCCESS", "SKIPPED"];
+      const allSuccess = checks.every((c) => passStates.includes(c.state));
       const hasFail = checks.some((c) => failStates.includes(c.state));
 
       ciState = allSuccess ? "success" : hasFail ? "failure" : "pending";
