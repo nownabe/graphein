@@ -59,7 +59,7 @@ If the review does not converge (not approved after 5 rounds), STOP and inform t
 git push -u origin HEAD
 ```
 
-## 5. Create Pull Request
+## 5. Create Pull Request and Wait for Approval
 
 If a PR does not yet exist for this branch:
 
@@ -70,7 +70,7 @@ If a PR does not yet exist for this branch:
    git diff main...HEAD
    ```
 
-2. Create the PR with the `create-pr-and-wait` tool:
+2. Create the PR and start waiting with the `create-pr-and-wait` tool. Set a 600000ms timeout:
 
    ```bash
    bun run tools/create-pr-and-wait.ts create --title "<title>" --body "<body>"
@@ -78,27 +78,9 @@ If a PR does not yet exist for this branch:
 
    - Title: concise, under 70 characters
    - Body: summary of changes with context on "why"
-   - The tool automatically assigns `nownabe` as assignee
+   - The tool creates the PR, then automatically polls every 30s (up to ~5 min) for CI and review status
 
-3. Record the PR number from the JSON output and the current UTC timestamp (`date -u +%Y-%m-%dT%H:%M:%SZ`). You will need both for step 6.
-
-4. Output the PR URL so the user can see it.
-
-## 6. Wait for CI and Review
-
-After creating or updating the PR, monitor it until approved by `nownabe`.
-
-### Poll Loop
-
-Repeat the following cycle:
-
-1. **Check the PR status** (with a 60-second wait built in to avoid hammering the API). Set a 180000ms timeout on this Bash call:
-
-   ```bash
-   bun run tools/create-pr-and-wait.ts check <pr-number> --wait 60 --since <timestamp>
-   ```
-
-2. **Handle the result based on the `status` field in the JSON output:**
+3. **Handle the result based on the `status` field in the JSON output:**
    - **`approved`** (exit 0): CI passed and LGTM received. Output the PR URL and stop.
 
    - **`ci_failed`** (exit 2): One or more CI checks failed.
@@ -111,7 +93,7 @@ Repeat the following cycle:
      3. Fix the issue locally.
      4. Run `bun run check:all` to verify.
      5. Commit the fix (using `/commit` skill) and push (`git push`).
-     6. Update `--since` to the current UTC timestamp and continue the poll loop.
+     6. Resume waiting (see below).
 
    - **`has_feedback`** (exit 3): PR comments or review comments received.
      1. Read each feedback item from the JSON output (`feedback` array).
@@ -119,9 +101,17 @@ Repeat the following cycle:
      3. Address each comment by making the appropriate code changes.
      4. Run `bun run check:all`.
      5. Commit the fixes (using `/commit` skill) and push (`git push`).
-     6. Update `--since` to the current UTC timestamp and continue the poll loop.
+     6. Resume waiting (see below).
 
-   - **`pending`** (exit 4): CI still running, no feedback yet. Continue the poll loop.
+   - **`pending`** (exit 4): CI still running, no feedback yet. Resume waiting (see below).
+
+4. **Resume waiting** after fixing issues or on pending timeout. Use `wait` with `--since` set to the current UTC timestamp to filter out already-addressed feedback. Set a 600000ms timeout:
+
+   ```bash
+   bun run tools/create-pr-and-wait.ts wait <pr-number> --since $(date -u +%Y-%m-%dT%H:%M:%SZ)
+   ```
+
+   Handle the result the same way as step 3. Repeat until `approved`.
 
 ## Important Rules
 
