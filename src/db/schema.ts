@@ -7,8 +7,23 @@ import {
   primaryKey,
   index,
   unique,
+  customType,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
+
+const bytea = customType<{ data: Buffer }>({
+  dataType() {
+    return "bytea";
+  },
+  fromDriver(value: unknown): Buffer {
+    if (Buffer.isBuffer(value)) return value;
+    if (typeof value === "string") return Buffer.from(value.replace(/^\\x/, ""), "hex");
+    throw new Error(`Unexpected bytea value: ${value}`);
+  },
+  toDriver(value: Buffer): Buffer {
+    return value;
+  },
+});
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -224,6 +239,22 @@ export const kudosEntryMentionedUsergroups = pgTable(
   (t) => [primaryKey({ columns: [t.kudosEntryId, t.usergroupId] })],
 );
 
+// API keys — hashed keys for API authentication
+export const apiKeys = pgTable("api_keys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  name: text("name").notNull(),
+  keyHash: bytea("key_hash").notNull().unique(),
+  keyPrefix: text("key_prefix").notNull(),
+  role: text("role").notNull().default("user"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
+  lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   createdTasks: many(tasks),
@@ -234,6 +265,14 @@ export const usersRelations = relations(users, ({ many }) => ({
   usergroupMemberships: many(usergroupMembers),
   kudos: many(kudos),
   kudosEntryMentions: many(kudosEntryMentionedUsers),
+  apiKeys: many(apiKeys),
+}));
+
+export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, {
+    fields: [apiKeys.userId],
+    references: [users.id],
+  }),
 }));
 
 export const tasksRelations = relations(tasks, ({ one, many }) => ({
