@@ -191,14 +191,21 @@ async function collectResult(
     (reviewCommentsRes.exitCode === 0 ? (tryParseJson(reviewCommentsRes.stdout) as any[]) : null) ??
     [];
 
-  // --- LGTM detection (all-time, not filtered by --since) ---
-  const lgtm =
-    allComments.some((c) => c.user?.login === reviewer && /^\s*LGTM\s*$/i.test(c.body ?? "")) ||
-    allReviews.some((r) => r.user?.login === reviewer && r.state === "APPROVED");
-
-  // --- Feedback (filtered by --since) ---
+  // --- LGTM detection (filtered by --since) ---
   const isAfterSince = (dateStr: string) => !since || new Date(dateStr) > since;
 
+  const lgtm =
+    allComments.some(
+      (c) =>
+        isAfterSince(c.created_at) &&
+        c.user?.login === reviewer &&
+        /^\s*LGTM\s*$/i.test(c.body ?? ""),
+    ) ||
+    allReviews.some(
+      (r) => isAfterSince(r.submitted_at) && r.user?.login === reviewer && r.state === "APPROVED",
+    );
+
+  // --- Feedback (filtered by --since) ---
   const feedback: Feedback[] = [];
 
   for (const c of allComments) {
