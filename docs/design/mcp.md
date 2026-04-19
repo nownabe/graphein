@@ -29,11 +29,11 @@ Graphein runs as a remote web server, so Streamable HTTP is the natural choice.
 
 ### Libraries
 
-| Package | Purpose |
-| --- | --- |
-| `@hono/mcp` | Hono adapter for MCP Streamable HTTP transport + OAuth AS endpoints |
-| `@modelcontextprotocol/sdk` | Official MCP TypeScript SDK for defining tools/resources |
-| `hono-rate-limiter` | Peer dependency of `@hono/mcp` (used by `mcpAuthRouter` for OAuth endpoint rate limiting) |
+| Package                     | Purpose                                                                                   |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| `@hono/mcp`                 | Hono adapter for MCP Streamable HTTP transport + OAuth AS endpoints                       |
+| `@modelcontextprotocol/sdk` | Official MCP TypeScript SDK for defining tools/resources                                  |
+| `hono-rate-limiter`         | Peer dependency of `@hono/mcp` (used by `mcpAuthRouter` for OAuth endpoint rate limiting) |
 
 `@hono/mcp` provides:
 
@@ -144,6 +144,7 @@ Served by `@hono/mcp`'s `mcpAuthRouter`. Graphein provides a custom `OAuthServer
 Authorization endpoint. If the user has an active Slack OIDC session (JWT cookie), shows a consent page. If not, redirects to Slack login first, then returns to the authorization flow.
 
 The consent page displays:
+
 - The MCP client name (from client registration or Client ID Metadata Document)
 - The requested scopes
 - Approve / Deny buttons
@@ -169,8 +170,8 @@ Token revocation. Invalidates a refresh token.
 
 A single scope is defined for the initial implementation:
 
-| Scope | Description |
-| --- | --- |
+| Scope      | Description                                                           |
+| ---------- | --------------------------------------------------------------------- |
 | `graphein` | Full access to the authenticated user's data (tasks, snippets, kudos) |
 
 Admin-level operations are governed by the user's role in Graphein, not by OAuth scopes. If the authenticated user has the `admin` role, admin tools are available regardless of scope. This mirrors the existing API key behavior where the key's role determines access.
@@ -192,6 +193,7 @@ Access tokens are JWTs signed with HS256 using the same secret as the existing s
 ```
 
 The MCP resource server middleware verifies:
+
 1. JWT signature is valid
 2. `aud` matches the MCP server URL
 3. Token is not expired
@@ -211,12 +213,12 @@ Graphein supports **Dynamic Client Registration** via `POST /oauth/register` and
 
 `mcpAuthRouter` applies its own rate limits to OAuth endpoints:
 
-| Endpoint | Limit |
-| --- | --- |
+| Endpoint           | Limit                 |
+| ------------------ | --------------------- |
 | `/oauth/authorize` | 100 requests / 15 min |
-| `/oauth/token` | 50 requests / 15 min |
-| `/oauth/register` | 20 requests / hour |
-| `/oauth/revoke` | 50 requests / 15 min |
+| `/oauth/token`     | 50 requests / 15 min  |
+| `/oauth/register`  | 20 requests / hour    |
+| `/oauth/revoke`    | 50 requests / 15 min  |
 
 The MCP endpoint (`/mcp`) uses Graphein's existing rate limiter. Since MCP tokens are per-user (not per-API-key), rate limiting is keyed by user ID with the same 60 requests per minute limit.
 
@@ -224,10 +226,10 @@ The MCP endpoint (`/mcp`) uses Graphein's existing rate limiter. Since MCP token
 
 Tool-level authorization follows the same rules as the JSON API:
 
-| User role | Scope |
-| --- | --- |
-| `user` | Own tasks (assigned/owned), all snippets, all kudos |
-| `admin` | All tasks, all snippets, all kudos, admin operations |
+| User role | Scope                                                |
+| --------- | ---------------------------------------------------- |
+| `user`    | Own tasks (assigned/owned), all snippets, all kudos  |
+| `admin`   | All tasks, all snippets, all kudos, admin operations |
 
 ---
 
@@ -296,14 +298,14 @@ Tools map to the API endpoints defined in `docs/design/api.md`. Each tool accept
 
 List tasks assigned to the authenticated user.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `status` | `"active"` \| `"archived"` | No | Default: `"active"` |
-| `done` | `boolean` | No | Filter by completion status |
-| `deadlineBefore` | ISO 8601 string | No | Tasks with deadline before this time |
-| `deadlineAfter` | ISO 8601 string | No | Tasks with deadline after this time |
-| `pageSize` | integer | No | Max results (default 50, max 100) |
-| `pageToken` | string | No | Cursor for next page |
+| Parameter        | Type                       | Required | Description                          |
+| ---------------- | -------------------------- | -------- | ------------------------------------ |
+| `status`         | `"active"` \| `"archived"` | No       | Default: `"active"`                  |
+| `done`           | `boolean`                  | No       | Filter by completion status          |
+| `deadlineBefore` | ISO 8601 string            | No       | Tasks with deadline before this time |
+| `deadlineAfter`  | ISO 8601 string            | No       | Tasks with deadline after this time  |
+| `pageSize`       | integer                    | No       | Max results (default 50, max 100)    |
+| `pageToken`      | string                     | No       | Cursor for next page                 |
 
 Maps to: `GET /api/v1/tasks`
 
@@ -311,13 +313,13 @@ Maps to: `GET /api/v1/tasks`
 
 List tasks owned by the authenticated user (or all tasks for admin).
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `status` | `"active"` \| `"archived"` | No | Default: `"active"` |
-| `deadlineBefore` | ISO 8601 string | No | Tasks with deadline before this time |
-| `deadlineAfter` | ISO 8601 string | No | Tasks with deadline after this time |
-| `pageSize` | integer | No | Max results (default 50, max 100) |
-| `pageToken` | string | No | Cursor for next page |
+| Parameter        | Type                       | Required | Description                          |
+| ---------------- | -------------------------- | -------- | ------------------------------------ |
+| `status`         | `"active"` \| `"archived"` | No       | Default: `"active"`                  |
+| `deadlineBefore` | ISO 8601 string            | No       | Tasks with deadline before this time |
+| `deadlineAfter`  | ISO 8601 string            | No       | Tasks with deadline after this time  |
+| `pageSize`       | integer                    | No       | Max results (default 50, max 100)    |
+| `pageToken`      | string                     | No       | Cursor for next page                 |
 
 Maps to: `GET /api/v1/tasks/owned`
 
@@ -325,12 +327,12 @@ Maps to: `GET /api/v1/tasks/owned`
 
 List assignees and their completion status for a specific owned task.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `taskId` | UUID string | Yes | The task ID |
-| `done` | `boolean` | No | Filter by completion status |
-| `pageSize` | integer | No | Max results (default 50, max 100) |
-| `pageToken` | string | No | Cursor for next page |
+| Parameter   | Type        | Required | Description                       |
+| ----------- | ----------- | -------- | --------------------------------- |
+| `taskId`    | UUID string | Yes      | The task ID                       |
+| `done`      | `boolean`   | No       | Filter by completion status       |
+| `pageSize`  | integer     | No       | Max results (default 50, max 100) |
+| `pageToken` | string      | No       | Cursor for next page              |
 
 Maps to: `GET /api/v1/tasks/owned/:id/assignees`
 
@@ -338,9 +340,9 @@ Maps to: `GET /api/v1/tasks/owned/:id/assignees`
 
 Archive a task. Idempotent.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `taskId` | UUID string | Yes | The task ID |
+| Parameter | Type        | Required | Description |
+| --------- | ----------- | -------- | ----------- |
+| `taskId`  | UUID string | Yes      | The task ID |
 
 Maps to: `POST /api/v1/tasks/owned/:id/archive`
 
@@ -348,9 +350,9 @@ Maps to: `POST /api/v1/tasks/owned/:id/archive`
 
 Unarchive a task. Idempotent.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `taskId` | UUID string | Yes | The task ID |
+| Parameter | Type        | Required | Description |
+| --------- | ----------- | -------- | ----------- |
+| `taskId`  | UUID string | Yes      | The task ID |
 
 Maps to: `POST /api/v1/tasks/owned/:id/unarchive`
 
@@ -360,15 +362,15 @@ Maps to: `POST /api/v1/tasks/owned/:id/unarchive`
 
 List snippets with optional filters.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `postedBy` | UUID string | No | Filter by poster |
-| `mentionedUser` | UUID string | No | Filter by mentioned user |
-| `mentionedUsergroup` | UUID string | No | Filter by mentioned usergroup |
-| `periodStart` | ISO 8601 string | No | Snippets posted at or after this time |
-| `periodEnd` | ISO 8601 string | No | Snippets posted before this time |
-| `pageSize` | integer | No | Max results (default 50, max 100) |
-| `pageToken` | string | No | Cursor for next page |
+| Parameter            | Type            | Required | Description                           |
+| -------------------- | --------------- | -------- | ------------------------------------- |
+| `postedBy`           | UUID string     | No       | Filter by poster                      |
+| `mentionedUser`      | UUID string     | No       | Filter by mentioned user              |
+| `mentionedUsergroup` | UUID string     | No       | Filter by mentioned usergroup         |
+| `periodStart`        | ISO 8601 string | No       | Snippets posted at or after this time |
+| `periodEnd`          | ISO 8601 string | No       | Snippets posted before this time      |
+| `pageSize`           | integer         | No       | Max results (default 50, max 100)     |
+| `pageToken`          | string          | No       | Cursor for next page                  |
 
 Maps to: `GET /api/v1/snippets`
 
@@ -378,14 +380,14 @@ Maps to: `GET /api/v1/snippets`
 
 List kudos entries with optional filters.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `postedBy` | UUID string | No | Filter by sender |
-| `user` | UUID string | No | Filter by recipient |
-| `periodStart` | ISO 8601 string | No | Kudos posted at or after this time |
-| `periodEnd` | ISO 8601 string | No | Kudos posted before this time |
-| `pageSize` | integer | No | Max results (default 50, max 100) |
-| `pageToken` | string | No | Cursor for next page |
+| Parameter     | Type            | Required | Description                        |
+| ------------- | --------------- | -------- | ---------------------------------- |
+| `postedBy`    | UUID string     | No       | Filter by sender                   |
+| `user`        | UUID string     | No       | Filter by recipient                |
+| `periodStart` | ISO 8601 string | No       | Kudos posted at or after this time |
+| `periodEnd`   | ISO 8601 string | No       | Kudos posted before this time      |
+| `pageSize`    | integer         | No       | Max results (default 50, max 100)  |
+| `pageToken`   | string          | No       | Cursor for next page               |
 
 Maps to: `GET /api/v1/kudos`
 
@@ -397,11 +399,11 @@ All admin tools require `admin` role. Returns an error if the authenticated user
 
 List all users with optional search.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `query` | string | No | Search by display name or email |
-| `pageSize` | integer | No | Max results (default 50, max 100) |
-| `pageToken` | string | No | Cursor for next page |
+| Parameter   | Type    | Required | Description                       |
+| ----------- | ------- | -------- | --------------------------------- |
+| `query`     | string  | No       | Search by display name or email   |
+| `pageSize`  | integer | No       | Max results (default 50, max 100) |
+| `pageToken` | string  | No       | Cursor for next page              |
 
 Maps to: `GET /api/v1/admin/users`
 
@@ -409,9 +411,9 @@ Maps to: `GET /api/v1/admin/users`
 
 Deactivate a user. Idempotent.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `userId` | UUID string | Yes | The user ID |
+| Parameter | Type        | Required | Description |
+| --------- | ----------- | -------- | ----------- |
+| `userId`  | UUID string | Yes      | The user ID |
 
 Maps to: `POST /api/v1/admin/users/:id/deactivate`
 
@@ -425,9 +427,9 @@ Maps to: `GET /api/v1/admin/snippetChannels`
 
 Add a snippet-monitored Slack channel. Idempotent.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `slackChannelId` | string | Yes | Slack channel ID (e.g. `C1234ABC`) |
+| Parameter        | Type   | Required | Description                        |
+| ---------------- | ------ | -------- | ---------------------------------- |
+| `slackChannelId` | string | Yes      | Slack channel ID (e.g. `C1234ABC`) |
 
 Maps to: `POST /api/v1/admin/snippetChannels`
 
@@ -435,9 +437,9 @@ Maps to: `POST /api/v1/admin/snippetChannels`
 
 Remove a snippet-monitored Slack channel.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `channelId` | UUID string | Yes | The channel record ID |
+| Parameter   | Type        | Required | Description           |
+| ----------- | ----------- | -------- | --------------------- |
+| `channelId` | UUID string | Yes      | The channel record ID |
 
 Maps to: `DELETE /api/v1/admin/snippetChannels/:id`
 
@@ -451,9 +453,9 @@ Maps to: `GET /api/v1/admin/kudosChannels`
 
 Add a kudos-monitored Slack channel. Idempotent.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `slackChannelId` | string | Yes | Slack channel ID (e.g. `C5678DEF`) |
+| Parameter        | Type   | Required | Description                        |
+| ---------------- | ------ | -------- | ---------------------------------- |
+| `slackChannelId` | string | Yes      | Slack channel ID (e.g. `C5678DEF`) |
 
 Maps to: `POST /api/v1/admin/kudosChannels`
 
@@ -461,9 +463,9 @@ Maps to: `POST /api/v1/admin/kudosChannels`
 
 Remove a kudos-monitored Slack channel.
 
-| Parameter | Type | Required | Description |
-| --- | --- | --- | --- |
-| `channelId` | UUID string | Yes | The channel record ID |
+| Parameter   | Type        | Required | Description           |
+| ----------- | ----------- | -------- | --------------------- |
+| `channelId` | UUID string | Yes      | The channel record ID |
 
 Maps to: `DELETE /api/v1/admin/kudosChannels/:id`
 
@@ -529,10 +531,8 @@ export class GrapheinOAuthProvider implements OAuthServerProvider {
 
   get clientsStore() {
     return {
-      getClient: (clientId: string) =>
-        this.oauthService.getClient(clientId),
-      registerClient: (metadata: OAuthClientMetadata) =>
-        this.oauthService.registerClient(metadata),
+      getClient: (clientId: string) => this.oauthService.getClient(clientId),
+      registerClient: (metadata: OAuthClientMetadata) => this.oauthService.registerClient(metadata),
     };
   }
 
@@ -591,7 +591,11 @@ import { createMcpServer } from "./mcp/server";
 
 // 1. OAuth Authorization Server endpoints
 const oauthProvider = new GrapheinOAuthProvider(
-  oauthService, userService, session, config.baseUrl, jwtSecret
+  oauthService,
+  userService,
+  session,
+  config.baseUrl,
+  jwtSecret,
 );
 
 app.route(
@@ -606,7 +610,9 @@ app.route(
 );
 
 // 2. MCP Streamable HTTP endpoint
-const mcpServer = createMcpServer({ /* services */ });
+const mcpServer = createMcpServer({
+  /* services */
+});
 
 app.use("/mcp", contextStorage());
 app.all("/mcp", async (c) => {
@@ -618,9 +624,7 @@ app.all("/mcp", async (c) => {
     });
   }
 
-  const tokenInfo = await oauthProvider.verifyAccessToken(
-    authHeader.slice(7)
-  );
+  const tokenInfo = await oauthProvider.verifyAccessToken(authHeader.slice(7));
   if (!tokenInfo) {
     return c.json({}, 401, {
       "WWW-Authenticate": `Bearer resource_metadata="${config.baseUrl}/.well-known/oauth-protected-resource/mcp"`,
@@ -680,52 +684,62 @@ MCP tool errors are returned as JSON-RPC error responses with `isError: true`:
 ```typescript
 // Authorization error
 return {
-  content: [{ type: "text", text: JSON.stringify({
-    error: { code: "forbidden", message: "Insufficient permissions" }
-  })}],
+  content: [
+    {
+      type: "text",
+      text: JSON.stringify({
+        error: { code: "forbidden", message: "Insufficient permissions" },
+      }),
+    },
+  ],
   isError: true,
 };
 
 // Not found
 return {
-  content: [{ type: "text", text: JSON.stringify({
-    error: { code: "not_found", message: "Task not found" }
-  })}],
+  content: [
+    {
+      type: "text",
+      text: JSON.stringify({
+        error: { code: "not_found", message: "Task not found" },
+      }),
+    },
+  ],
   isError: true,
 };
 ```
 
 HTTP-level errors (401 Unauthorized, 403 Forbidden) are handled before reaching the MCP layer:
 
-| HTTP Status | Condition | Response |
-| --- | --- | --- |
-| 401 | Missing or invalid access token | `WWW-Authenticate: Bearer resource_metadata="..."` |
-| 403 | Valid token but insufficient scope | `WWW-Authenticate: Bearer error="insufficient_scope", scope="graphein"` |
+| HTTP Status | Condition                          | Response                                                                |
+| ----------- | ---------------------------------- | ----------------------------------------------------------------------- |
+| 401         | Missing or invalid access token    | `WWW-Authenticate: Bearer resource_metadata="..."`                      |
+| 403         | Valid token but insufficient scope | `WWW-Authenticate: Bearer error="insufficient_scope", scope="graphein"` |
 
 ---
 
 ## Endpoint Summary
 
-| Path | Method | Description |
-| --- | --- | --- |
-| `/mcp` | POST | MCP JSON-RPC messages (tool calls, resource reads) |
-| `/mcp` | GET | SSE stream for server-to-client messages (stateless: returns 405) |
-| `/mcp` | DELETE | Session termination (stateless: returns 405) |
-| `/oauth/authorize` | GET, POST | OAuth 2.1 authorization endpoint |
-| `/oauth/token` | POST | OAuth 2.1 token endpoint |
-| `/oauth/register` | POST | Dynamic client registration (RFC 7591) |
-| `/oauth/revoke` | POST | Token revocation |
-| `/.well-known/oauth-protected-resource/mcp` | GET | Protected Resource Metadata (RFC 9728) |
-| `/.well-known/oauth-authorization-server` | GET | Authorization Server Metadata (RFC 8414) |
+| Path                                        | Method    | Description                                                       |
+| ------------------------------------------- | --------- | ----------------------------------------------------------------- |
+| `/mcp`                                      | POST      | MCP JSON-RPC messages (tool calls, resource reads)                |
+| `/mcp`                                      | GET       | SSE stream for server-to-client messages (stateless: returns 405) |
+| `/mcp`                                      | DELETE    | Session termination (stateless: returns 405)                      |
+| `/oauth/authorize`                          | GET, POST | OAuth 2.1 authorization endpoint                                  |
+| `/oauth/token`                              | POST      | OAuth 2.1 token endpoint                                          |
+| `/oauth/register`                           | POST      | Dynamic client registration (RFC 7591)                            |
+| `/oauth/revoke`                             | POST      | Token revocation                                                  |
+| `/.well-known/oauth-protected-resource/mcp` | GET       | Protected Resource Metadata (RFC 9728)                            |
+| `/.well-known/oauth-authorization-server`   | GET       | Authorization Server Metadata (RFC 8414)                          |
 
 ---
 
 ## Configuration
 
-| Variable | Description | Required |
-| --- | --- | --- |
-| `BASE_URL` | Existing. Used as the OAuth issuer URL and resource server base | Yes (existing) |
-| `JWT_SECRET` | Existing. Used to sign OAuth access tokens (JWTs) | Yes (existing) |
+| Variable     | Description                                                     | Required       |
+| ------------ | --------------------------------------------------------------- | -------------- |
+| `BASE_URL`   | Existing. Used as the OAuth issuer URL and resource server base | Yes (existing) |
+| `JWT_SECRET` | Existing. Used to sign OAuth access tokens (JWTs)               | Yes (existing) |
 
 No new environment variables are required. The OAuth AS reuses the existing JWT secret and base URL.
 
@@ -733,11 +747,11 @@ No new environment variables are required. The OAuth AS reuses the existing JWT 
 
 ## Dependencies
 
-| Package | Purpose |
-| --- | --- |
-| `@hono/mcp` | Hono MCP transport adapter + OAuth AS endpoints |
-| `@modelcontextprotocol/sdk` | MCP server SDK (peer dep of @hono/mcp) |
-| `hono-rate-limiter` | OAuth endpoint rate limiting (peer dep of @hono/mcp) |
+| Package                     | Purpose                                              |
+| --------------------------- | ---------------------------------------------------- |
+| `@hono/mcp`                 | Hono MCP transport adapter + OAuth AS endpoints      |
+| `@modelcontextprotocol/sdk` | MCP server SDK (peer dep of @hono/mcp)               |
+| `hono-rate-limiter`         | OAuth endpoint rate limiting (peer dep of @hono/mcp) |
 
 Both `hono` and `zod` are already in the project's dependencies.
 
