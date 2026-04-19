@@ -24,6 +24,7 @@ Reviewed commit: [3540b50](https://github.com/nownabe/graphein/commit/3540b5034a
 The branch includes multiple changes: a new Codex review skill, API keys service with schema/migration/tests, kudos self-post exclusion fix, snippet label cleanup, and E2E test improvements. All look correct.
 
 Key observations:
+
 - API keys service: proper SHA-256 hashing, advisory lock for concurrency control on the per-user limit, role consistency auto-revocation, and thorough integration tests covering edge cases including concurrent key creation.
 - Kudos fix: correctly excludes self-posted kudos from the "To" filter and updates `getDistinctMentionedUsers` to stay consistent.
 - Snippet label change: drops the `@` prefix from usergroup handles in filter options and switches from truthiness to nullish coalescing -- both intentional and safe given handles are never empty strings.
