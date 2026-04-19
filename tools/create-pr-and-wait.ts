@@ -14,6 +14,8 @@
  *   approved      LGTM received and all CI checks passed
  *   ci_failed     one or more CI checks failed
  *   has_feedback  review comments or PR comments to address
+ *   merged        PR was merged
+ *   closed        PR was closed without merging
  *   pending       nothing actionable yet (poll timed out, call `wait` again)
  *
  * Exit code is always 0 on success. Non-zero only on errors (e.g., PR creation failure).
@@ -66,7 +68,7 @@ type Feedback = {
 };
 
 type CheckOutput = {
-  status: "approved" | "ci_failed" | "has_feedback" | "pending";
+  status: "approved" | "ci_failed" | "has_feedback" | "pending" | "merged" | "closed";
   lgtm: boolean;
   pr: { url: string; number: string };
   ci: {
@@ -81,6 +83,7 @@ type CheckOutput = {
 // ---------------------------------------------------------------------------
 
 type Snapshot = {
+  prState: string;
   ciFinished: boolean;
   ciHasFail: boolean;
   commentCount: number;
@@ -89,12 +92,15 @@ type Snapshot = {
 };
 
 async function takeSnapshot(prNumber: string, since: Date | null): Promise<Snapshot> {
-  const [checksRes, commentsRes, reviewsRes, reviewCommentsRes] = await Promise.all([
+  const [prViewRes, checksRes, commentsRes, reviewsRes, reviewCommentsRes] = await Promise.all([
+    gh("pr", "view", prNumber, "--json", "state", "--jq", ".state"),
     gh("pr", "checks", prNumber, "--json", "state"),
     gh("api", `repos/{owner}/{repo}/issues/${prNumber}/comments`),
     gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/reviews`),
     gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/comments`),
   ]);
+
+  const prState = prViewRes.exitCode === 0 ? prViewRes.stdout : "OPEN";
 
   // CI
   let ciFinished = false;
@@ -121,6 +127,7 @@ async function takeSnapshot(prNumber: string, since: Date | null): Promise<Snaps
     [];
 
   return {
+    prState,
     ciFinished,
     ciHasFail,
     commentCount: comments.filter((c: any) => isAfterSince(c.created_at)).length,
@@ -131,6 +138,7 @@ async function takeSnapshot(prNumber: string, since: Date | null): Promise<Snaps
 
 function snapshotChanged(prev: Snapshot, curr: Snapshot): boolean {
   return (
+    curr.prState !== prev.prState ||
     curr.ciFinished !== prev.ciFinished ||
     curr.ciHasFail !== prev.ciHasFail ||
     curr.commentCount !== prev.commentCount ||
@@ -153,10 +161,16 @@ async function collectResult(
     gh("api", `repos/{owner}/{repo}/issues/${prNumber}/comments`),
     gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/reviews`),
     gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/comments`),
-    gh("pr", "view", prNumber, "--json", "url", "--jq", ".url"),
+    gh("pr", "view", prNumber, "--json", "url,state"),
   ]);
 
-  const prUrl = prViewRes.exitCode === 0 ? prViewRes.stdout : "";
+  let prUrl = "";
+  let prState = "OPEN";
+  if (prViewRes.exitCode === 0 && prViewRes.stdout) {
+    const prData = tryParseJson(prViewRes.stdout) as { url?: string; state?: string } | null;
+    prUrl = prData?.url ?? "";
+    prState = prData?.state ?? "OPEN";
+  }
 
   // --- CI checks ---
   let ciState: "pending" | "success" | "failure" = "pending";
@@ -249,7 +263,11 @@ async function collectResult(
   // --- Determine status ---
   let status: CheckOutput["status"];
 
-  if (lgtm && ciState === "success") {
+  if (prState === "MERGED") {
+    status = "merged";
+  } else if (prState === "CLOSED") {
+    status = "closed";
+  } else if (lgtm && ciState === "success") {
     status = "approved";
   } else if (ciState === "failure") {
     status = "ci_failed";
