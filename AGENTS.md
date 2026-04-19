@@ -142,11 +142,21 @@ All documentation, code comments, commit messages, issues, and pull requests mus
 ## Tools
 
 - **`tools/run-sql.ts`**: Use this to execute SQL against the dev or test database. Do not use `psql` or other database clients directly.
+
   ```bash
   bun run tools/run-sql.ts "SELECT * FROM users LIMIT 5"       # dev DB
   bun run tools/run-sql.ts --test "SELECT count(*) FROM users"  # test DB
   bun run tools/run-sql.ts --file path/to/query.sql             # from file
   ```
+
+- **`tools/create-pr-and-wait.ts`**: Create a PR and wait for CI pass + LGTM approval. Used by the `/pr` skill instead of `gh pr create` directly. Do not use `gh pr create` — it is forbidden by hooks.
+  ```bash
+  # Create PR and poll for CI/review status (~5 min polling window)
+  bun run tools/create-pr-and-wait.ts create --title "feat: ..." --body "..." [--labels "l1,l2"] [--draft] [--base <branch>]
+  # Resume polling after fixing CI failures or addressing review feedback
+  bun run tools/create-pr-and-wait.ts wait <pr-number> --since <iso-timestamp>
+  ```
+  The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, or `pending`. Non-zero exit only on errors.
 
 ## E2E Tests
 

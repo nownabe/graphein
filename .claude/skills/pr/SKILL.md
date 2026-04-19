@@ -59,7 +59,7 @@ If the review does not converge (not approved after 5 rounds), STOP and inform t
 git push -u origin HEAD
 ```
 
-## 5. Create Pull Request
+## 5. Create Pull Request and Wait for Approval
 
 If a PR does not yet exist for this branch:
 
@@ -70,12 +70,48 @@ If a PR does not yet exist for this branch:
    git diff main...HEAD
    ```
 
-2. Create the PR with `gh pr create`:
+2. Create the PR and start waiting with the `create-pr-and-wait` tool. Set a 600000ms timeout:
+
+   ```bash
+   bun run tools/create-pr-and-wait.ts create --title "<title>" --body "<body>"
+   ```
+
    - Title: concise, under 70 characters
    - Body: summary of changes with context on "why"
-   - Always assign `nownabe` as assignee
+   - The tool creates the PR, then automatically polls every 30s (up to ~5 min) for CI and review status
 
-3. Output the PR URL so the user can see it.
+3. **Handle the result based on the `status` field in the JSON output:**
+   - **`approved`**: CI passed and LGTM received. Output the PR URL and stop.
+
+   - **`ci_failed`**: One or more CI checks failed.
+     1. Extract the run ID from the failed check URL (format: `.../actions/runs/<run-id>/...`).
+     2. Get failure details:
+        ```bash
+        bunx @nownabe/claude-tools gh list-run-jobs <run-id>
+        bunx @nownabe/claude-tools gh get-job-logs <job-id>
+        ```
+     3. Fix the issue locally.
+     4. Run `bun run check:all` to verify.
+     5. Commit the fix (using `/commit` skill) and push (`git push`).
+     6. Resume waiting (see below).
+
+   - **`has_feedback`**: PR comments or review comments received.
+     1. Read each feedback item from the JSON output (`feedback` array).
+     2. For `review_comment` items, note the `path` and `line` fields to locate the code.
+     3. Address each comment by making the appropriate code changes.
+     4. Run `bun run check:all`.
+     5. Commit the fixes (using `/commit` skill) and push (`git push`).
+     6. Resume waiting (see below).
+
+   - **`pending`**: CI still running, no feedback yet. Resume waiting (see below).
+
+4. **Resume waiting** after fixing issues or on pending timeout. Use `wait` with `--since` set to the current UTC timestamp to filter out already-addressed feedback. Set a 600000ms timeout:
+
+   ```bash
+   bun run tools/create-pr-and-wait.ts wait <pr-number> --since $(date -u +%Y-%m-%dT%H:%M:%SZ)
+   ```
+
+   Handle the result the same way as step 3. Repeat until `approved`.
 
 ## Important Rules
 
