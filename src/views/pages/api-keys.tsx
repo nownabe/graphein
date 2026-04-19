@@ -90,6 +90,7 @@ function ApiKeyCreateForm({ locale, isAdmin }: { locale: string; isAdmin: boolea
       hx-post="/settings/api-keys"
       hx-target="#api-keys-content"
       hx-swap="innerHTML"
+      {...{ "hx-on::after-request": "if(event.detail.successful) this.reset()" }}
       class="bg-surface border border-edge rounded-[var(--radius-lg)] p-5 mb-6"
     >
       <h3 class="text-sm font-semibold text-ink mb-4">{t(locale, "apiKeys.create.title")}</h3>
