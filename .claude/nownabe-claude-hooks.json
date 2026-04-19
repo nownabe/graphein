@@ -4,6 +4,10 @@
       "npx *": {
         "reason": "npx is not allowed in this project",
         "suggestion": "Use bunx instead of npx"
+      },
+      "gh pr create*": {
+        "reason": "Use tools/create-pr-and-wait.ts instead of gh pr create",
+        "suggestion": "Use `bun run tools/create-pr-and-wait.ts create --title '...' --body '...'` to create a PR"
       }
     }
   }

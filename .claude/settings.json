@@ -4,7 +4,7 @@
     "allow": [
       "Bash(bun build:*)",
       "Bash(bun install:*)",
-      "Bash(gh pr create:*)",
+      "Bash(bun run tools/create-pr-and-wait.ts:*)",
       "Bash(git switch:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
