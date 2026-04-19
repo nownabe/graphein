@@ -129,11 +129,21 @@ Authorization Server Metadata (RFC 8414). Tells MCP clients what the AS supports
   "revocation_endpoint": "https://graphein.example.com/oauth/revoke",
   "response_types_supported": ["code"],
   "grant_types_supported": ["authorization_code", "refresh_token"],
-  "token_endpoint_auth_methods_supported": ["client_secret_post"],
+  "token_endpoint_auth_methods_supported": ["client_secret_post", "none"],
   "code_challenge_methods_supported": ["S256"],
   "scopes_supported": ["graphein"]
 }
 ```
+
+### CSRF Exemption
+
+The existing CSRF middleware (Origin/Referer validation) exempts `/slack/*` and `/api/*` paths. The MCP and OAuth paths must also be exempted because requests come from external MCP clients, not the browser:
+
+- `/mcp` — MCP JSON-RPC requests from AI assistants
+- `/oauth/*` — OAuth token, registration, and revocation requests from MCP clients
+- `/.well-known/*` — metadata discovery (GET-only, safe methods already exempt)
+
+The CSRF middleware's exempt path list in `src/auth/csrf.ts` is extended to include these paths.
 
 ### OAuth Endpoints
 
@@ -149,14 +159,14 @@ The consent page displays:
 - The requested scopes
 - Approve / Deny buttons
 
-On approval, generates an authorization code and redirects back to the client's `redirect_uri`.
+On approval, generates an authorization code and redirects back to the client's `redirect_uri`. The `resource` parameter from the authorization request (RFC 8707) is persisted with the code so it can be bound to the issued token.
 
 #### `POST /oauth/token`
 
-Token endpoint. Exchanges an authorization code (with PKCE `code_verifier`) for tokens:
+Token endpoint. Exchanges an authorization code (with PKCE `code_verifier`) for tokens. The `resource` parameter must match the value stored with the authorization code; mismatches are rejected.
 
-- **Access token**: JWT signed with the app's JWT secret, containing `sub` (user ID), `scope`, `aud` (resource server URL), `exp` (1 hour)
-- **Refresh token**: Opaque token stored in the database, valid for 30 days
+- **Access token**: JWT containing `sub` (user ID), `scope`, `aud` (bound to the `resource` parameter value), `exp` (1 hour)
+- **Refresh token**: Opaque token stored in the database, valid for 30 days. Also bound to the resource.
 
 #### `POST /oauth/register`
 
@@ -180,24 +190,28 @@ Fine-grained scopes (e.g., `tasks:read`, `tasks:write`, `admin`) can be added in
 
 ### Access Token Format
 
-Access tokens are JWTs signed with HS256 using the same secret as the existing session tokens:
+Access tokens are JWTs signed with HS256 using a **dedicated signing key** (`MCP_JWT_SECRET`), separate from the session JWT secret. This prevents cross-boundary token confusion — a browser session token cannot be used as an MCP access token, and vice versa, even if the claims happen to overlap.
 
 ```json
 {
   "sub": "user-uuid",
   "aud": "https://graphein.example.com/mcp",
   "scope": "graphein",
+  "typ": "mcp+jwt",
   "exp": 1713500000,
   "iat": 1713496400
 }
 ```
 
+The `typ` claim provides an additional safeguard for token type disambiguation.
+
 The MCP resource server middleware verifies:
 
-1. JWT signature is valid
-2. `aud` matches the MCP server URL
-3. Token is not expired
-4. User exists and is not deactivated
+1. JWT signature is valid (using `MCP_JWT_SECRET`)
+2. `typ` claim equals `mcp+jwt`
+3. `aud` matches the MCP server URL (from the `resource` parameter)
+4. Token is not expired
+5. User exists and is not deactivated
 
 ### Client Registration
 
@@ -208,6 +222,8 @@ MCP supports three client registration approaches (in priority order per the spe
 3. **Dynamic Client Registration (RFC 7591)** — clients register on demand
 
 Graphein supports **Dynamic Client Registration** via `POST /oauth/register` and **Client ID Metadata Documents** (handled by the authorization server validating the URL-formatted `client_id`). Pre-registration is not needed since Graphein is not a public service with known partner clients.
+
+Both **confidential clients** (with `client_secret`, using `client_secret_post` at the token endpoint) and **public clients** (without a secret, using `token_endpoint_auth_method: "none"`) are supported. Most MCP clients (CLI tools, desktop apps) are public clients that rely on PKCE for security instead of a client secret.
 
 ### Rate Limiting
 
@@ -257,14 +273,16 @@ Temporary storage for authorization codes. Codes expire after 5 minutes.
 
 ```sql
 CREATE TABLE oauth_authorization_codes (
-  code            TEXT PRIMARY KEY,
-  client_id       TEXT NOT NULL,
-  user_id         UUID NOT NULL REFERENCES users(id),
-  redirect_uri    TEXT NOT NULL,
-  scope           TEXT NOT NULL,
-  code_challenge  TEXT NOT NULL,
-  expires_at      TIMESTAMPTZ NOT NULL,
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+  code                   TEXT PRIMARY KEY,
+  client_id              TEXT NOT NULL,
+  user_id                UUID NOT NULL REFERENCES users(id),
+  redirect_uri           TEXT NOT NULL,
+  scope                  TEXT NOT NULL,
+  resource               TEXT NOT NULL,
+  code_challenge         TEXT NOT NULL,
+  code_challenge_method  TEXT NOT NULL DEFAULT 'S256',
+  expires_at             TIMESTAMPTZ NOT NULL,
+  created_at             TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
 
@@ -278,6 +296,7 @@ CREATE TABLE oauth_refresh_tokens (
   client_id   TEXT NOT NULL,
   user_id     UUID NOT NULL REFERENCES users(id),
   scope       TEXT NOT NULL,
+  resource    TEXT NOT NULL,
   expires_at  TIMESTAMPTZ NOT NULL,
   revoked_at  TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -526,7 +545,7 @@ export class GrapheinOAuthProvider implements OAuthServerProvider {
     private userService: UserService,
     private session: SessionHelpers,
     private baseUrl: string,
-    private jwtSecret: string,
+    private mcpJwtSecret: string, // Separate from session JWT secret
   ) {}
 
   get clientsStore() {
@@ -551,10 +570,10 @@ export class GrapheinOAuthProvider implements OAuthServerProvider {
 
   async exchangeAuthorizationCode(client, authorizationCode) {
     // 1. Look up authorization code in DB
-    // 2. Verify not expired, client_id matches
+    // 2. Verify not expired, client_id matches, resource matches
     // 3. Delete the code (single use)
-    // 4. Issue JWT access token (1h expiry)
-    // 5. Issue opaque refresh token (30d expiry, stored in DB)
+    // 4. Issue JWT access token (1h expiry, aud bound to resource)
+    // 5. Issue opaque refresh token (30d expiry, stored in DB with resource)
     // 6. Return { access_token, token_type, expires_in, refresh_token }
   }
 
@@ -566,10 +585,11 @@ export class GrapheinOAuthProvider implements OAuthServerProvider {
   }
 
   async verifyAccessToken(token: string) {
-    // 1. Verify JWT signature (HS256)
-    // 2. Check exp, aud claims
-    // 3. Look up user, verify not deactivated
-    // 4. Return { token, clientId, scopes, expiresAt }
+    // 1. Verify JWT signature (HS256 with mcpJwtSecret)
+    // 2. Check typ === "mcp+jwt", aud matches resource URL
+    // 3. Check exp claim
+    // 4. Look up user, verify not deactivated
+    // 5. Return { token, clientId, scopes, expiresAt }
   }
 
   async revokeToken(client, request) {
@@ -595,7 +615,7 @@ const oauthProvider = new GrapheinOAuthProvider(
   userService,
   session,
   config.baseUrl,
-  jwtSecret,
+  mcpJwtSecret, // Separate from session JWT secret
 );
 
 app.route(
@@ -610,9 +630,16 @@ app.route(
 );
 
 // 2. MCP Streamable HTTP endpoint
-const mcpServer = createMcpServer({
+//
+// A new McpServer + StreamableHTTPTransport is created per request.
+// The MCP SDK ties a single McpServer instance to one transport at a
+// time, so sharing an instance across concurrent requests is unsafe.
+// Since Graphein runs in stateless mode (no sessions, no subscriptions),
+// per-request instantiation is the correct approach. The createMcpServer
+// factory is lightweight — it only registers tool/resource definitions.
+const mcpServerConfig = {
   /* services */
-});
+};
 
 app.use("/mcp", contextStorage());
 app.all("/mcp", async (c) => {
@@ -635,6 +662,8 @@ app.all("/mcp", async (c) => {
   c.set("mcpUser", tokenInfo.user);
   c.set("mcpRole", tokenInfo.user.role);
 
+  // Per-request server + transport (see comment above)
+  const mcpServer = createMcpServer(mcpServerConfig);
   const transport = new StreamableHTTPTransport();
   await mcpServer.connect(transport);
   return transport.handleRequest(c);
@@ -736,12 +765,12 @@ HTTP-level errors (401 Unauthorized, 403 Forbidden) are handled before reaching 
 
 ## Configuration
 
-| Variable     | Description                                                     | Required       |
-| ------------ | --------------------------------------------------------------- | -------------- |
-| `BASE_URL`   | Existing. Used as the OAuth issuer URL and resource server base | Yes (existing) |
-| `JWT_SECRET` | Existing. Used to sign OAuth access tokens (JWTs)               | Yes (existing) |
+| Variable         | Description                                                     | Required       |
+| ---------------- | --------------------------------------------------------------- | -------------- |
+| `BASE_URL`       | Existing. Used as the OAuth issuer URL and resource server base | Yes (existing) |
+| `MCP_JWT_SECRET` | Dedicated signing key for MCP OAuth access tokens (HS256)       | Yes (new)      |
 
-No new environment variables are required. The OAuth AS reuses the existing JWT secret and base URL.
+`MCP_JWT_SECRET` must be different from `JWT_SECRET` (used for browser session tokens) to prevent cross-boundary token confusion.
 
 ---
 
