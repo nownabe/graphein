@@ -278,6 +278,15 @@ async function pollLoop(prNumber: string, reviewer: string, since: Date | null):
       await Bun.sleep(SETTLE_DELAY_SEC * 1000);
 
       const result = await collectResult(prNumber, reviewer, since);
+
+      if (result.status === "pending") {
+        // Not actionable yet (e.g., LGTM received but CI still running).
+        // Update baseline and keep polling.
+        baseline = current;
+        continue;
+      }
+
+      // Actionable result — return to caller
       console.log(JSON.stringify(result, null, 2));
       process.exit(0);
     }
