@@ -137,13 +137,17 @@ Authorization Server Metadata (RFC 8414). Tells MCP clients what the AS supports
 
 ### CSRF Exemption
 
-The existing CSRF middleware (Origin/Referer validation) exempts `/slack/*` and `/api/*` paths. The MCP and OAuth paths must also be exempted because requests come from external MCP clients, not the browser:
+The existing CSRF middleware (Origin/Referer validation) exempts `/slack/*` and `/api/*` paths. Some MCP/OAuth paths must also be exempted because requests come from external MCP clients, not the browser:
 
 - `/mcp` — MCP JSON-RPC requests from AI assistants
-- `/oauth/*` — OAuth token, registration, and revocation requests from MCP clients
+- `/oauth/token` — token exchange from MCP clients
+- `/oauth/register` — dynamic client registration from MCP clients
+- `/oauth/revoke` — token revocation from MCP clients
 - `/.well-known/*` — metadata discovery (GET-only, safe methods already exempt)
 
-The CSRF middleware's exempt path list in `src/auth/csrf.ts` is extended to include these paths.
+**`/oauth/authorize` is NOT exempted.** The authorization endpoint serves a browser-facing consent form. The `GET` is a safe method (already exempt), and the `POST` (consent submission) is a browser form submission that must remain protected by the existing Origin/Referer check. This ensures the consent approval cannot be forged by a third-party site.
+
+The CSRF middleware's exempt path list in `src/auth/csrf.ts` is extended to include the paths listed above.
 
 ### OAuth Endpoints
 
@@ -577,11 +581,13 @@ export class GrapheinOAuthProvider implements OAuthServerProvider {
     // 6. Return { access_token, token_type, expires_in, refresh_token }
   }
 
-  async exchangeRefreshToken(client, refreshToken) {
+  async exchangeRefreshToken(client, refreshToken, resource) {
     // 1. Look up refresh token in DB
     // 2. Verify not expired, not revoked, client_id matches
-    // 3. Rotate: revoke old token, issue new refresh token
-    // 4. Issue new JWT access token
+    // 3. Verify resource matches the stored resource on the refresh token
+    //    (reject if mismatched — prevents token reuse across resources)
+    // 4. Rotate: revoke old token, issue new refresh token (same resource binding)
+    // 5. Issue new JWT access token (aud bound to the stored resource)
   }
 
   async verifyAccessToken(token: string) {
