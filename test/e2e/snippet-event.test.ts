@@ -2,11 +2,20 @@ import { test, expect } from "./fixtures";
 import { env } from "./helpers/env";
 import { postMessage, deleteMessage, waitFor, getReactions } from "./helpers/slack";
 import { sendSlackMessageEvent } from "./helpers/slack-interaction";
-import { findSnippetBySlackMessage, deleteSnippetBySlackMessage } from "./helpers/db";
+import {
+  findSnippetBySlackMessage,
+  deleteSnippetBySlackMessage,
+  ensureSnippetChannel,
+} from "./helpers/db";
 
 test.describe("Snippet event listener", () => {
   let slackMessageTs: string | undefined;
   const channelId = env.snippetChannelId;
+
+  test.beforeAll(async () => {
+    // Ensure the snippet channel is registered in the DB so the event handler processes it
+    await ensureSnippetChannel(channelId);
+  });
 
   test.afterEach(async () => {
     if (slackMessageTs) {

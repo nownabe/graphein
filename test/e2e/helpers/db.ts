@@ -146,3 +146,13 @@ export async function ensureKudosChannel(slackChannelId: string): Promise<void> 
     [slackChannelId],
   );
 }
+
+/** Ensure a snippet channel is registered in the DB. Inserts if not already present. */
+export async function ensureSnippetChannel(slackChannelId: string): Promise<void> {
+  await query(
+    `INSERT INTO snippet_channels (slack_channel_id)
+     VALUES ($1)
+     ON CONFLICT (slack_channel_id) DO NOTHING`,
+    [slackChannelId],
+  );
+}
