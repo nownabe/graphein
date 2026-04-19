@@ -1,3 +1,4 @@
+import type { Database } from "./db/client";
 import type { SessionHelpers } from "./auth/session";
 import type { UserService } from "./users/service";
 import type { TaskService } from "./tasks/service";
@@ -13,6 +14,7 @@ export type BuildMrkdwnLabels = (texts: (string | null | undefined)[]) => Promis
 export type ResolveChannelName = (channelId: string) => Promise<string | undefined>;
 
 export interface HonoAppConfig {
+  db: Database;
   devMode: boolean;
   baseUrl: string;
   slackClientId: string;
