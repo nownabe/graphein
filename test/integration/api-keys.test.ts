@@ -80,11 +80,49 @@ describe("createApiKey", () => {
     const result = await apiKeyService.createApiKey(user.id, "Key 10", "user");
     expect(result.ok).toBe(true);
   });
+
+  test("non-admin user cannot create admin-scoped key", async () => {
+    const user = await createTestUser(db, { role: "user" });
+    const result = await apiKeyService.createApiKey(user.id, "Admin Key", "admin");
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error).toBe("admin_role_required");
+  });
+
+  test("admin user can create admin-scoped key", async () => {
+    const user = await createTestUser(db, { role: "admin" });
+    const result = await apiKeyService.createApiKey(user.id, "Admin Key", "admin");
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.apiKey.role).toBe("admin");
+  });
+
+  test("concurrent requests respect the 10-key limit via advisory lock", async () => {
+    const user = await createTestUser(db);
+    // Create 9 keys first
+    for (let i = 0; i < 9; i++) {
+      const result = await apiKeyService.createApiKey(user.id, `Key ${i}`, "user");
+      expect(result.ok).toBe(true);
+    }
+    // Fire two concurrent requests for the 10th slot
+    const [resultA, resultB] = await Promise.all([
+      apiKeyService.createApiKey(user.id, "Key 9a", "user"),
+      apiKeyService.createApiKey(user.id, "Key 9b", "user"),
+    ]);
+    // Exactly one should succeed, one should fail
+    const successes = [resultA, resultB].filter((r) => r.ok);
+    const failures = [resultA, resultB].filter((r) => !r.ok);
+    expect(successes).toHaveLength(1);
+    expect(failures).toHaveLength(1);
+    if (!failures[0].ok) {
+      expect(failures[0].error).toBe("key_limit_exceeded");
+    }
+  });
 });
 
 describe("listApiKeys", () => {
   test("returns all keys for a user ordered by createdAt desc", async () => {
-    const user = await createTestUser(db);
+    const user = await createTestUser(db, { role: "admin" });
     await apiKeyService.createApiKey(user.id, "Key A", "user");
     await apiKeyService.createApiKey(user.id, "Key B", "admin");
     const list = await apiKeyService.listApiKeys(user.id);

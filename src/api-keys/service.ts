@@ -43,7 +43,7 @@ export type ApiKeyRole = "user" | "admin";
 
 export type CreateApiKeyResult =
   | { ok: true; rawKey: string; apiKey: typeof apiKeys.$inferSelect }
-  | { ok: false; error: "key_limit_exceeded" };
+  | { ok: false; error: "key_limit_exceeded" | "admin_role_required" };
 
 export function createApiKeyService(db: Database) {
   /**
@@ -52,7 +52,10 @@ export function createApiKeyService(db: Database) {
    * Generates a cryptographically random key, hashes it, and stores the hash.
    * The raw key is returned once and must never be stored server-side.
    *
-   * Enforces a per-user limit of 10 active (non-revoked) keys.
+   * Enforces:
+   * - Role validation: non-admin users cannot create admin-scoped keys.
+   * - Per-user limit of 10 active (non-revoked) keys, using a transaction
+   *   with an advisory lock to prevent concurrent requests from exceeding it.
    */
   async function createApiKey(
     userId: string,
@@ -60,33 +63,53 @@ export function createApiKeyService(db: Database) {
     role: ApiKeyRole,
     expiresAt?: Date,
   ): Promise<CreateApiKeyResult> {
-    // Check active key count
-    const [{ count }] = await db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(apiKeys)
-      .where(and(eq(apiKeys.userId, userId), isNull(apiKeys.revokedAt)));
-
-    if (count >= MAX_ACTIVE_KEYS_PER_USER) {
-      return { ok: false, error: "key_limit_exceeded" };
+    // Validate role: only admins can create admin-scoped keys
+    if (role === "admin") {
+      const user = await db.query.users.findFirst({
+        where: eq(users.id, userId),
+        columns: { role: true },
+      });
+      if (!user || user.role !== "admin") {
+        return { ok: false, error: "admin_role_required" };
+      }
     }
 
     const rawKey = generateRawKey();
     const keyHash = await hashKey(rawKey);
     const keyPrefix = rawKey.slice(0, 12);
 
-    const [apiKey] = await db
-      .insert(apiKeys)
-      .values({
-        userId,
-        name,
-        keyHash,
-        keyPrefix,
-        role,
-        expiresAt: expiresAt ?? null,
-      })
-      .returning();
+    // Use a transaction with an advisory lock to prevent concurrent requests
+    // from both passing the count check and exceeding the per-user limit.
+    const result = await db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(hashtext('api_key_limit'), hashtext(${userId}))`,
+      );
 
-    return { ok: true, rawKey, apiKey };
+      const [{ count }] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(apiKeys)
+        .where(and(eq(apiKeys.userId, userId), isNull(apiKeys.revokedAt)));
+
+      if (count >= MAX_ACTIVE_KEYS_PER_USER) {
+        return { ok: false as const, error: "key_limit_exceeded" as const };
+      }
+
+      const [apiKey] = await tx
+        .insert(apiKeys)
+        .values({
+          userId,
+          name,
+          keyHash,
+          keyPrefix,
+          role,
+          expiresAt: expiresAt ?? null,
+        })
+        .returning();
+
+      return { ok: true as const, rawKey, apiKey };
+    });
+
+    return result;
   }
 
   /**
