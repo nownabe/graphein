@@ -1,6 +1,17 @@
 import { z } from "@hono/zod-openapi";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import { and, eq, lt, gt, desc, sql, inArray, count as drizzleCount } from "drizzle-orm";
+import {
+  type SQL,
+  and,
+  eq,
+  lt,
+  gt,
+  or,
+  desc,
+  sql,
+  inArray,
+  count as drizzleCount,
+} from "drizzle-orm";
 import type { Database } from "../db/client";
 import { tasks, taskAssignees, taskOwners, users } from "../db/schema";
 import type { TaskService } from "../tasks/service";
@@ -13,8 +24,10 @@ import { CreatedBySchema, ErrorResponseSchema } from "./schemas";
 interface PageCursor {
   /** Filter fingerprint to detect changed filters between pages. */
   fp: string;
-  /** Cursor ID (last seen task/user ID). */
-  id: string;
+  /** Cursor value — ISO 8601 timestamp for task lists, UUID for assignee lists. */
+  v: string;
+  /** Secondary cursor (task ID) for tie-breaking when primary is a timestamp. */
+  id?: string;
 }
 
 function encodePageToken(cursor: PageCursor): string {
@@ -25,7 +38,7 @@ function decodePageToken(token: string): PageCursor | null {
   try {
     const raw = Buffer.from(token, "base64url").toString("utf-8");
     const parsed = JSON.parse(raw);
-    if (typeof parsed.fp !== "string" || typeof parsed.id !== "string") return null;
+    if (typeof parsed.fp !== "string" || typeof parsed.v !== "string") return null;
     return parsed as PageCursor;
   } catch {
     return null;
@@ -386,7 +399,22 @@ const unarchiveTaskRoute = createRoute({
 
 export function createTaskApiRoutes(deps: { taskService: TaskService; db: Database }) {
   const { taskService, db } = deps;
-  const app = new OpenAPIHono();
+  const app = new OpenAPIHono({
+    defaultHook: (result, c) => {
+      if (!result.success) {
+        const firstIssue = result.error.issues[0];
+        return c.json(
+          {
+            error: {
+              code: "validation_error",
+              message: firstIssue?.message ?? "Invalid request parameters.",
+            },
+          },
+          422,
+        );
+      }
+    },
+  });
 
   // -----------------------------------------------------------------------
   // GET /tasks — list assigned tasks
@@ -405,48 +433,51 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
     });
 
     // Decode cursor
-    let cursorId: string | undefined;
+    let cursorCondition: SQL | undefined;
     if (query.pageToken) {
       const cursor = decodePageToken(query.pageToken);
-      if (!cursor || cursor.fp !== fp) {
+      if (!cursor || cursor.fp !== fp || !cursor.id) {
         return c.json(
           { error: { code: "validation_error", message: "Invalid or mismatched pageToken." } },
           422,
         );
       }
-      cursorId = cursor.id;
+      const cursorTime = new Date(cursor.v);
+      // Keyset: (assignedAt, taskId) < (cursorTime, cursorId)
+      cursorCondition = or(
+        lt(taskAssignees.assignedAt, cursorTime),
+        and(eq(taskAssignees.assignedAt, cursorTime), lt(tasks.id, cursor.id)),
+      );
     }
 
-    // Build conditions
-    const conditions = [eq(taskAssignees.userId, userId), eq(tasks.archived, isArchived)];
+    // Build filter conditions (without cursor)
+    const filterConditions: SQL[] = [
+      eq(taskAssignees.userId, userId),
+      eq(tasks.archived, isArchived),
+    ];
 
     if (query.done !== undefined) {
-      conditions.push(eq(taskAssignees.done, query.done === "true"));
+      filterConditions.push(eq(taskAssignees.done, query.done === "true"));
     }
     if (query.deadlineBefore) {
-      conditions.push(lt(tasks.deadline, new Date(query.deadlineBefore)));
+      filterConditions.push(lt(tasks.deadline, new Date(query.deadlineBefore)));
     }
     if (query.deadlineAfter) {
-      conditions.push(gt(tasks.deadline, new Date(query.deadlineAfter)));
-    }
-    if (cursorId) {
-      conditions.push(lt(tasks.id, cursorId));
+      filterConditions.push(gt(tasks.deadline, new Date(query.deadlineAfter)));
     }
 
-    // Count total (without cursor filter)
-    const countConditions = conditions.filter((_, i) => {
-      // Remove the cursor condition (last one if cursorId is set)
-      if (cursorId && i === conditions.length - 1) return false;
-      return true;
-    });
-
+    // Count total
     const [{ total }] = await db
       .select({ total: drizzleCount() })
       .from(taskAssignees)
       .innerJoin(tasks, eq(taskAssignees.taskId, tasks.id))
-      .where(and(...countConditions));
+      .where(and(...filterConditions));
 
-    // Fetch page
+    // Fetch page with cursor
+    const allConditions = cursorCondition
+      ? [...filterConditions, cursorCondition]
+      : filterConditions;
+
     const rows = await db
       .select({
         taskId: tasks.id,
@@ -459,11 +490,12 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
         createdById: tasks.createdById,
         createdAt: tasks.createdAt,
         updatedAt: tasks.updatedAt,
+        assignedAt: taskAssignees.assignedAt,
       })
       .from(taskAssignees)
       .innerJoin(tasks, eq(taskAssignees.taskId, tasks.id))
-      .where(and(...conditions))
-      .orderBy(desc(tasks.id))
+      .where(and(...allConditions))
+      .orderBy(desc(taskAssignees.assignedAt), desc(tasks.id))
       .limit(query.pageSize + 1);
 
     const hasNext = rows.length > query.pageSize;
@@ -480,8 +512,15 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
         : [];
     const creatorMap = new Map(creatorRows.map((u) => [u.id, u]));
 
+    const lastRow = page[page.length - 1];
     const nextPageToken =
-      hasNext && page.length > 0 ? encodePageToken({ fp, id: page[page.length - 1].taskId }) : "";
+      hasNext && lastRow
+        ? encodePageToken({
+            fp,
+            v: lastRow.assignedAt.toISOString(),
+            id: lastRow.taskId,
+          })
+        : "";
 
     return c.json(
       {
@@ -521,53 +560,55 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
       deadlineAfter: query.deadlineAfter,
     });
 
-    let cursorId: string | undefined;
+    let cursorCondition: SQL | undefined;
     if (query.pageToken) {
       const cursor = decodePageToken(query.pageToken);
-      if (!cursor || cursor.fp !== fp) {
+      if (!cursor || cursor.fp !== fp || !cursor.id) {
         return c.json(
           { error: { code: "validation_error", message: "Invalid or mismatched pageToken." } },
           422,
         );
       }
-      cursorId = cursor.id;
+      const cursorTime = new Date(cursor.v);
+      cursorCondition = or(
+        lt(tasks.createdAt, cursorTime),
+        and(eq(tasks.createdAt, cursorTime), lt(tasks.id, cursor.id)),
+      );
     }
 
-    // Build conditions on tasks table
-    const taskConditions = [eq(tasks.archived, isArchived)];
+    // Build filter conditions on tasks table
+    const filterConditions: SQL[] = [eq(tasks.archived, isArchived)];
     if (query.deadlineBefore) {
-      taskConditions.push(lt(tasks.deadline, new Date(query.deadlineBefore)));
+      filterConditions.push(lt(tasks.deadline, new Date(query.deadlineBefore)));
     }
     if (query.deadlineAfter) {
-      taskConditions.push(gt(tasks.deadline, new Date(query.deadlineAfter)));
+      filterConditions.push(gt(tasks.deadline, new Date(query.deadlineAfter)));
     }
 
     if (isAdmin) {
-      // Admin sees all tasks (no owner join needed for filtering)
-      const allConditions = [...taskConditions];
-      if (cursorId) allConditions.push(lt(tasks.id, cursorId));
-
-      const countConditions = [...taskConditions];
+      // Admin sees all tasks
       const [{ total }] = await db
         .select({ total: drizzleCount() })
         .from(tasks)
-        .where(and(...countConditions));
+        .where(and(...filterConditions));
+
+      const allConditions = cursorCondition
+        ? [...filterConditions, cursorCondition]
+        : filterConditions;
 
       const rows = await db
         .select()
         .from(tasks)
         .where(and(...allConditions))
-        .orderBy(desc(tasks.id))
+        .orderBy(desc(tasks.createdAt), desc(tasks.id))
         .limit(query.pageSize + 1);
 
       const hasNext = rows.length > query.pageSize;
       const page = hasNext ? rows.slice(0, query.pageSize) : rows;
 
-      // Resolve progress for each task
       const taskIds = page.map((t) => t.id);
       const progressMap = await getProgressForTasks(db, taskIds);
 
-      // Resolve creators
       const creatorIds = [...new Set(page.map((t) => t.createdById))];
       const creatorRows =
         creatorIds.length > 0
@@ -578,8 +619,11 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
           : [];
       const creatorMap = new Map(creatorRows.map((u) => [u.id, u]));
 
+      const lastRow = page[page.length - 1];
       const nextPageToken =
-        hasNext && page.length > 0 ? encodePageToken({ fp, id: page[page.length - 1].id }) : "";
+        hasNext && lastRow
+          ? encodePageToken({ fp, v: lastRow.createdAt.toISOString(), id: lastRow.id })
+          : "";
 
       return c.json(
         {
@@ -606,15 +650,14 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
     }
 
     // Non-admin: tasks where user is an owner
-    const allConditions = [...taskConditions, eq(taskOwners.userId, apiUser.id)];
-    if (cursorId) allConditions.push(lt(tasks.id, cursorId));
-
-    const countConditions = [...taskConditions, eq(taskOwners.userId, apiUser.id)];
+    const ownerFilter: SQL[] = [...filterConditions, eq(taskOwners.userId, apiUser.id)];
     const [{ total }] = await db
       .select({ total: drizzleCount() })
       .from(tasks)
       .innerJoin(taskOwners, eq(tasks.id, taskOwners.taskId))
-      .where(and(...countConditions));
+      .where(and(...ownerFilter));
+
+    const allConditions = cursorCondition ? [...ownerFilter, cursorCondition] : ownerFilter;
 
     const rows = await db
       .select({
@@ -631,7 +674,7 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
       .from(tasks)
       .innerJoin(taskOwners, eq(tasks.id, taskOwners.taskId))
       .where(and(...allConditions))
-      .orderBy(desc(tasks.id))
+      .orderBy(desc(tasks.createdAt), desc(tasks.id))
       .limit(query.pageSize + 1);
 
     const hasNext = rows.length > query.pageSize;
@@ -650,8 +693,11 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
         : [];
     const creatorMap = new Map(creatorRows.map((u) => [u.id, u]));
 
+    const lastRow = page[page.length - 1];
     const nextPageToken =
-      hasNext && page.length > 0 ? encodePageToken({ fp, id: page[page.length - 1].id }) : "";
+      hasNext && lastRow
+        ? encodePageToken({ fp, v: lastRow.createdAt.toISOString(), id: lastRow.id })
+        : "";
 
     return c.json(
       {
@@ -707,7 +753,7 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
 
     const fp = filterFingerprint({ done: query.done });
 
-    let cursorId: string | undefined;
+    let cursorCondition: SQL | undefined;
     if (query.pageToken) {
       const cursor = decodePageToken(query.pageToken);
       if (!cursor || cursor.fp !== fp) {
@@ -716,26 +762,25 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
           422,
         );
       }
-      cursorId = cursor.id;
+      cursorCondition = lt(taskAssignees.userId, cursor.v);
     }
 
-    // Build conditions
-    const conditions = [eq(taskAssignees.taskId, taskId)];
+    // Build filter conditions
+    const filterConditions: SQL[] = [eq(taskAssignees.taskId, taskId)];
     if (query.done !== undefined) {
-      conditions.push(eq(taskAssignees.done, query.done === "true"));
+      filterConditions.push(eq(taskAssignees.done, query.done === "true"));
     }
 
     // Count total
     const [{ total }] = await db
       .select({ total: drizzleCount() })
       .from(taskAssignees)
-      .where(and(...conditions));
+      .where(and(...filterConditions));
 
-    // Apply cursor
-    const fetchConditions = [...conditions];
-    if (cursorId) {
-      fetchConditions.push(lt(taskAssignees.userId, cursorId));
-    }
+    // Fetch page with cursor
+    const allConditions = cursorCondition
+      ? [...filterConditions, cursorCondition]
+      : filterConditions;
 
     const rows = await db
       .select({
@@ -745,15 +790,15 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
       })
       .from(taskAssignees)
       .innerJoin(users, eq(taskAssignees.userId, users.id))
-      .where(and(...fetchConditions))
+      .where(and(...allConditions))
       .orderBy(desc(taskAssignees.userId))
       .limit(query.pageSize + 1);
 
     const hasNext = rows.length > query.pageSize;
     const page = hasNext ? rows.slice(0, query.pageSize) : rows;
 
-    const nextPageToken =
-      hasNext && page.length > 0 ? encodePageToken({ fp, id: page[page.length - 1].userId }) : "";
+    const lastRow = page[page.length - 1];
+    const nextPageToken = hasNext && lastRow ? encodePageToken({ fp, v: lastRow.userId }) : "";
 
     return c.json(
       {
