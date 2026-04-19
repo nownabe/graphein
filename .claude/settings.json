@@ -29,5 +29,17 @@
       "Skill(handle-issue)"
     ],
     "defaultMode": "acceptEdits"
+  },
+  "hooks": {
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'cd $(jq -r .cwd) && mise trust 2>/dev/null || true'"
+          }
+        ]
+      }
+    ]
   }
 }
