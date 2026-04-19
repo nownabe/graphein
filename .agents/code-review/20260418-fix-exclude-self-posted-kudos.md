@@ -8,7 +8,7 @@ Issue: https://github.com/nownabe/graphein/issues/126
 
 When users filter kudos entries by "To" (mentioned user), the results currently
 include kudos that the filtered user posted themselves. These self-posted
-entries are not meaningful when viewing kudos directed *at* a user, so they
+entries are not meaningful when viewing kudos directed _at_ a user, so they
 should be excluded so the filter only surfaces kudos posted by other people
 mentioning that user.
 
