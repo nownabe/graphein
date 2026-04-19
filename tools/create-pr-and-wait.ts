@@ -3,7 +3,7 @@
  * create-pr-and-wait: Create a PR and block until CI passes and LGTM is received.
  *
  * Usage:
- *   bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>]
+ *   bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>]
  *   bun run tools/create-pr-and-wait.ts wait <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
  *
  * Both subcommands poll every 30s (up to 10 times = ~5 min) and exit when an
@@ -242,6 +242,9 @@ async function create(args: string[]) {
       body: { type: "string" },
       assignee: { type: "string", default: "nownabe" },
       reviewer: { type: "string", default: "nownabe" },
+      labels: { type: "string" },
+      draft: { type: "boolean", default: false },
+      base: { type: "string" },
     },
   });
 
@@ -250,7 +253,7 @@ async function create(args: string[]) {
     process.exit(1);
   }
 
-  const result = await gh(
+  const ghArgs = [
     "pr",
     "create",
     "--title",
@@ -259,7 +262,19 @@ async function create(args: string[]) {
     values.body,
     "--assignee",
     values.assignee!,
-  );
+  ];
+
+  if (values.labels) {
+    ghArgs.push("--label", values.labels);
+  }
+  if (values.draft) {
+    ghArgs.push("--draft");
+  }
+  if (values.base) {
+    ghArgs.push("--base", values.base);
+  }
+
+  const result = await gh(...ghArgs);
 
   if (result.exitCode !== 0) {
     console.error(`Failed to create PR: ${result.stderr}`);
@@ -318,11 +333,12 @@ switch (subcommand) {
     break;
   default:
     console.error(`Usage:
-  bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>]
+  bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>]
   bun run tools/create-pr-and-wait.ts wait <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
 
 Subcommands:
   create   Create a PR then poll until CI passes and LGTM is received.
+           Options: --title, --body, --assignee, --reviewer, --labels, --draft, --base
   wait     Resume polling an existing PR (use after fixing issues).
 
 Both subcommands poll every ${POLL_INTERVAL_SEC}s (up to ${MAX_POLLS} times) and exit when

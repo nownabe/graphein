@@ -152,7 +152,7 @@ All documentation, code comments, commit messages, issues, and pull requests mus
 - **`tools/create-pr-and-wait.ts`**: Create a PR and wait for CI pass + LGTM approval. Used by the `/pr` skill instead of `gh pr create` directly. Do not use `gh pr create` — it is forbidden by hooks.
   ```bash
   # Create PR and poll for CI/review status (~5 min polling window)
-  bun run tools/create-pr-and-wait.ts create --title "feat: ..." --body "..."
+  bun run tools/create-pr-and-wait.ts create --title "feat: ..." --body "..." [--labels "l1,l2"] [--draft] [--base <branch>]
   # Resume polling after fixing CI failures or addressing review feedback
   bun run tools/create-pr-and-wait.ts wait <pr-number> --since <iso-timestamp>
   ```
