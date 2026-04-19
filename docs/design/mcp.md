@@ -261,15 +261,17 @@ Stores dynamically registered OAuth clients.
 
 ```sql
 CREATE TABLE oauth_clients (
-  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  client_id     TEXT NOT NULL UNIQUE,
-  client_secret TEXT,
-  client_name   TEXT NOT NULL,
-  redirect_uris TEXT[] NOT NULL,
-  grant_types   TEXT[] NOT NULL DEFAULT '{authorization_code}',
-  created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+  id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  client_id           TEXT NOT NULL UNIQUE,
+  client_secret_hash  BYTEA,
+  client_name         TEXT NOT NULL,
+  redirect_uris       TEXT[] NOT NULL,
+  grant_types         TEXT[] NOT NULL DEFAULT '{authorization_code}',
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 ```
+
+`client_secret_hash` stores the SHA-256 hash of the client secret, following the same pattern as the `api_keys` table. The raw secret is returned only once at registration time. `NULL` indicates a public client (`token_endpoint_auth_method: "none"`).
 
 ### `oauth_authorization_codes` Table
 
