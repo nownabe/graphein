@@ -10,7 +10,7 @@ In the snippets mentions filter, usergroup mentions display with an `@` prefix w
 
 ### Summary
 
-Remove the `@` prefix from usergroup labels in the snippets mentions filter, changing `g.handle ? \`@${g.handle}\` : g.name` to `g.handle ?? g.name` in two places in `src/snippets/routes.tsx`.
+Remove the `@` prefix from usergroup labels in the snippets mentions filter, changing `g.handle ? \`@${g.handle}\` : g.name`to`g.handle ?? g.name`in two places in`src/snippets/routes.tsx`.
 
 ## Reviews
 
