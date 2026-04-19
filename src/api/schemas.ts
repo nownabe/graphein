@@ -10,10 +10,17 @@ export const PaginationRequestSchema = z
     pageSize: z
       .string()
       .optional()
-      .transform((v) => (v === undefined || v === "" ? 50 : Number(v)))
-      .pipe(z.number().int().min(0).max(100))
+      .transform((v) => {
+        if (v === undefined || v === "") return 50;
+        const n = Number(v);
+        if (!Number.isInteger(n) || n < 0) return NaN;
+        if (n === 0) return 50;
+        return Math.min(n, 100);
+      })
+      .pipe(z.number().int().min(1).max(100))
       .openapi({
-        description: "Maximum number of results per page (0–100, default 50).",
+        description:
+          "Maximum number of results per page. Defaults to 50 when unspecified or 0. Values above 100 are coerced to 100. Negative values are rejected.",
         example: 50,
       }),
     pageToken: z.string().optional().openapi({
@@ -30,8 +37,8 @@ export const PaginationResponseSchema = z
       description: "Opaque cursor for the next page. Empty string indicates the last page.",
       example: "",
     }),
-    totalSize: z.number().int().openapi({
-      description: "Total number of items matching the query.",
+    totalSize: z.number().int().optional().openapi({
+      description: "Total number of items matching the query. May be omitted or estimated.",
       example: 42,
     }),
   })
