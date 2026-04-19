@@ -29,3 +29,17 @@ The implementation is correct and well-structured:
 - `verifyApiKey` performs all required checks (hash match, revocation, expiration, role consistency) and auto-revokes admin keys held by demoted users.
 - Integration tests cover all acceptance criteria including edge cases (key limit, revoked keys not counting toward limit, idempotent revocation, role demotion auto-revoke).
 - Test helpers properly updated with `apiKeys` cleanup (before users, respecting FK order).
+
+### Round 2
+
+#### Review
+
+Status: APPROVED
+Reviewed commit: [5e1f56a](https://github.com/nownabe/graphein/commit/5e1f56a180ced85612136c71b1589a70c68e7d14)
+
+Addresses PR review feedback:
+
+- Role validation added: `createApiKey` now looks up the user's role from DB and returns `admin_role_required` error when a non-admin tries to create an admin key. Check is done before key generation to avoid wasted work.
+- Concurrency safety: count+insert wrapped in `db.transaction()` with `pg_advisory_xact_lock(hashtext('api_key_limit'), hashtext(userId))`, following the same advisory lock pattern used in `users/service.ts`. The per-user lock key means different users are not blocked by each other.
+- Three new integration tests: non-admin cannot create admin key, admin can create admin key, concurrent requests respect the limit via advisory lock.
+- Existing test fixed: `listApiKeys` ordering test now uses an admin user since it creates an admin-scoped key.
