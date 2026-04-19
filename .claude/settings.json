@@ -31,12 +31,12 @@
     "defaultMode": "acceptEdits"
   },
   "hooks": {
-    "WorktreeCreate": [
+    "SubagentStart": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/worktree-init.sh"
+            "command": "bash -c 'cd $(jq -r .cwd) && mise trust 2>/dev/null || true'"
           }
         ]
       }
