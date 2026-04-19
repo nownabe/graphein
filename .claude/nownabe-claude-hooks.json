@@ -1,5 +1,10 @@
 {
   "preBash": {
+    "allowedPatterns": {
+      "bun run tools/create-pr-and-wait.ts *": {
+        "multiline": true
+      }
+    },
     "forbiddenPatterns": {
       "npx *": {
         "reason": "npx is not allowed in this project",
