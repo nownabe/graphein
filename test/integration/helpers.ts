@@ -8,6 +8,7 @@ import { createSnippetService } from "../../src/snippets/service";
 import { createUsergroupService } from "../../src/usergroups/service";
 import { createSettingsService } from "../../src/settings/service";
 import { createApiKeyService } from "../../src/api-keys/service";
+import { createKudosService } from "../../src/kudos/service";
 import { createSessionHelpers } from "../../src/auth/session";
 import {
   users,
@@ -21,6 +22,11 @@ import {
   usergroups,
   appSettings,
   apiKeys,
+  kudosEntryMentionedUsergroups,
+  kudosEntryMentionedUsers,
+  kudosEntries,
+  kudos,
+  kudosChannels,
 } from "../../src/db/schema";
 import { TEST_DATABASE_URL } from "./setup";
 
@@ -37,6 +43,7 @@ export function createTestApp() {
   const snippetService = createSnippetService(db);
   const settingsService = createSettingsService(db);
   const apiKeyService = createApiKeyService(db);
+  const kudosService = createKudosService(db);
 
   const app = createHonoApp({
     devMode: false,
@@ -49,7 +56,9 @@ export function createTestApp() {
     taskService,
     snippetService,
     usergroupService,
+    kudosService,
     settingsService,
+    apiKeyService,
     buildMrkdwnLabels: async () => ({ users: {}, channels: {}, usergroups: {} }),
     resolveChannelName: async () => undefined,
     timezone: "Asia/Tokyo",
@@ -94,6 +103,11 @@ export async function authRequest(app: Hono, userId: string, path: string, init?
 
 export async function cleanupDb(db: Database) {
   await db.delete(apiKeys);
+  await db.delete(kudosEntryMentionedUsergroups);
+  await db.delete(kudosEntryMentionedUsers);
+  await db.delete(kudosEntries);
+  await db.delete(kudos);
+  await db.delete(kudosChannels);
   await db.delete(snippetMentionedUsers);
   await db.delete(snippetMentionedUsergroups);
   await db.delete(snippets);

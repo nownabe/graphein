@@ -5,6 +5,7 @@ import type { SnippetService } from "./snippets/service";
 import type { KudosService } from "./kudos/service";
 import type { UsergroupService } from "./usergroups/service";
 import type { SettingsService } from "./settings/service";
+import type { ApiKeyService } from "./api-keys/service";
 import type { MrkdwnOptions } from "./slack/mrkdwn";
 import type { HonoReceiver } from "./slack/receiver";
 
@@ -24,6 +25,7 @@ export interface HonoAppConfig {
   usergroupService: UsergroupService;
   kudosService: KudosService;
   settingsService: SettingsService;
+  apiKeyService: ApiKeyService;
   buildMrkdwnLabels: BuildMrkdwnLabels;
   resolveChannelName: ResolveChannelName;
   slackReceiver?: HonoReceiver;

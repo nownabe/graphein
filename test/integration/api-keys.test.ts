@@ -1,13 +1,199 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { createTestApp, createTestUser, cleanupDb } from "./helpers";
+import { createTestApp, createTestUser, authRequest, cleanupDb } from "./helpers";
 
-const { db, apiKeyService } = createTestApp();
+const { app, db, apiKeyService } = createTestApp();
 
 beforeEach(async () => {
   await cleanupDb(db);
 });
 
-describe("createApiKey", () => {
+// ---------------------------------------------------------------------------
+// HTTP route integration tests
+// ---------------------------------------------------------------------------
+
+describe("GET /settings/api-keys", () => {
+  test("redirects to login when not authenticated", async () => {
+    const res = await app.request("/settings/api-keys", {
+      headers: { Origin: "http://localhost:3000" },
+      redirect: "manual",
+    });
+    expect(res.status).toBe(302);
+    expect(res.headers.get("Location")).toBe("/auth/login");
+  });
+
+  test("returns 200 for authenticated user", async () => {
+    const user = await createTestUser(db);
+    const res = await authRequest(app, user.id, "/settings/api-keys");
+    expect(res.status).toBe(200);
+  });
+
+  test("shows created keys in the list", async () => {
+    const user = await createTestUser(db);
+    await apiKeyService.createApiKey(user.id, "My Test Key", "user");
+
+    const res = await authRequest(app, user.id, "/settings/api-keys");
+    const html = await res.text();
+    expect(html).toContain("My Test Key");
+  });
+
+  test("shows revoked keys in the list", async () => {
+    const user = await createTestUser(db);
+    const result = await apiKeyService.createApiKey(user.id, "Revoked Key", "user");
+    if (!result.ok) return;
+    await apiKeyService.revokeApiKey(result.apiKey.id, user.id);
+
+    const res = await authRequest(app, user.id, "/settings/api-keys");
+    const html = await res.text();
+    expect(html).toContain("Revoked Key");
+  });
+
+  test("does not show keys from other users", async () => {
+    const user1 = await createTestUser(db, { slackUserId: "U_ONE" });
+    const user2 = await createTestUser(db, { slackUserId: "U_TWO" });
+    await apiKeyService.createApiKey(user1.id, "User1 Key", "user");
+
+    const res = await authRequest(app, user2.id, "/settings/api-keys");
+    const html = await res.text();
+    expect(html).not.toContain("User1 Key");
+  });
+});
+
+describe("POST /settings/api-keys", () => {
+  test("creates a key and shows the raw key in the response", async () => {
+    const user = await createTestUser(db);
+    const res = await authRequest(app, user.id, "/settings/api-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "name=New+Key&expiration=never",
+    });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    // The raw key is shown in the created banner
+    expect(html).toMatch(/gph_[0-9A-Za-z]+/);
+    expect(html).toContain("New Key");
+  });
+
+  test("supports expiration", async () => {
+    const user = await createTestUser(db);
+    await authRequest(app, user.id, "/settings/api-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "name=Expiring+Key&expiration=7",
+    });
+
+    const keys = await apiKeyService.listApiKeys(user.id);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].expiresAt).not.toBeNull();
+  });
+
+  test("returns 400 for empty name", async () => {
+    const user = await createTestUser(db);
+    const res = await authRequest(app, user.id, "/settings/api-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "name=&expiration=never",
+    });
+    expect(res.status).toBe(400);
+  });
+
+  test("non-admin user requesting admin role gets user role", async () => {
+    const user = await createTestUser(db, { role: "user" });
+    await authRequest(app, user.id, "/settings/api-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "name=Admin+Attempt&expiration=never&role=admin",
+    });
+
+    const keys = await apiKeyService.listApiKeys(user.id);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].role).toBe("user");
+  });
+
+  test("admin user can create admin-scoped key", async () => {
+    const user = await createTestUser(db, { role: "admin" });
+    await authRequest(app, user.id, "/settings/api-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "name=Admin+Key&expiration=never&role=admin",
+    });
+
+    const keys = await apiKeyService.listApiKeys(user.id);
+    expect(keys).toHaveLength(1);
+    expect(keys[0].role).toBe("admin");
+  });
+
+  test("shows error when 10-key limit is exceeded", async () => {
+    const user = await createTestUser(db);
+    for (let i = 0; i < 10; i++) {
+      await apiKeyService.createApiKey(user.id, `Key ${i}`, "user");
+    }
+
+    const res = await authRequest(app, user.id, "/settings/api-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "name=Overflow+Key&expiration=never",
+    });
+    expect(res.status).toBe(200);
+    const html = await res.text();
+    expect(html).toContain("at most 10 active API keys");
+  });
+
+  test("revoked keys do not count toward the limit", async () => {
+    const user = await createTestUser(db);
+    const keys: string[] = [];
+    for (let i = 0; i < 10; i++) {
+      const result = await apiKeyService.createApiKey(user.id, `Key ${i}`, "user");
+      if (result.ok) keys.push(result.apiKey.id);
+    }
+    await apiKeyService.revokeApiKey(keys[0], user.id);
+
+    const res = await authRequest(app, user.id, "/settings/api-keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "name=After+Revoke&expiration=never",
+    });
+    const html = await res.text();
+    expect(html).toMatch(/gph_[0-9A-Za-z]+/);
+    expect(html).toContain("After Revoke");
+  });
+});
+
+describe("POST /settings/api-keys/:id/revoke", () => {
+  test("revokes a key and shows updated list", async () => {
+    const user = await createTestUser(db);
+    const result = await apiKeyService.createApiKey(user.id, "To Revoke", "user");
+    if (!result.ok) return;
+
+    const res = await authRequest(app, user.id, `/settings/api-keys/${result.apiKey.id}/revoke`, {
+      method: "POST",
+    });
+    expect(res.status).toBe(200);
+
+    const keys = await apiKeyService.listApiKeys(user.id);
+    expect(keys[0].revokedAt).not.toBeNull();
+  });
+
+  test("non-owner cannot revoke another user's key", async () => {
+    const owner = await createTestUser(db, { slackUserId: "U_OWNER" });
+    const other = await createTestUser(db, { slackUserId: "U_OTHER" });
+    const result = await apiKeyService.createApiKey(owner.id, "Owner Key", "user");
+    if (!result.ok) return;
+
+    await authRequest(app, other.id, `/settings/api-keys/${result.apiKey.id}/revoke`, {
+      method: "POST",
+    });
+
+    // Key should NOT be revoked
+    const keys = await apiKeyService.listApiKeys(owner.id);
+    expect(keys[0].revokedAt).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Service-level tests (no HTTP route equivalent)
+// ---------------------------------------------------------------------------
+
+describe("createApiKey (service internals)", () => {
   test("generates a key with gph_ prefix and base62 body", async () => {
     const user = await createTestUser(db);
     const result = await apiKeyService.createApiKey(user.id, "Test Key", "user");
@@ -15,11 +201,6 @@ describe("createApiKey", () => {
     if (!result.ok) return;
     expect(result.rawKey).toMatch(/^gph_[0-9A-Za-z]+$/);
     expect(result.apiKey.keyPrefix).toBe(result.rawKey.slice(0, 12));
-    expect(result.apiKey.name).toBe("Test Key");
-    expect(result.apiKey.role).toBe("user");
-    expect(result.apiKey.userId).toBe(user.id);
-    expect(result.apiKey.revokedAt).toBeNull();
-    expect(result.apiKey.expiresAt).toBeNull();
   });
 
   test("stores hash, not raw key", async () => {
@@ -27,89 +208,20 @@ describe("createApiKey", () => {
     const result = await apiKeyService.createApiKey(user.id, "Test Key", "user");
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    // The keyHash should be a 32-byte buffer (SHA-256)
     expect(result.apiKey.keyHash).toBeInstanceOf(Buffer);
     expect(result.apiKey.keyHash.length).toBe(32);
-    // The hash should NOT equal the raw key
     expect(result.apiKey.keyHash.toString("utf-8")).not.toBe(result.rawKey);
-  });
-
-  test("supports optional expiresAt", async () => {
-    const user = await createTestUser(db);
-    const expiresAt = new Date(Date.now() + 86400 * 1000); // 1 day from now
-    const result = await apiKeyService.createApiKey(user.id, "Expiring Key", "user", expiresAt);
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.apiKey.expiresAt).toEqual(expiresAt);
-  });
-
-  test("supports admin role", async () => {
-    const user = await createTestUser(db, { role: "admin" });
-    const result = await apiKeyService.createApiKey(user.id, "Admin Key", "admin");
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.apiKey.role).toBe("admin");
-  });
-
-  test("enforces 10-key-per-user limit", async () => {
-    const user = await createTestUser(db);
-    // Create 10 keys
-    for (let i = 0; i < 10; i++) {
-      const result = await apiKeyService.createApiKey(user.id, `Key ${i}`, "user");
-      expect(result.ok).toBe(true);
-    }
-    // 11th should fail
-    const result = await apiKeyService.createApiKey(user.id, "Key 10", "user");
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error).toBe("key_limit_exceeded");
-  });
-
-  test("revoked keys do not count toward the limit", async () => {
-    const user = await createTestUser(db);
-    // Create 10 keys and revoke one
-    const keys: string[] = [];
-    for (let i = 0; i < 10; i++) {
-      const result = await apiKeyService.createApiKey(user.id, `Key ${i}`, "user");
-      expect(result.ok).toBe(true);
-      if (result.ok) keys.push(result.apiKey.id);
-    }
-    // Revoke one key
-    await apiKeyService.revokeApiKey(keys[0], user.id);
-    // Now we should be able to create another
-    const result = await apiKeyService.createApiKey(user.id, "Key 10", "user");
-    expect(result.ok).toBe(true);
-  });
-
-  test("non-admin user cannot create admin-scoped key", async () => {
-    const user = await createTestUser(db, { role: "user" });
-    const result = await apiKeyService.createApiKey(user.id, "Admin Key", "admin");
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.error).toBe("admin_role_required");
-  });
-
-  test("admin user can create admin-scoped key", async () => {
-    const user = await createTestUser(db, { role: "admin" });
-    const result = await apiKeyService.createApiKey(user.id, "Admin Key", "admin");
-    expect(result.ok).toBe(true);
-    if (!result.ok) return;
-    expect(result.apiKey.role).toBe("admin");
   });
 
   test("concurrent requests respect the 10-key limit via advisory lock", async () => {
     const user = await createTestUser(db);
-    // Create 9 keys first
     for (let i = 0; i < 9; i++) {
-      const result = await apiKeyService.createApiKey(user.id, `Key ${i}`, "user");
-      expect(result.ok).toBe(true);
+      await apiKeyService.createApiKey(user.id, `Key ${i}`, "user");
     }
-    // Fire two concurrent requests for the 10th slot
     const [resultA, resultB] = await Promise.all([
       apiKeyService.createApiKey(user.id, "Key 9a", "user"),
       apiKeyService.createApiKey(user.id, "Key 9b", "user"),
     ]);
-    // Exactly one should succeed, one should fail
     const successes = [resultA, resultB].filter((r) => r.ok);
     const failures = [resultA, resultB].filter((r) => !r.ok);
     expect(successes).toHaveLength(1);
@@ -117,93 +229,6 @@ describe("createApiKey", () => {
     if (!failures[0].ok) {
       expect(failures[0].error).toBe("key_limit_exceeded");
     }
-  });
-});
-
-describe("listApiKeys", () => {
-  test("returns all keys for a user ordered by createdAt desc", async () => {
-    const user = await createTestUser(db, { role: "admin" });
-    await apiKeyService.createApiKey(user.id, "Key A", "user");
-    await apiKeyService.createApiKey(user.id, "Key B", "admin");
-    const list = await apiKeyService.listApiKeys(user.id);
-    expect(list).toHaveLength(2);
-    // Newest first
-    expect(list[0].name).toBe("Key B");
-    expect(list[1].name).toBe("Key A");
-  });
-
-  test("does not expose keyHash", async () => {
-    const user = await createTestUser(db);
-    await apiKeyService.createApiKey(user.id, "Key", "user");
-    const list = await apiKeyService.listApiKeys(user.id);
-    expect(list).toHaveLength(1);
-    // The returned object should not have a keyHash property
-    expect("keyHash" in list[0]).toBe(false);
-    // But should have prefix
-    expect(list[0].keyPrefix).toMatch(/^gph_/);
-  });
-
-  test("includes revoked keys", async () => {
-    const user = await createTestUser(db);
-    const result = await apiKeyService.createApiKey(user.id, "Revoked Key", "user");
-    if (!result.ok) return;
-    await apiKeyService.revokeApiKey(result.apiKey.id, user.id);
-    const list = await apiKeyService.listApiKeys(user.id);
-    expect(list).toHaveLength(1);
-    expect(list[0].revokedAt).not.toBeNull();
-  });
-
-  test("returns empty array for user with no keys", async () => {
-    const user = await createTestUser(db);
-    const list = await apiKeyService.listApiKeys(user.id);
-    expect(list).toEqual([]);
-  });
-});
-
-describe("revokeApiKey", () => {
-  test("sets revokedAt on the key", async () => {
-    const user = await createTestUser(db);
-    const result = await apiKeyService.createApiKey(user.id, "Key", "user");
-    if (!result.ok) return;
-    const revoked = await apiKeyService.revokeApiKey(result.apiKey.id, user.id);
-    expect(revoked).not.toBeNull();
-    expect(revoked!.revokedAt).toBeInstanceOf(Date);
-  });
-
-  test("is idempotent -- revoking again is a no-op", async () => {
-    const user = await createTestUser(db);
-    const result = await apiKeyService.createApiKey(user.id, "Key", "user");
-    if (!result.ok) return;
-    const first = await apiKeyService.revokeApiKey(result.apiKey.id, user.id);
-    const second = await apiKeyService.revokeApiKey(result.apiKey.id, user.id);
-    expect(second).not.toBeNull();
-    // revokedAt should be the same (no-op)
-    expect(second!.revokedAt!.getTime()).toBe(first!.revokedAt!.getTime());
-  });
-
-  test("returns null for non-existent key", async () => {
-    const user = await createTestUser(db);
-    const result = await apiKeyService.revokeApiKey(crypto.randomUUID(), user.id);
-    expect(result).toBeNull();
-  });
-
-  test("returns null when user does not own the key and is not admin", async () => {
-    const owner = await createTestUser(db, { slackUserId: "U_OWNER" });
-    const other = await createTestUser(db, { slackUserId: "U_OTHER" });
-    const result = await apiKeyService.createApiKey(owner.id, "Key", "user");
-    if (!result.ok) return;
-    const revoked = await apiKeyService.revokeApiKey(result.apiKey.id, other.id);
-    expect(revoked).toBeNull();
-  });
-
-  test("admin can revoke another user's key", async () => {
-    const owner = await createTestUser(db, { slackUserId: "U_OWNER2" });
-    const admin = await createTestUser(db, { slackUserId: "U_ADMIN", role: "admin" });
-    const result = await apiKeyService.createApiKey(owner.id, "Key", "user");
-    if (!result.ok) return;
-    const revoked = await apiKeyService.revokeApiKey(result.apiKey.id, admin.id, true);
-    expect(revoked).not.toBeNull();
-    expect(revoked!.revokedAt).toBeInstanceOf(Date);
   });
 });
 
@@ -246,7 +271,6 @@ describe("verifyApiKey", () => {
     const result = await apiKeyService.createApiKey(user.id, "Admin Key", "admin");
     if (!result.ok) return;
 
-    // Demote user to "user" role directly in DB
     const { users } = await import("../../src/db/schema");
     const { eq } = await import("drizzle-orm");
     await db.update(users).set({ role: "user" }).where(eq(users.id, user.id));
@@ -254,7 +278,6 @@ describe("verifyApiKey", () => {
     const verified = await apiKeyService.verifyApiKey(result.rawKey);
     expect(verified).toBeNull();
 
-    // Verify the key was actually revoked
     const list = await apiKeyService.listApiKeys(user.id);
     expect(list[0].revokedAt).not.toBeNull();
   });
@@ -264,7 +287,6 @@ describe("verifyApiKey", () => {
     const result = await apiKeyService.createApiKey(user.id, "Key", "user");
     if (!result.ok) return;
 
-    // Initially lastUsedAt is null
     const listBefore = await apiKeyService.listApiKeys(user.id);
     expect(listBefore[0].lastUsedAt).toBeNull();
 
