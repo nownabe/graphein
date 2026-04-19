@@ -1,4 +1,4 @@
-import { eq, and, desc, gte, lt, sql, isNull } from "drizzle-orm";
+import { eq, ne, and, desc, gte, lt, sql, isNull } from "drizzle-orm";
 import type { Database } from "../db/client";
 import {
   kudos,
@@ -107,6 +107,9 @@ export function createKudosService(db: Database) {
         .where(eq(kudosEntryMentionedUsers.userId, filters.mentionedUserId));
 
       conditions.push(sql`${kudosEntries.id} IN (${mentionEntryIds})`);
+      // Exclude kudos that the mentioned user posted themselves, so the filter
+      // only shows kudos posted by other people mentioning this user.
+      conditions.push(ne(kudos.postedById, filters.mentionedUserId));
     }
 
     const where = conditions.length > 0 ? and(...conditions) : undefined;
@@ -200,6 +203,9 @@ export function createKudosService(db: Database) {
   async function getDistinctMentionedUsers() {
     // Group members are expanded to kudosEntryMentionedUsers at write time,
     // so this single query covers both direct and group mentions.
+    // Exclude users who only appear as self-mentions (i.e., only mentioned in
+    // kudos they posted themselves), since filtering by them would yield no
+    // results after the self-posted exclusion in listKudosEntries.
     const rows = await db
       .selectDistinct({
         id: users.id,
@@ -208,7 +214,11 @@ export function createKudosService(db: Database) {
       })
       .from(kudosEntryMentionedUsers)
       .innerJoin(users, eq(kudosEntryMentionedUsers.userId, users.id))
-      .where(isNull(users.deactivatedAt))
+      .innerJoin(kudosEntries, eq(kudosEntryMentionedUsers.kudosEntryId, kudosEntries.id))
+      .innerJoin(kudos, eq(kudosEntries.kudosId, kudos.id))
+      .where(
+        and(isNull(users.deactivatedAt), ne(kudos.postedById, kudosEntryMentionedUsers.userId)),
+      )
       .orderBy(users.displayName);
     return rows;
   }
