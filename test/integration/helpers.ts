@@ -7,6 +7,7 @@ import { createTaskService } from "../../src/tasks/service";
 import { createSnippetService } from "../../src/snippets/service";
 import { createUsergroupService } from "../../src/usergroups/service";
 import { createSettingsService } from "../../src/settings/service";
+import { createApiKeyService } from "../../src/api-keys/service";
 import { createSessionHelpers } from "../../src/auth/session";
 import {
   users,
@@ -19,6 +20,7 @@ import {
   snippetChannels,
   usergroups,
   appSettings,
+  apiKeys,
 } from "../../src/db/schema";
 import { TEST_DATABASE_URL } from "./setup";
 
@@ -34,6 +36,7 @@ export function createTestApp() {
   const usergroupService = createUsergroupService(db);
   const snippetService = createSnippetService(db);
   const settingsService = createSettingsService(db);
+  const apiKeyService = createApiKeyService(db);
 
   const app = createHonoApp({
     devMode: false,
@@ -52,7 +55,7 @@ export function createTestApp() {
     timezone: "Asia/Tokyo",
   });
 
-  return { app, db, userService, taskService, snippetService, settingsService };
+  return { app, db, userService, taskService, snippetService, settingsService, apiKeyService };
 }
 
 export async function createTestUser(
@@ -90,6 +93,7 @@ export async function authRequest(app: Hono, userId: string, path: string, init?
 }
 
 export async function cleanupDb(db: Database) {
+  await db.delete(apiKeys);
   await db.delete(snippetMentionedUsers);
   await db.delete(snippetMentionedUsergroups);
   await db.delete(snippets);
