@@ -13,6 +13,7 @@ import { createKudosRoutes } from "./kudos/routes.tsx";
 import { createApiKeyRoutes } from "./api-keys/routes.tsx";
 import { clickjackingMiddleware } from "./auth/clickjacking";
 import { createApiMiddleware } from "./api/middleware";
+import { createApiRoutes } from "./api/routes";
 import type { HonoAppConfig } from "./config";
 
 export function createHonoApp(config: HonoAppConfig) {
@@ -122,6 +123,10 @@ export function createHonoApp(config: HonoAppConfig) {
     if (isApiDocPath(c.req.url)) return next();
     return apiRateLimit(c, next);
   });
+
+  // API routes (OpenAPIHono sub-app)
+  const apiRoutes = createApiRoutes();
+  app.route("/api/v1", apiRoutes);
 
   app.get("/healthz", (c) => c.text("ok"));
 
