@@ -151,7 +151,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
     // Merge default-selected usergroups into options if not already present
     const mentionedUsergroupOptions = mentionedUsergroups.map((g) => ({
       id: g.id,
-      label: g.handle ? `@${g.handle}` : g.name,
+      label: g.handle ?? g.name,
     }));
     if (!hasAnyFilterParam && usergroupIds.length > 0) {
       const existingIds = new Set(mentionedUsergroupOptions.map((o) => o.id));
@@ -161,7 +161,7 @@ export function createSnippetRoutes(deps: SnippetRoutesDeps) {
         for (const g of missingGroups) {
           mentionedUsergroupOptions.push({
             id: g.id,
-            label: g.handle ? `@${g.handle}` : g.name,
+            label: g.handle ?? g.name,
           });
         }
       }
