@@ -39,11 +39,21 @@ function decodePageToken(token: string): PageCursor | null {
     const raw = Buffer.from(token, "base64url").toString("utf-8");
     const parsed = JSON.parse(raw);
     if (typeof parsed.fp !== "string" || typeof parsed.v !== "string") return null;
+    if (parsed.id !== undefined && typeof parsed.id !== "string") return null;
     return parsed as PageCursor;
   } catch {
     return null;
   }
 }
+
+/** Validate that cursor.v is a valid ISO 8601 timestamp and cursor.id is a valid UUID. */
+function validateTimestampCursor(cursor: PageCursor): boolean {
+  if (!isValidIso8601(cursor.v)) return false;
+  if (cursor.id !== undefined && !UUID_REGEX.test(cursor.id)) return false;
+  return true;
+}
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Compute a stable fingerprint of the filter parameters (excluding pagination). */
 function filterFingerprint(params: Record<string, string | undefined>): string {
@@ -436,7 +446,7 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
     let cursorCondition: SQL | undefined;
     if (query.pageToken) {
       const cursor = decodePageToken(query.pageToken);
-      if (!cursor || cursor.fp !== fp || !cursor.id) {
+      if (!cursor || cursor.fp !== fp || !cursor.id || !validateTimestampCursor(cursor)) {
         return c.json(
           { error: { code: "validation_error", message: "Invalid or mismatched pageToken." } },
           422,
@@ -563,7 +573,7 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
     let cursorCondition: SQL | undefined;
     if (query.pageToken) {
       const cursor = decodePageToken(query.pageToken);
-      if (!cursor || cursor.fp !== fp || !cursor.id) {
+      if (!cursor || cursor.fp !== fp || !cursor.id || !validateTimestampCursor(cursor)) {
         return c.json(
           { error: { code: "validation_error", message: "Invalid or mismatched pageToken." } },
           422,
@@ -756,7 +766,7 @@ export function createTaskApiRoutes(deps: { taskService: TaskService; db: Databa
     let cursorCondition: SQL | undefined;
     if (query.pageToken) {
       const cursor = decodePageToken(query.pageToken);
-      if (!cursor || cursor.fp !== fp) {
+      if (!cursor || cursor.fp !== fp || !UUID_REGEX.test(cursor.v)) {
         return c.json(
           { error: { code: "validation_error", message: "Invalid or mismatched pageToken." } },
           422,
