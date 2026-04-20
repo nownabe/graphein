@@ -423,10 +423,7 @@ describe("GET /snippets — pagination", () => {
     expect(body1.nextPageToken).not.toBe("");
 
     // Use it with a different filter — should 422
-    const res2 = await req(
-      app,
-      `/snippets?postedBy=${user.id}&pageToken=${body1.nextPageToken}`,
-    );
+    const res2 = await req(app, `/snippets?postedBy=${user.id}&pageToken=${body1.nextPageToken}`);
     expect(res2.status).toBe(422);
     const body2 = await res2.json();
     expect(body2.error.code).toBe("validation_error");

@@ -301,7 +301,10 @@ export function createSnippetApiRoutes(deps: { db: Database }) {
     const snippetIds = page.map((r) => r.id);
 
     let mentionedUsersMap = new Map<string, { id: string; displayName: string }[]>();
-    let mentionedGroupsMap = new Map<string, { id: string; name: string; handle: string | null }[]>();
+    let mentionedGroupsMap = new Map<
+      string,
+      { id: string; name: string; handle: string | null }[]
+    >();
 
     if (snippetIds.length > 0) {
       const mentionedUsersRows = await db
