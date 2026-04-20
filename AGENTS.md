@@ -151,9 +151,9 @@ All documentation, code comments, commit messages, issues, and pull requests mus
 
 - **`tools/wait-pr.ts`**: Poll a PR until CI passes and LGTM is received, or an actionable state is reached.
   ```bash
-  bun run tools/wait-pr.ts <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
+  bun run tools/wait-pr.ts <pr-number> [--reviewer <user>]
   ```
-  Polls every 30s (up to ~5 min). The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, `merged`, `closed`, or `pending`. Non-zero exit only on errors.
+  Polls every 30s (up to ~5 min). Only reports feedback posted after the tool starts. The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, `merged`, `closed`, or `pending`. Non-zero exit only on errors.
 
 ## E2E Tests
 

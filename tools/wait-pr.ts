@@ -3,10 +3,11 @@
  * wait-pr: Poll a PR until CI passes and LGTM is received, or an actionable state is reached.
  *
  * Usage:
- *   bun run tools/wait-pr.ts <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
+ *   bun run tools/wait-pr.ts <pr-number> [--reviewer <user>]
  *
  * Polls every 30s (up to 10 times = ~5 min). When a change is detected the tool
  * waits a few seconds for related data to settle, then re-fetches and exits.
+ * Only feedback posted after this tool starts is reported.
  *
  * The JSON output includes a `status` field indicating the result:
  *   approved      LGTM received and all CI checks passed
@@ -89,7 +90,7 @@ type Snapshot = {
   reviewCommentCount: number;
 };
 
-async function takeSnapshot(prNumber: string, since: Date | null): Promise<Snapshot> {
+async function takeSnapshot(prNumber: string, since: Date): Promise<Snapshot> {
   const [prViewRes, checksRes, commentsRes, reviewsRes, reviewCommentsRes] = await Promise.all([
     gh("pr", "view", prNumber, "--json", "state", "--jq", ".state"),
     gh("pr", "checks", prNumber, "--json", "state"),
@@ -114,7 +115,7 @@ async function takeSnapshot(prNumber: string, since: Date | null): Promise<Snaps
   }
 
   // Counts (filtered by since)
-  const isAfterSince = (dateStr: string) => !since || new Date(dateStr) > since;
+  const isAfterSince = (dateStr: string) => new Date(dateStr) > since;
 
   const comments =
     (commentsRes.exitCode === 0 ? (tryParseJson(commentsRes.stdout) as any[]) : null) ?? [];
@@ -152,7 +153,7 @@ function snapshotChanged(prev: Snapshot, curr: Snapshot): boolean {
 async function collectResult(
   prNumber: string,
   reviewer: string,
-  since: Date | null,
+  since: Date,
 ): Promise<CheckOutput> {
   const [checksRes, commentsRes, reviewsRes, reviewCommentsRes, prViewRes] = await Promise.all([
     gh("pr", "checks", prNumber, "--json", "name,state,link"),
@@ -204,7 +205,7 @@ async function collectResult(
     [];
 
   // --- LGTM detection (filtered by --since) ---
-  const isAfterSince = (dateStr: string) => !since || new Date(dateStr) > since;
+  const isAfterSince = (dateStr: string) => new Date(dateStr) > since;
 
   const lgtm =
     allComments.some(
@@ -288,7 +289,7 @@ async function collectResult(
 // poll loop — detect change, settle, then collect final result
 // ---------------------------------------------------------------------------
 
-async function pollLoop(prNumber: string, reviewer: string, since: Date | null): Promise<never> {
+async function pollLoop(prNumber: string, reviewer: string, since: Date): Promise<never> {
   // Take initial snapshot as baseline
   let baseline = await takeSnapshot(prNumber, since);
 
@@ -331,7 +332,6 @@ const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
     reviewer: { type: "string", default: "nownabe" },
-    since: { type: "string" },
   },
   allowPositionals: true,
 });
@@ -339,17 +339,18 @@ const { values, positionals } = parseArgs({
 const prNumber = positionals[0];
 if (!prNumber) {
   console.error(`Usage:
-  bun run tools/wait-pr.ts <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
+  bun run tools/wait-pr.ts <pr-number> [--reviewer <user>]
 
 Polls every ${POLL_INTERVAL_SEC}s (up to ${MAX_POLLS} times) and exits when
-an actionable state is reached.
+an actionable state is reached. Uses the current time as the baseline for
+filtering feedback (only feedback posted after this tool starts is reported).
 
 The JSON output includes a "status" field: approved, ci_failed, has_feedback, merged, closed, or pending.
 Exit code is always 0 on success. Non-zero only on errors.`);
   process.exit(1);
 }
 
-const since = values.since ? new Date(values.since) : null;
+const since = new Date();
 
 console.error(`Polling PR #${prNumber} every ${POLL_INTERVAL_SEC}s (max ${MAX_POLLS} checks)...`);
 

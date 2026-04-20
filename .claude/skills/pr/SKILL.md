@@ -113,13 +113,13 @@ If a PR does not yet exist for this branch:
 
    - **`pending`**: CI still running, no feedback yet. Resume waiting (see below).
 
-5. **Resume waiting** after fixing issues or on pending timeout. Use `--since` set to the current UTC timestamp to filter out already-addressed feedback. Set a 600000ms timeout:
+5. **Resume waiting** after fixing issues or on pending timeout. Set a 600000ms timeout:
 
    ```bash
-   bun run tools/wait-pr.ts <pr-number> --since $(date -u +%Y-%m-%dT%H:%M:%SZ)
+   bun run tools/wait-pr.ts <pr-number>
    ```
 
-   Handle the result the same way as step 4. Repeat until `approved`.
+   The tool automatically uses the current time as the baseline, so only new feedback is reported. Handle the result the same way as step 4. Repeat until `approved`.
 
 ## Subagent Mode (create only, no wait)
 

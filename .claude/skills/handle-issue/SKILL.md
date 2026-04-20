@@ -50,10 +50,8 @@ After the agent returns:
 3. **Run the wait loop**. Use Bash with a 600000ms timeout:
 
    ```bash
-   bun run tools/wait-pr.ts <pr-number> --since <iso-timestamp>
+   bun run tools/wait-pr.ts <pr-number>
    ```
-
-   Use the current UTC time as `--since`.
 
 4. **Handle the result** based on the `status` field:
    - **`approved`**: Notify user "PR approved!" with the URL. Done.
