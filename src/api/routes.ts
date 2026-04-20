@@ -3,6 +3,7 @@ import { Scalar } from "@scalar/hono-api-reference";
 import type { Database } from "../db/client";
 import type { TaskService } from "../tasks/service";
 import { createTaskApiRoutes } from "./tasks";
+import { createSnippetApiRoutes } from "./snippets";
 
 interface ApiRouteDeps {
   taskService: TaskService;
@@ -39,6 +40,10 @@ export function createApiRoutes(deps: ApiRouteDeps) {
     db: deps.db,
   });
   app.route("/", taskApiRoutes);
+
+  // --- Snippet API routes ---
+  const snippetApiRoutes = createSnippetApiRoutes({ db: deps.db });
+  app.route("/", snippetApiRoutes);
 
   return app;
 }
