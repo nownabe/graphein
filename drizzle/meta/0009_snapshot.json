@@ -610,10 +610,16 @@
       "name": "oauth_refresh_tokens",
       "schema": "",
       "columns": {
-        "token": {
-          "name": "token",
+        "token_hash": {
+          "name": "token_hash",
           "type": "text",
           "primaryKey": true,
+          "notNull": true
+        },
+        "token_prefix": {
+          "name": "token_prefix",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true
         },
         "client_id": {
