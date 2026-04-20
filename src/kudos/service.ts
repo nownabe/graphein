@@ -127,8 +127,7 @@ export function createKudosService(db: Database) {
       );
     }
 
-    const filterWhere =
-      filterConditions.length > 0 ? and(...filterConditions) : undefined;
+    const filterWhere = filterConditions.length > 0 ? and(...filterConditions) : undefined;
 
     const [{ total }] = await db
       .select({ total: sql<number>`count(DISTINCT ${kudosEntries.id})::int` })
@@ -174,7 +173,7 @@ export function createKudosService(db: Database) {
     let page: typeof rows;
     if (filters.offset !== undefined) {
       // Offset mode: determine hasNext from total
-      hasNext = (filters.offset + rows.length) < total;
+      hasNext = filters.offset + rows.length < total;
       page = rows;
     } else {
       // Keyset mode: determine hasNext from extra row
