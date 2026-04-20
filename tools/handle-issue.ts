@@ -1,0 +1,252 @@
+#!/usr/bin/env bun
+/**
+ * handle-issue: Orchestrate handling a GitHub issue end-to-end.
+ *
+ * Usage:
+ *   bun run tools/handle-issue.ts <issue-number-or-url>
+ *
+ * This script controls the workflow deterministically:
+ *   1. Create a git worktree for isolated development
+ *   2. Spawn claude CLI to implement the issue and create a PR
+ *   3. Wait for CI/review (tools/wait-pr.ts)
+ *   4. If fixes needed, resume the same claude session to fix
+ *   5. Repeat 3-4 until approved or max retries
+ *   6. Clean up the worktree
+ *
+ * The claude CLI uses all existing project assets (CLAUDE.md, hooks, skills, etc).
+ */
+
+const MAX_FIX_ROUNDS = 5;
+
+const issueRef = process.argv[2];
+if (!issueRef) {
+  console.error("Usage: bun run tools/handle-issue.ts <issue-number-or-url>");
+  process.exit(1);
+}
+
+// ---------------------------------------------------------------------------
+// helpers
+// ---------------------------------------------------------------------------
+
+async function run(
+  cmd: string[],
+  opts?: { timeout?: number; cwd?: string },
+): Promise<{ stdout: string; exitCode: number }> {
+  const proc = Bun.spawn(cmd, {
+    stdout: "pipe",
+    stderr: "inherit",
+    cwd: opts?.cwd,
+    timeout: opts?.timeout,
+  });
+  const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  return { stdout: stdout.trim(), exitCode };
+}
+
+function extractPrUrl(text: string): string | null {
+  const match = text.match(/https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+/);
+  return match ? match[0] : null;
+}
+
+function extractPrNumber(url: string): string {
+  return url.split("/").pop()!;
+}
+
+function extractSessionId(jsonOutput: string): string | null {
+  try {
+    const result = JSON.parse(jsonOutput);
+    return result.session_id ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Worktree setup
+// ---------------------------------------------------------------------------
+
+const worktreeName = `handle-issue-${issueRef.replace(/[^a-zA-Z0-9-]/g, "-")}`;
+const worktreeBase = `../${worktreeName}`;
+
+console.log(`\n🌳 Creating worktree: ${worktreeName}`);
+
+await run(["git", "fetch", "origin", "main"]);
+const addResult = await run([
+  "git",
+  "worktree",
+  "add",
+  "-b",
+  worktreeName,
+  worktreeBase,
+  "origin/main",
+]);
+if (addResult.exitCode !== 0) {
+  console.error("❌ Failed to create worktree");
+  process.exit(1);
+}
+
+// Resolve the absolute path of the worktree
+const worktreePath = (await run(["git", "worktree", "list", "--porcelain"])).stdout
+  .split("\n")
+  .filter((line) => line.startsWith("worktree "))
+  .map((line) => line.replace("worktree ", ""))
+  .find((path) => path.includes(worktreeName));
+
+if (!worktreePath) {
+  console.error("❌ Could not resolve worktree path");
+  process.exit(1);
+}
+
+console.log(`   Path: ${worktreePath}`);
+
+// Cleanup function
+async function cleanup() {
+  console.log(`\n🧹 Cleaning up worktree...`);
+  await run(["git", "worktree", "remove", "--force", worktreePath]);
+  await run(["git", "branch", "-D", worktreeName]);
+}
+
+// ---------------------------------------------------------------------------
+// Phase 1: Implement and create PR
+// ---------------------------------------------------------------------------
+
+console.log(`\n📋 Implementing issue: ${issueRef}`);
+
+const implementResult = await run(
+  [
+    "claude",
+    "-p",
+    `Handle issue ${issueRef}\n\nIMPORTANT: When creating the PR (step 5 of /pr skill), use subagent mode:\nonly run \`gh pr create\`, do NOT run wait-pr.ts. Return the PR URL at the end of your response.`,
+    "--permission-mode",
+    "bypassPermissions",
+    "--output-format",
+    "json",
+  ],
+  { timeout: 600_000, cwd: worktreePath },
+);
+
+if (implementResult.exitCode !== 0) {
+  console.error("❌ Implementation failed");
+  await cleanup();
+  process.exit(1);
+}
+
+const sessionId = extractSessionId(implementResult.stdout);
+if (!sessionId) {
+  console.error("❌ Could not extract session ID from output");
+  await cleanup();
+  process.exit(1);
+}
+
+// Extract PR URL from the result field in JSON output
+let resultText: string;
+try {
+  resultText = JSON.parse(implementResult.stdout).result ?? "";
+} catch {
+  resultText = implementResult.stdout;
+}
+
+const prUrl = extractPrUrl(resultText);
+if (!prUrl) {
+  console.error("❌ Could not find PR URL in output");
+  console.error("Output (last 500 chars):", resultText.slice(-500));
+  await cleanup();
+  process.exit(1);
+}
+
+const prNumber = extractPrNumber(prUrl);
+console.log(`\n✅ PR created: ${prUrl}`);
+console.log(`   Session: ${sessionId}`);
+
+// ---------------------------------------------------------------------------
+// Phase 2-3: Wait and fix loop
+// ---------------------------------------------------------------------------
+
+for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
+  console.log(`\n⏳ Waiting for CI/review (round ${round}/${MAX_FIX_ROUNDS})...`);
+
+  const waitResult = await run(["bun", "run", "tools/wait-pr.ts", prNumber], {
+    timeout: 600_000,
+    cwd: worktreePath,
+  });
+
+  if (waitResult.exitCode !== 0) {
+    console.error("❌ wait-pr.ts failed");
+    await cleanup();
+    process.exit(1);
+  }
+
+  let status: any;
+  try {
+    status = JSON.parse(waitResult.stdout);
+  } catch {
+    console.error("❌ Failed to parse wait-pr.ts output");
+    await cleanup();
+    process.exit(1);
+  }
+
+  console.log(`   Status: ${status.status}`);
+
+  if (status.status === "approved") {
+    console.log(`\n🎉 PR approved: ${prUrl}`);
+    await cleanup();
+    process.exit(0);
+  }
+
+  if (status.status === "merged") {
+    console.log(`\n🎉 PR merged: ${prUrl}`);
+    await cleanup();
+    process.exit(0);
+  }
+
+  if (status.status === "closed") {
+    console.log(`\n⚠️  PR was closed: ${prUrl}`);
+    await cleanup();
+    process.exit(0);
+  }
+
+  if (status.status === "pending") {
+    continue;
+  }
+
+  // ci_failed or has_feedback — fix it
+  if (status.status === "ci_failed") {
+    console.log(`\n🔧 CI failed. Fixing (round ${round})...`);
+  } else {
+    console.log(`\n💬 Review feedback received. Addressing (round ${round})...`);
+  }
+
+  const fixPrompt =
+    status.status === "ci_failed"
+      ? `The PR ${prUrl} has CI failures. Fix them.\n\nCI result JSON:\n${JSON.stringify(status, null, 2)}\n\nSteps:\n1. Extract the run ID from failed check URLs (format: .../actions/runs/<run-id>/...)\n2. Get failure details: bunx @nownabe/claude-tools gh list-run-jobs <run-id> and bunx @nownabe/claude-tools gh get-job-logs <job-id>\n3. Fix the issues\n4. Run bun run check:all\n5. Commit and push (git push)`
+      : `The PR ${prUrl} has review feedback. Address it.\n\nFeedback JSON:\n${JSON.stringify(status, null, 2)}\n\nSteps:\n1. Read each feedback item (check path and line fields for review_comments)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit and push (git push)`;
+
+  const fixResult = await run(
+    [
+      "claude",
+      "-p",
+      fixPrompt,
+      "--resume",
+      sessionId,
+      "--permission-mode",
+      "bypassPermissions",
+      "--output-format",
+      "text",
+    ],
+    { timeout: 600_000, cwd: worktreePath },
+  );
+
+  if (fixResult.exitCode !== 0) {
+    console.error(`❌ Fix round ${round} failed`);
+    await cleanup();
+    process.exit(1);
+  }
+
+  console.log(`   Fix round ${round} complete. Re-checking...`);
+}
+
+console.error(
+  `\n⚠️  Did not converge after ${MAX_FIX_ROUNDS} fix rounds. Manual intervention needed.`,
+);
+console.error(`   PR: ${prUrl}`);
+await cleanup();
+process.exit(1);

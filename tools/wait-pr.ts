@@ -1,14 +1,13 @@
 #!/usr/bin/env bun
 /**
- * create-pr-and-wait: Create a PR and block until CI passes and LGTM is received.
+ * wait-pr: Poll a PR until CI passes and LGTM is received, or an actionable state is reached.
  *
  * Usage:
- *   bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>]
- *   bun run tools/create-pr-and-wait.ts wait <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
+ *   bun run tools/wait-pr.ts <pr-number> [--reviewer <user>]
  *
- * Both subcommands poll every 30s (up to 10 times = ~5 min). When a change is
- * detected the tool waits a few seconds for all related data to settle, then
- * re-fetches everything and exits with the final result.
+ * Polls every 30s (up to 10 times = ~5 min). When a change is detected the tool
+ * waits a few seconds for related data to settle, then re-fetches and exits.
+ * Only feedback posted after this tool starts is reported.
  *
  * The JSON output includes a `status` field indicating the result:
  *   approved      LGTM received and all CI checks passed
@@ -16,9 +15,9 @@
  *   has_feedback  review comments or PR comments to address
  *   merged        PR was merged
  *   closed        PR was closed without merging
- *   pending       nothing actionable yet (poll timed out, call `wait` again)
+ *   pending       nothing actionable yet (poll timed out, call again)
  *
- * Exit code is always 0 on success. Non-zero only on errors (e.g., PR creation failure).
+ * Exit code is always 0 on success. Non-zero only on errors.
  */
 
 import { parseArgs } from "util";
@@ -91,7 +90,7 @@ type Snapshot = {
   reviewCommentCount: number;
 };
 
-async function takeSnapshot(prNumber: string, since: Date | null): Promise<Snapshot> {
+async function takeSnapshot(prNumber: string, since: Date): Promise<Snapshot> {
   const [prViewRes, checksRes, commentsRes, reviewsRes, reviewCommentsRes] = await Promise.all([
     gh("pr", "view", prNumber, "--json", "state", "--jq", ".state"),
     gh("pr", "checks", prNumber, "--json", "state"),
@@ -116,7 +115,7 @@ async function takeSnapshot(prNumber: string, since: Date | null): Promise<Snaps
   }
 
   // Counts (filtered by since)
-  const isAfterSince = (dateStr: string) => !since || new Date(dateStr) > since;
+  const isAfterSince = (dateStr: string) => new Date(dateStr) > since;
 
   const comments =
     (commentsRes.exitCode === 0 ? (tryParseJson(commentsRes.stdout) as any[]) : null) ?? [];
@@ -154,7 +153,7 @@ function snapshotChanged(prev: Snapshot, curr: Snapshot): boolean {
 async function collectResult(
   prNumber: string,
   reviewer: string,
-  since: Date | null,
+  since: Date,
 ): Promise<CheckOutput> {
   const [checksRes, commentsRes, reviewsRes, reviewCommentsRes, prViewRes] = await Promise.all([
     gh("pr", "checks", prNumber, "--json", "name,state,link"),
@@ -206,7 +205,7 @@ async function collectResult(
     [];
 
   // --- LGTM detection (filtered by --since) ---
-  const isAfterSince = (dateStr: string) => !since || new Date(dateStr) > since;
+  const isAfterSince = (dateStr: string) => new Date(dateStr) > since;
 
   const lgtm =
     allComments.some(
@@ -290,7 +289,7 @@ async function collectResult(
 // poll loop — detect change, settle, then collect final result
 // ---------------------------------------------------------------------------
 
-async function pollLoop(prNumber: string, reviewer: string, since: Date | null): Promise<never> {
+async function pollLoop(prNumber: string, reviewer: string, since: Date): Promise<never> {
   // Take initial snapshot as baseline
   let baseline = await takeSnapshot(prNumber, since);
 
@@ -326,120 +325,33 @@ async function pollLoop(prNumber: string, reviewer: string, since: Date | null):
 }
 
 // ---------------------------------------------------------------------------
-// create — create PR then poll
-// ---------------------------------------------------------------------------
-
-async function create(args: string[]) {
-  const { values } = parseArgs({
-    args,
-    options: {
-      title: { type: "string" },
-      body: { type: "string" },
-      assignee: { type: "string", default: "nownabe" },
-      reviewer: { type: "string", default: "nownabe" },
-      labels: { type: "string" },
-      draft: { type: "boolean", default: false },
-      base: { type: "string" },
-    },
-  });
-
-  if (!values.title || !values.body) {
-    console.error("Error: --title and --body are required");
-    process.exit(1);
-  }
-
-  const ghArgs = [
-    "pr",
-    "create",
-    "--title",
-    values.title,
-    "--body",
-    values.body,
-    "--assignee",
-    values.assignee!,
-  ];
-
-  if (values.labels) {
-    ghArgs.push("--label", values.labels);
-  }
-  if (values.draft) {
-    ghArgs.push("--draft");
-  }
-  if (values.base) {
-    ghArgs.push("--base", values.base);
-  }
-
-  const result = await gh(...ghArgs);
-
-  if (result.exitCode !== 0) {
-    console.error(`Failed to create PR: ${result.stderr}`);
-    process.exit(1);
-  }
-
-  const url = result.stdout;
-  const number = url.split("/").pop()!;
-  const since = new Date();
-
-  console.error(`PR created: ${url}`);
-  console.error(`Polling PR #${number} every ${POLL_INTERVAL_SEC}s (max ${MAX_POLLS} checks)...`);
-
-  await pollLoop(number, values.reviewer!, since);
-}
-
-// ---------------------------------------------------------------------------
-// wait — resume polling an existing PR
-// ---------------------------------------------------------------------------
-
-async function wait(args: string[]) {
-  const { values, positionals } = parseArgs({
-    args,
-    options: {
-      reviewer: { type: "string", default: "nownabe" },
-      since: { type: "string" },
-    },
-    allowPositionals: true,
-  });
-
-  const prNumber = positionals[0];
-  if (!prNumber) {
-    console.error("Error: PR number is required");
-    process.exit(1);
-  }
-
-  const since = values.since ? new Date(values.since) : null;
-
-  console.error(`Polling PR #${prNumber} every ${POLL_INTERVAL_SEC}s (max ${MAX_POLLS} checks)...`);
-
-  await pollLoop(prNumber, values.reviewer!, since);
-}
-
-// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
-const [subcommand, ...rest] = process.argv.slice(2);
+const { values, positionals } = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    reviewer: { type: "string", default: "nownabe" },
+  },
+  allowPositionals: true,
+});
 
-switch (subcommand) {
-  case "create":
-    await create(rest);
-    break;
-  case "wait":
-    await wait(rest);
-    break;
-  default:
-    console.error(`Usage:
-  bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>]
-  bun run tools/create-pr-and-wait.ts wait <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
+const prNumber = positionals[0];
+if (!prNumber) {
+  console.error(`Usage:
+  bun run tools/wait-pr.ts <pr-number> [--reviewer <user>]
 
-Subcommands:
-  create   Create a PR then poll until CI passes and LGTM is received.
-           Options: --title, --body, --assignee, --reviewer, --labels, --draft, --base
-  wait     Resume polling an existing PR (use after fixing issues).
+Polls every ${POLL_INTERVAL_SEC}s (up to ${MAX_POLLS} times) and exits when
+an actionable state is reached. Uses the current time as the baseline for
+filtering feedback (only feedback posted after this tool starts is reported).
 
-Both subcommands poll every ${POLL_INTERVAL_SEC}s (up to ${MAX_POLLS} times) and exit when
-an actionable state is reached.
-
-The JSON output includes a "status" field: approved, ci_failed, has_feedback, or pending.
+The JSON output includes a "status" field: approved, ci_failed, has_feedback, merged, closed, or pending.
 Exit code is always 0 on success. Non-zero only on errors.`);
-    process.exit(1);
+  process.exit(1);
 }
+
+const since = new Date();
+
+console.error(`Polling PR #${prNumber} every ${POLL_INTERVAL_SEC}s (max ${MAX_POLLS} checks)...`);
+
+await pollLoop(prNumber, values.reviewer!, since);

@@ -70,17 +70,25 @@ If a PR does not yet exist for this branch:
    git diff main...HEAD
    ```
 
-2. Create the PR and start waiting with the `create-pr-and-wait` tool. Set a 600000ms timeout:
+2. Create the PR:
 
    ```bash
-   bun run tools/create-pr-and-wait.ts create --title "<title>" --body "<body>"
+   gh pr create --title "<title>" --body "<body>" --assignee nownabe
    ```
 
    - Title: concise, under 70 characters
    - Body: summary of changes with context on "why"
-   - The tool creates the PR, then automatically polls every 30s (up to ~5 min) for CI and review status
+   - Returns the PR URL; extract the number from the URL path
 
-3. **Handle the result based on the `status` field in the JSON output:**
+3. Start waiting with `wait-pr` tool. Set a 600000ms timeout:
+
+   ```bash
+   bun run tools/wait-pr.ts <pr-number>
+   ```
+
+   The tool polls every 30s (up to ~5 min) for CI and review status.
+
+4. **Handle the result based on the `status` field in the JSON output:**
    - **`approved`**: CI passed and LGTM received. Output the PR URL and stop.
 
    - **`ci_failed`**: One or more CI checks failed.
@@ -105,13 +113,19 @@ If a PR does not yet exist for this branch:
 
    - **`pending`**: CI still running, no feedback yet. Resume waiting (see below).
 
-4. **Resume waiting** after fixing issues or on pending timeout. Use `wait` with `--since` set to the current UTC timestamp to filter out already-addressed feedback. Set a 600000ms timeout:
+5. **Resume waiting** after fixing issues or on pending timeout. Set a 600000ms timeout:
 
    ```bash
-   bun run tools/create-pr-and-wait.ts wait <pr-number> --since $(date -u +%Y-%m-%dT%H:%M:%SZ)
+   bun run tools/wait-pr.ts <pr-number>
    ```
 
-   Handle the result the same way as step 3. Repeat until `approved`.
+   The tool automatically uses the current time as the baseline, so only new feedback is reported. Handle the result the same way as step 4. Repeat until `approved`.
+
+## Subagent Mode (create only, no wait)
+
+When called from a parent orchestrator (e.g., handle-issue) that will manage the wait loop itself, only run `gh pr create` and return the PR URL. Do NOT run `wait-pr.ts`.
+
+**When to use**: Only when explicitly instructed by the caller. By default (direct `/pr` invocation), always run both create and wait.
 
 ## Important Rules
 

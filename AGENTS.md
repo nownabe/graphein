@@ -149,14 +149,17 @@ All documentation, code comments, commit messages, issues, and pull requests mus
   bun run tools/run-sql.ts --file path/to/query.sql             # from file
   ```
 
-- **`tools/create-pr-and-wait.ts`**: Create a PR and wait for CI pass + LGTM approval. Used by the `/pr` skill instead of `gh pr create` directly. Do not use `gh pr create` — it is forbidden by hooks.
+- **`tools/handle-issue.ts`**: Orchestrate handling a GitHub issue end-to-end. Spawns `claude` CLI in a worktree for implementation, then deterministically manages the wait/fix loop. Used by the `/handle-issue` skill.
+
   ```bash
-  # Create PR and poll for CI/review status (~5 min polling window)
-  bun run tools/create-pr-and-wait.ts create --title "feat: ..." --body "..." [--labels "l1,l2"] [--draft] [--base <branch>]
-  # Resume polling after fixing CI failures or addressing review feedback
-  bun run tools/create-pr-and-wait.ts wait <pr-number> --since <iso-timestamp>
+  bun run tools/handle-issue.ts <issue-number-or-url>
   ```
-  The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, or `pending`. Non-zero exit only on errors.
+
+- **`tools/wait-pr.ts`**: Poll a PR until CI passes and LGTM is received, or an actionable state is reached.
+  ```bash
+  bun run tools/wait-pr.ts <pr-number> [--reviewer <user>]
+  ```
+  Polls every 30s (up to ~5 min). Only reports feedback posted after the tool starts. The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, `merged`, `closed`, or `pending`. Non-zero exit only on errors.
 
 ## E2E Tests
 
