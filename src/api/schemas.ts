@@ -104,6 +104,7 @@ export const EmbeddedUsergroupSchema = z
     name: z.string().openapi({ description: "Usergroup name.", example: "Backend Team" }),
     handle: z
       .string()
+      .nullable()
       .openapi({ description: "Usergroup handle (mention name).", example: "backend" }),
   })
   .openapi("EmbeddedUsergroup");
