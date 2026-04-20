@@ -111,6 +111,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       authUrl.searchParams.set("client_id", client.client_id);
       authUrl.searchParams.set("redirect_uri", params.redirectUri);
       authUrl.searchParams.set("code_challenge", params.codeChallenge);
+      authUrl.searchParams.set("code_challenge_method", "S256");
       authUrl.searchParams.set("response_type", "code");
       if (params.state) authUrl.searchParams.set("state", params.state);
       if (params.scopes?.length) authUrl.searchParams.set("scope", params.scopes.join(" "));
@@ -126,26 +127,63 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       return;
     }
 
-    // User is logged in — generate authorization code and redirect
-    const scope = params.scopes?.join(" ") || "graphein";
-    const resource = params.resource?.toString() || `${this.baseUrl}/mcp`;
+    // Check if the user explicitly approved via the consent form.
+    // The consent page redirects back to /oauth/authorize with consent=approved
+    // appended to the query string.
+    const consent = c.req.query("consent");
 
-    const code = await this.oauthService.createAuthorizationCode({
-      clientId: client.client_id,
-      userId: payload.sub,
-      redirectUri: params.redirectUri,
+    if (consent === "denied") {
+      const redirectUrl = new URL(params.redirectUri);
+      redirectUrl.searchParams.set("error", "access_denied");
+      if (params.state) redirectUrl.searchParams.set("state", params.state);
+      c.res = new Response(null, {
+        status: 302,
+        headers: { Location: redirectUrl.toString() },
+      });
+      return;
+    }
+
+    if (consent === "approved") {
+      // User approved — generate authorization code and redirect
+      const scope = params.scopes?.join(" ") || "graphein";
+      const resource = params.resource?.toString() || `${this.baseUrl}/mcp`;
+
+      const code = await this.oauthService.createAuthorizationCode({
+        clientId: client.client_id,
+        userId: payload.sub,
+        redirectUri: params.redirectUri,
+        scope,
+        resource,
+        codeChallenge: params.codeChallenge,
+      });
+
+      const redirectUrl = new URL(params.redirectUri);
+      redirectUrl.searchParams.set("code", code);
+      if (params.state) redirectUrl.searchParams.set("state", params.state);
+
+      c.res = new Response(null, {
+        status: 302,
+        headers: { Location: redirectUrl.toString() },
+      });
+      return;
+    }
+
+    // No consent decision yet — show consent page
+    const scope = params.scopes?.join(" ") || "graphein";
+    const consentHtml = renderConsentPage({
+      clientName: client.client_name ?? client.client_id,
       scope,
-      resource,
+      baseUrl: this.baseUrl,
+      clientId: client.client_id,
+      redirectUri: params.redirectUri,
       codeChallenge: params.codeChallenge,
+      state: params.state,
+      resource: params.resource?.toString(),
     });
 
-    const redirectUrl = new URL(params.redirectUri);
-    redirectUrl.searchParams.set("code", code);
-    if (params.state) redirectUrl.searchParams.set("state", params.state);
-
-    c.res = new Response(null, {
-      status: 302,
-      headers: { Location: redirectUrl.toString() },
+    c.res = new Response(consentHtml, {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8" },
     });
   }
 
@@ -250,8 +288,11 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       throw new Error("Token expired");
     }
 
-    const deactivated = await this.userService.isDeactivated(payload.sub);
-    if (deactivated) {
+    const user = await this.userService.findUserById(payload.sub);
+    if (!user) {
+      throw new Error("User not found");
+    }
+    if (user.deactivatedAt != null) {
       throw new Error("User is deactivated");
     }
 
@@ -298,4 +339,113 @@ function getCookie(c: Context, name: string): string | undefined {
   if (!header) return undefined;
   const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
   return match?.[1];
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderConsentPage(opts: {
+  clientName: string;
+  scope: string;
+  baseUrl: string;
+  clientId: string;
+  redirectUri: string;
+  codeChallenge: string;
+  state?: string;
+  resource?: string;
+}): string {
+  const name = escapeHtml(opts.clientName);
+  const scope = escapeHtml(opts.scope);
+
+  // Build approve/deny URLs that redirect back to /oauth/authorize with consent param
+  function buildConsentUrl(decision: "approved" | "denied"): string {
+    const url = new URL(`${opts.baseUrl}/oauth/authorize`);
+    url.searchParams.set("client_id", opts.clientId);
+    url.searchParams.set("redirect_uri", opts.redirectUri);
+    url.searchParams.set("code_challenge", opts.codeChallenge);
+    url.searchParams.set("code_challenge_method", "S256");
+    url.searchParams.set("response_type", "code");
+    url.searchParams.set("consent", decision);
+    if (opts.state) url.searchParams.set("state", opts.state);
+    if (opts.scope) url.searchParams.set("scope", opts.scope);
+    if (opts.resource) url.searchParams.set("resource", opts.resource);
+    return escapeHtml(url.toString());
+  }
+
+  const approveUrl = buildConsentUrl("approved");
+  const denyUrl = buildConsentUrl("denied");
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Authorize ${name} — Graphein</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #0f0f14;
+      color: #e0e0e6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: #1a1a24;
+      border: 1px solid #2a2a3a;
+      border-radius: 16px;
+      padding: 2rem;
+      max-width: 420px;
+      width: 100%;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 1rem; }
+    .client-name { color: #7c8aff; font-weight: 600; }
+    .scope-label { color: #9ca3af; font-size: 0.875rem; margin-top: 1rem; }
+    .scope-value {
+      font-family: monospace;
+      background: #12121a;
+      padding: 0.5rem;
+      border-radius: 8px;
+      margin-top: 0.25rem;
+    }
+    .actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
+    .actions a {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0.625rem 1rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9375rem;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+    }
+    .approve { background: #7c8aff; color: #fff; }
+    .approve:hover { background: #6b79ee; }
+    .deny { background: #2a2a3a; color: #e0e0e6; }
+    .deny:hover { background: #3a3a4a; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Authorize <span class="client-name">${name}</span></h1>
+    <p>This application is requesting access to your Graphein account.</p>
+    <div class="scope-label">Requested permissions</div>
+    <div class="scope-value">${scope}</div>
+    <div class="actions">
+      <a href="${approveUrl}" class="approve">Approve</a>
+      <a href="${denyUrl}" class="deny">Deny</a>
+    </div>
+  </div>
+</body>
+</html>`;
 }

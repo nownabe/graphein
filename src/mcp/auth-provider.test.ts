@@ -32,13 +32,27 @@ function createMockOAuthService(overrides: Partial<OAuthService> = {}): OAuthSer
   } as unknown as OAuthService;
 }
 
-function createMockUserService() {
+const ACTIVE_USER = {
+  id: "user-uuid",
+  slackUserId: "U123",
+  email: "test@example.com",
+  displayName: "Test User",
+  avatarUrl: null,
+  role: "user",
+  locale: "en",
+  deactivatedAt: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+function createMockUserService(overrides: Record<string, any> = {}) {
   return {
     isDeactivated: async () => false,
-    findUserById: async () => undefined,
+    findUserById: async () => ACTIVE_USER,
     findOrCreateUser: async () => ({}),
     isAdmin: async () => false,
     listAllUsers: async () => [],
+    ...overrides,
   } as any;
 }
 
@@ -136,7 +150,51 @@ describe("GrapheinOAuthProvider", () => {
       expect(location).toContain("return_to=");
     });
 
-    test("generates code and redirects when user is authenticated", async () => {
+    test("shows consent page when user is authenticated but has not consented", async () => {
+      mockSession = createMockSession({
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+      });
+      provider = new GrapheinOAuthProvider(
+        mockOAuthService,
+        createMockUserService(),
+        mockSession,
+        BASE_URL,
+        MCP_JWT_SECRET,
+      );
+
+      const app = new Hono();
+      app.get("/test", async (c) => {
+        await provider.authorize(
+          {
+            client_id: "test-client",
+            client_name: "My MCP App",
+            redirect_uris: ["https://example.com/cb"],
+          } as any,
+          {
+            redirectUri: "https://example.com/cb",
+            codeChallenge: "challenge",
+            state: "state123",
+            scopes: ["graphein"],
+            resource: new URL("https://graphein.example.com/mcp"),
+          },
+          c,
+        );
+        return c.res;
+      });
+
+      const res = await app.request("/test", {
+        headers: { Cookie: "token=valid-jwt" },
+      });
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain("My MCP App");
+      expect(html).toContain("Approve");
+      expect(html).toContain("Deny");
+      expect(html).toContain("consent=approved");
+      expect(html).toContain("consent=denied");
+    });
+
+    test("generates code and redirects when user approves consent", async () => {
       mockSession = createMockSession({
         verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
       });
@@ -167,13 +225,50 @@ describe("GrapheinOAuthProvider", () => {
         return c.res;
       });
 
-      const res = await app.request("/test", {
+      const res = await app.request("/test?consent=approved", {
         headers: { Cookie: "token=valid-jwt" },
       });
       expect(res.status).toBe(302);
       const location = res.headers.get("Location")!;
       expect(location).toContain("https://example.com/cb");
       expect(location).toContain("code=auth-code-123");
+      expect(location).toContain("state=state123");
+    });
+
+    test("redirects with error when user denies consent", async () => {
+      mockSession = createMockSession({
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+      });
+      provider = new GrapheinOAuthProvider(
+        mockOAuthService,
+        createMockUserService(),
+        mockSession,
+        BASE_URL,
+        MCP_JWT_SECRET,
+      );
+
+      const app = new Hono();
+      app.get("/test", async (c) => {
+        await provider.authorize(
+          { client_id: "test-client", redirect_uris: ["https://example.com/cb"] } as any,
+          {
+            redirectUri: "https://example.com/cb",
+            codeChallenge: "challenge",
+            state: "state123",
+            scopes: ["graphein"],
+          },
+          c,
+        );
+        return c.res;
+      });
+
+      const res = await app.request("/test?consent=denied", {
+        headers: { Cookie: "token=valid-jwt" },
+      });
+      expect(res.status).toBe(302);
+      const location = res.headers.get("Location")!;
+      expect(location).toContain("https://example.com/cb");
+      expect(location).toContain("error=access_denied");
       expect(location).toContain("state=state123");
     });
   });
@@ -413,12 +508,38 @@ describe("GrapheinOAuthProvider", () => {
       await expect(provider.verifyAccessToken(token)).rejects.toThrow("Invalid token type");
     });
 
-    test("rejects deactivated user", async () => {
-      const userService = createMockUserService();
-      userService.isDeactivated = async () => true;
+    test("rejects nonexistent user", async () => {
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
-        userService,
+        createMockUserService({ findUserById: async () => undefined }),
+        mockSession,
+        BASE_URL,
+        MCP_JWT_SECRET,
+      );
+
+      const now = Math.floor(Date.now() / 1000);
+      const token = await sign(
+        {
+          sub: "deleted-user",
+          aud: "https://graphein.example.com/mcp",
+          scope: "graphein",
+          typ: "mcp+jwt",
+          exp: now + 3600,
+          iat: now,
+        },
+        MCP_JWT_SECRET,
+        "HS256",
+      );
+
+      await expect(provider.verifyAccessToken(token)).rejects.toThrow("User not found");
+    });
+
+    test("rejects deactivated user", async () => {
+      provider = new GrapheinOAuthProvider(
+        mockOAuthService,
+        createMockUserService({
+          findUserById: async () => ({ ...ACTIVE_USER, deactivatedAt: new Date() }),
+        }),
         mockSession,
         BASE_URL,
         MCP_JWT_SECRET,
