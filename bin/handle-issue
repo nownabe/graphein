@@ -217,35 +217,46 @@ console.log(`   Session: ${sessionId}`);
 for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
   console.log(`\n⏳ Waiting for CI/review (round ${round}/${MAX_FIX_ROUNDS})...`);
 
-  // Run Codex review in parallel with wait-pr so findings appear as PR comments
-  // that wait-pr will pick up as feedback
-  const waitPromise = run(["bun", "run", "tools/wait-pr.ts", prNumber], {
-    timeout: 600_000,
-    cwd: worktreePath,
-  });
-
-  if (enableCodexReview) {
-    await runCodexReview(prNumber, worktreePath);
-  }
-
-  const waitResult = await waitPromise;
-
-  if (waitResult.exitCode !== 0) {
-    console.error("❌ wait-pr.ts failed");
-    await cleanup();
-    process.exit(1);
-  }
-
+  // Keep polling until an actionable status is reached (no timeout limit).
+  // Codex review runs in parallel with the first wait-pr invocation only.
   let status: any;
-  try {
-    status = JSON.parse(waitResult.stdout);
-  } catch {
-    console.error("❌ Failed to parse wait-pr.ts output");
-    await cleanup();
-    process.exit(1);
-  }
+  let firstPoll = true;
 
-  console.log(`   Status: ${status.status}`);
+  while (true) {
+    const waitPromise = run(["bun", "run", "tools/wait-pr.ts", prNumber], {
+      cwd: worktreePath,
+    });
+
+    if (firstPoll && enableCodexReview) {
+      await runCodexReview(prNumber, worktreePath);
+      firstPoll = false;
+    }
+
+    const waitResult = await waitPromise;
+
+    if (waitResult.exitCode !== 0) {
+      console.error("❌ wait-pr.ts failed");
+      await cleanup();
+      process.exit(1);
+    }
+
+    try {
+      status = JSON.parse(waitResult.stdout);
+    } catch {
+      console.error("❌ Failed to parse wait-pr.ts output");
+      await cleanup();
+      process.exit(1);
+    }
+
+    console.log(`   Status: ${status.status}`);
+
+    if (status.status !== "pending") {
+      break;
+    }
+
+    // pending — keep polling without consuming a fix round
+    console.log(`   Still pending, re-polling...`);
+  }
 
   if (status.status === "approved") {
     console.log(`\n🎉 PR approved: ${prUrl}`);
@@ -263,10 +274,6 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
     console.log(`\n⚠️  PR was closed: ${prUrl}`);
     await cleanup();
     process.exit(0);
-  }
-
-  if (status.status === "pending") {
-    continue;
   }
 
   // ci_failed or has_feedback — fix it
