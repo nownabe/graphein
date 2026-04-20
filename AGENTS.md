@@ -149,6 +149,12 @@ All documentation, code comments, commit messages, issues, and pull requests mus
   bun run tools/run-sql.ts --file path/to/query.sql             # from file
   ```
 
+- **`tools/handle-issue.ts`**: Orchestrate handling a GitHub issue end-to-end. Spawns `claude` CLI in a worktree for implementation, then deterministically manages the wait/fix loop. Used by the `/handle-issue` skill.
+
+  ```bash
+  bun run tools/handle-issue.ts <issue-number-or-url>
+  ```
+
 - **`tools/wait-pr.ts`**: Poll a PR until CI passes and LGTM is received, or an actionable state is reached.
   ```bash
   bun run tools/wait-pr.ts <pr-number> [--reviewer <user>]
