@@ -37,6 +37,7 @@ const kudosService = createKudosService(db);
 const settingsService = createSettingsService(db);
 const apiKeyService = createApiKeyService(db);
 const session = createSessionHelpers(requireEnv("JWT_SECRET"));
+requireEnv("MCP_JWT_SECRET");
 
 // Create Bolt app and Slack label builder
 const geminiClient = createGeminiClient(requireEnv("GEMINI_API_KEY"));
