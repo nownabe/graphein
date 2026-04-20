@@ -1,12 +1,15 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
 import type { Database } from "../db/client";
+import type { KudosService } from "../kudos/service";
 import type { TaskService } from "../tasks/service";
+import { createKudosApiRoutes } from "./kudos";
 import { createTaskApiRoutes } from "./tasks";
 import { createSnippetApiRoutes } from "./snippets";
 
 interface ApiRouteDeps {
   taskService: TaskService;
+  kudosService: KudosService;
   db: Database;
 }
 
@@ -44,6 +47,12 @@ export function createApiRoutes(deps: ApiRouteDeps) {
   // --- Snippet API routes ---
   const snippetApiRoutes = createSnippetApiRoutes({ db: deps.db });
   app.route("/", snippetApiRoutes);
+
+  // --- Kudos API routes ---
+  const kudosApiRoutes = createKudosApiRoutes({
+    kudosService: deps.kudosService,
+  });
+  app.route("/", kudosApiRoutes);
 
   return app;
 }
