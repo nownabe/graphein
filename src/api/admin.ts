@@ -34,6 +34,8 @@ function decodePageToken(token: string): PageCursor | null {
   }
 }
 
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function filterFingerprint(params: Record<string, string | undefined>): string {
   const sorted = Object.entries(params)
     .filter(([_, v]) => v !== undefined)
@@ -374,7 +376,7 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
     let cursorCondition: any;
     if (query.pageToken) {
       const cursor = decodePageToken(query.pageToken);
-      if (!cursor || cursor.fp !== fp || !cursor.id) {
+      if (!cursor || cursor.fp !== fp || !cursor.id || !UUID_REGEX.test(cursor.id)) {
         return c.json(
           { error: { code: "validation_error", message: "Invalid or mismatched pageToken." } },
           422,
@@ -440,6 +442,14 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
     if (denied) return denied as any;
 
     const { id } = c.req.valid("param");
+    const apiUser = c.get("apiUser");
+
+    if (id === apiUser.id) {
+      return c.json(
+        { error: { code: "invalid_request", message: "Cannot deactivate yourself." } },
+        400,
+      );
+    }
 
     const user = await userService.findUserById(id);
     if (!user) {
