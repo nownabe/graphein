@@ -301,7 +301,7 @@ export function createSnippetApiRoutes(deps: { db: Database }) {
     const snippetIds = page.map((r) => r.id);
 
     let mentionedUsersMap = new Map<string, { id: string; displayName: string }[]>();
-    let mentionedGroupsMap = new Map<string, { id: string; name: string; handle: string }[]>();
+    let mentionedGroupsMap = new Map<string, { id: string; name: string; handle: string | null }[]>();
 
     if (snippetIds.length > 0) {
       const mentionedUsersRows = await db
@@ -333,7 +333,7 @@ export function createSnippetApiRoutes(deps: { db: Database }) {
 
       for (const row of mentionedGroupsRows) {
         const list = mentionedGroupsMap.get(row.snippetId) ?? [];
-        list.push({ id: row.usergroupId, name: row.name, handle: row.handle ?? "" });
+        list.push({ id: row.usergroupId, name: row.name, handle: row.handle });
         mentionedGroupsMap.set(row.snippetId, list);
       }
     }
