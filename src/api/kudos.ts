@@ -10,8 +10,10 @@ import { EmbeddedUserWithAvatarSchema, ErrorResponseSchema } from "./schemas";
 interface PageCursor {
   /** Filter fingerprint to detect changed filters between pages. */
   fp: string;
-  /** Cursor value — offset for kudos lists. */
+  /** Cursor value — ISO 8601 timestamp of postedAt for keyset pagination. */
   v: string;
+  /** Secondary cursor (entry ID) for tie-breaking when primary is a timestamp. */
+  id?: string;
 }
 
 function encodePageToken(cursor: PageCursor): string {
@@ -23,6 +25,7 @@ function decodePageToken(token: string): PageCursor | null {
     const raw = Buffer.from(token, "base64url").toString("utf-8");
     const parsed = JSON.parse(raw);
     if (typeof parsed.fp !== "string" || typeof parsed.v !== "string") return null;
+    if (parsed.id !== undefined && typeof parsed.id !== "string") return null;
     return parsed as PageCursor;
   } catch {
     return null;
@@ -190,35 +193,42 @@ export function createKudosApiRoutes(deps: { kudosService: KudosService }) {
       periodEnd: query.periodEnd,
     });
 
-    // Decode cursor to get offset
-    let offset = 0;
+    // Decode keyset cursor
+    let cursorPostedAt: Date | undefined;
+    let cursorEntryId: string | undefined;
     if (query.pageToken) {
       const cursor = decodePageToken(query.pageToken);
-      if (!cursor || cursor.fp !== fp) {
+      if (
+        !cursor ||
+        cursor.fp !== fp ||
+        !cursor.id ||
+        !isValidIso8601(cursor.v) ||
+        !UUID_REGEX.test(cursor.id)
+      ) {
         return c.json(
           { error: { code: "validation_error", message: "Invalid or mismatched pageToken." } },
           422,
         );
       }
-      const parsedOffset = Number(cursor.v);
-      if (!Number.isInteger(parsedOffset) || parsedOffset < 0) {
-        return c.json({ error: { code: "validation_error", message: "Invalid pageToken." } }, 422);
-      }
-      offset = parsedOffset;
+      cursorPostedAt = new Date(cursor.v);
+      cursorEntryId = cursor.id;
     }
 
-    const { entries, total } = await kudosService.listKudosEntries({
+    const { entries, total, hasNext } = await kudosService.listKudosEntries({
       postedById: query.postedBy,
       mentionedUserId: query.user,
       periodStart: query.periodStart ? new Date(query.periodStart) : undefined,
       periodEnd: query.periodEnd ? new Date(query.periodEnd) : undefined,
       limit: query.pageSize,
-      offset,
+      cursorPostedAt,
+      cursorEntryId,
     });
 
-    const nextOffset = offset + entries.length;
-    const hasNext = nextOffset < total;
-    const nextPageToken = hasNext ? encodePageToken({ fp, v: String(nextOffset) }) : "";
+    const lastEntry = entries[entries.length - 1];
+    const nextPageToken =
+      hasNext && lastEntry
+        ? encodePageToken({ fp, v: lastEntry.postedAt.toISOString(), id: lastEntry.entryId })
+        : "";
 
     return c.json(
       {

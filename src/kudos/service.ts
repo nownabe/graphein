@@ -1,4 +1,4 @@
-import { eq, ne, and, desc, gte, lt, sql, isNull } from "drizzle-orm";
+import { type SQL, eq, ne, and, or, desc, gte, lt, sql, isNull } from "drizzle-orm";
 import type { Database } from "../db/client";
 import {
   kudos,
@@ -23,7 +23,11 @@ export interface ListKudosFilters {
   periodStart?: Date;
   periodEnd?: Date;
   limit?: number;
+  /** Offset-based pagination (used by web UI). */
   offset?: number;
+  /** Keyset cursor: entries with (postedAt, entryId) before this point (used by API). */
+  cursorPostedAt?: Date;
+  cursorEntryId?: string;
 }
 
 export function createKudosService(db: Database) {
@@ -86,7 +90,7 @@ export function createKudosService(db: Database) {
 
   async function listKudosEntries(
     filters: ListKudosFilters,
-  ): Promise<{ entries: KudosEntryWithContext[]; total: number }> {
+  ): Promise<{ entries: KudosEntryWithContext[]; total: number; hasNext: boolean }> {
     const conditions = [];
     if (filters.postedById) {
       conditions.push(eq(kudos.postedById, filters.postedById));
@@ -112,15 +116,34 @@ export function createKudosService(db: Database) {
       conditions.push(ne(kudos.postedById, filters.mentionedUserId));
     }
 
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    const filterConditions = conditions.length > 0 ? conditions : [];
+
+    // Keyset cursor condition: (postedAt, entryId) < (cursorPostedAt, cursorEntryId)
+    let cursorCondition: SQL | undefined;
+    if (filters.cursorPostedAt && filters.cursorEntryId) {
+      cursorCondition = or(
+        lt(kudos.postedAt, filters.cursorPostedAt),
+        and(eq(kudos.postedAt, filters.cursorPostedAt), lt(kudosEntries.id, filters.cursorEntryId)),
+      );
+    }
+
+    const filterWhere =
+      filterConditions.length > 0 ? and(...filterConditions) : undefined;
 
     const [{ total }] = await db
       .select({ total: sql<number>`count(DISTINCT ${kudosEntries.id})::int` })
       .from(kudosEntries)
       .innerJoin(kudos, eq(kudosEntries.kudosId, kudos.id))
-      .where(where);
+      .where(filterWhere);
 
-    const rows = await db
+    const allConditions = cursorCondition
+      ? [...filterConditions, cursorCondition]
+      : filterConditions;
+    const where = allConditions.length > 0 ? and(...allConditions) : undefined;
+
+    const limit = filters.limit ?? 50;
+
+    let query = db
       .select({
         entryId: kudosEntries.id,
         message: kudosEntries.message,
@@ -134,11 +157,32 @@ export function createKudosService(db: Database) {
       .innerJoin(kudos, eq(kudosEntries.kudosId, kudos.id))
       .innerJoin(users, eq(kudos.postedById, users.id))
       .where(where)
-      .orderBy(desc(kudos.postedAt))
-      .limit(filters.limit ?? 50)
-      .offset(filters.offset ?? 0);
+      .orderBy(desc(kudos.postedAt), desc(kudosEntries.id))
+      .$dynamic();
 
-    const entries: KudosEntryWithContext[] = rows.map((row) => ({
+    if (filters.offset !== undefined) {
+      // Offset mode (web UI)
+      query = query.limit(limit).offset(filters.offset);
+    } else {
+      // Keyset mode (API) — fetch one extra to detect next page
+      query = query.limit(limit + 1);
+    }
+
+    const rows = await query;
+
+    let hasNext: boolean;
+    let page: typeof rows;
+    if (filters.offset !== undefined) {
+      // Offset mode: determine hasNext from total
+      hasNext = (filters.offset + rows.length) < total;
+      page = rows;
+    } else {
+      // Keyset mode: determine hasNext from extra row
+      hasNext = rows.length > limit;
+      page = hasNext ? rows.slice(0, limit) : rows;
+    }
+
+    const entries: KudosEntryWithContext[] = page.map((row) => ({
       entryId: row.entryId,
       message: row.message,
       poster: {
@@ -150,7 +194,7 @@ export function createKudosService(db: Database) {
       slackPermalink: row.slackPermalink,
     }));
 
-    return { entries, total };
+    return { entries, total, hasNext };
   }
 
   // Channel management
