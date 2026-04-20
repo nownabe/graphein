@@ -616,12 +616,6 @@
           "primaryKey": true,
           "notNull": true
         },
-        "token_prefix": {
-          "name": "token_prefix",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
         "client_id": {
           "name": "client_id",
           "type": "text",

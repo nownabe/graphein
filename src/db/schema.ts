@@ -282,11 +282,9 @@ export const oauthAuthorizationCodes = pgTable("oauth_authorization_codes", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-// OAuth refresh tokens — stores refresh tokens (30 day expiry) with soft-delete via revoked_at
-// Tokens are stored as SHA-256 hashes; tokenPrefix keeps a short prefix for debugging
+// OAuth refresh tokens — stores refresh tokens as SHA-256 hash (30 day expiry) with soft-delete via revoked_at
 export const oauthRefreshTokens = pgTable("oauth_refresh_tokens", {
   tokenHash: text("token_hash").primaryKey(),
-  tokenPrefix: text("token_prefix").notNull(),
   clientId: text("client_id").notNull(),
   userId: uuid("user_id")
     .notNull()

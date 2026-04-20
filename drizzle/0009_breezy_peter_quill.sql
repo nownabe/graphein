@@ -24,7 +24,6 @@ CREATE TABLE "oauth_clients" (
 --> statement-breakpoint
 CREATE TABLE "oauth_refresh_tokens" (
 	"token_hash" text PRIMARY KEY NOT NULL,
-	"token_prefix" text NOT NULL,
 	"client_id" text NOT NULL,
 	"user_id" uuid NOT NULL,
 	"scope" text NOT NULL,
