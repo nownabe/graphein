@@ -1,16 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import {
-  type SQL,
-  and,
-  eq,
-  lt,
-  gte,
-  or,
-  desc,
-  inArray,
-  count as drizzleCount,
-} from "drizzle-orm";
+import { type SQL, and, eq, lt, gte, or, desc, inArray, count as drizzleCount } from "drizzle-orm";
 import type { Database } from "../db/client";
 import {
   snippets,
