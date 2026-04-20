@@ -1,4 +1,4 @@
-import { eq, and, lt, isNotNull, or } from "drizzle-orm";
+import { eq, and, lt, gt, isNotNull, isNull, or } from "drizzle-orm";
 import type { Database } from "../db/client";
 import { oauthClients, oauthAuthorizationCodes, oauthRefreshTokens } from "../db/schema";
 
@@ -27,10 +27,13 @@ export function createOAuthService(db: Database) {
     clientName: string;
     redirectUris: string[];
     grantTypes?: string[];
+    tokenEndpointAuthMethod?: string;
   }) {
     const clientId = generateRandomString(32);
-    const rawSecret = generateRandomString(48);
-    const secretHash = await hashSha256(rawSecret);
+    const isPublic = metadata.tokenEndpointAuthMethod === "none";
+
+    const rawSecret = isPublic ? null : generateRandomString(48);
+    const secretHash = rawSecret ? await hashSha256(rawSecret) : null;
 
     const [client] = await db
       .insert(oauthClients)
@@ -80,17 +83,18 @@ export function createOAuthService(db: Database) {
   }
 
   async function consumeAuthorizationCode(code: string) {
-    const record = await db.query.oauthAuthorizationCodes.findFirst({
-      where: eq(oauthAuthorizationCodes.code, code),
-    });
+    // Atomic delete-and-return to prevent double-consume race conditions
+    const [record] = await db
+      .delete(oauthAuthorizationCodes)
+      .where(
+        and(
+          eq(oauthAuthorizationCodes.code, code),
+          gt(oauthAuthorizationCodes.expiresAt, new Date()),
+        ),
+      )
+      .returning();
 
     if (!record) return null;
-    if (record.expiresAt < new Date()) {
-      await db.delete(oauthAuthorizationCodes).where(eq(oauthAuthorizationCodes.code, code));
-      return null;
-    }
-
-    await db.delete(oauthAuthorizationCodes).where(eq(oauthAuthorizationCodes.code, code));
 
     return {
       clientId: record.clientId,
@@ -141,21 +145,22 @@ export function createOAuthService(db: Database) {
   async function consumeRefreshToken(token: string, clientId: string, resource: string) {
     const tokenHash = await hashToHex(token);
 
-    const record = await db.query.oauthRefreshTokens.findFirst({
-      where: eq(oauthRefreshTokens.tokenHash, tokenHash),
-    });
-
-    if (!record) return null;
-    if (record.clientId !== clientId) return null;
-    if (record.resource !== resource) return null;
-    if (record.revokedAt != null) return null;
-    if (record.expiresAt < new Date()) return null;
-
-    // Revoke the old token (rotation)
-    await db
+    // Atomic revoke-and-return to prevent double-consume race conditions
+    const [record] = await db
       .update(oauthRefreshTokens)
       .set({ revokedAt: new Date() })
-      .where(eq(oauthRefreshTokens.tokenHash, tokenHash));
+      .where(
+        and(
+          eq(oauthRefreshTokens.tokenHash, tokenHash),
+          eq(oauthRefreshTokens.clientId, clientId),
+          eq(oauthRefreshTokens.resource, resource),
+          isNull(oauthRefreshTokens.revokedAt),
+          gt(oauthRefreshTokens.expiresAt, new Date()),
+        ),
+      )
+      .returning();
+
+    if (!record) return null;
 
     return {
       clientId: record.clientId,
