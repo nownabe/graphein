@@ -347,10 +347,7 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
   function requireAdmin(c: any): Response | null {
     const apiRole = c.get("apiRole");
     if (apiRole !== "admin") {
-      return c.json(
-        { error: { code: "forbidden", message: "Admin role required." } },
-        403,
-      );
+      return c.json({ error: { code: "forbidden", message: "Admin role required." } }, 403);
     }
     return null;
   }
@@ -370,10 +367,7 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
     // Build filter
     const searchQuery = query.query?.trim();
     const filterCondition = searchQuery
-      ? or(
-          ilike(users.displayName, `%${searchQuery}%`),
-          ilike(users.email, `%${searchQuery}%`),
-        )
+      ? or(ilike(users.displayName, `%${searchQuery}%`), ilike(users.email, `%${searchQuery}%`))
       : undefined;
 
     // Decode cursor
@@ -415,9 +409,7 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
 
     const lastRow = page[page.length - 1];
     const nextPageToken =
-      hasNext && lastRow
-        ? encodePageToken({ fp, v: lastRow.displayName, id: lastRow.id })
-        : "";
+      hasNext && lastRow ? encodePageToken({ fp, v: lastRow.displayName, id: lastRow.id }) : "";
 
     return c.json(
       {
@@ -451,10 +443,7 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
 
     const user = await userService.findUserById(id);
     if (!user) {
-      return c.json(
-        { error: { code: "not_found", message: "User not found." } },
-        404,
-      );
+      return c.json({ error: { code: "not_found", message: "User not found." } }, 404);
     }
 
     // Idempotent: if already deactivated, return current state
@@ -552,10 +541,7 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
       where: eq(snippetChannels.id, id),
     });
     if (!existing) {
-      return c.json(
-        { error: { code: "not_found", message: "Snippet channel not found." } },
-        404,
-      );
+      return c.json({ error: { code: "not_found", message: "Snippet channel not found." } }, 404);
     }
 
     await snippetService.removeSnippetChannel(id);
@@ -633,10 +619,7 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
       where: eq(kudosChannels.id, id),
     });
     if (!existing) {
-      return c.json(
-        { error: { code: "not_found", message: "Kudos channel not found." } },
-        404,
-      );
+      return c.json({ error: { code: "not_found", message: "Kudos channel not found." } }, 404);
     }
 
     await kudosService.removeKudosChannel(id);
