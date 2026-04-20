@@ -95,20 +95,6 @@ async function runCodexReview(prNumber: string, cwd: string): Promise<void> {
     return;
   }
 
-  // Check if there are actionable findings (heuristic: non-trivial output)
-  const hasFindings =
-    output.toLowerCase().includes("issue") ||
-    output.toLowerCase().includes("bug") ||
-    output.toLowerCase().includes("error") ||
-    output.toLowerCase().includes("fix") ||
-    output.toLowerCase().includes("warning") ||
-    output.length > 200;
-
-  if (!hasFindings) {
-    console.log("   Codex review: no actionable findings.");
-    return;
-  }
-
   console.log("   Codex review: posting findings as PR comment...");
 
   const commentBody = `## Codex CLI Review\n\n${output}`;
@@ -228,7 +214,7 @@ console.log(`   Session: ${sessionId}`);
 // Phase 2-3: Wait and fix loop
 // ---------------------------------------------------------------------------
 
-// Run Codex review in parallel with waiting for CI/review
+// Run Codex review before entering the wait loop
 if (enableCodexReview) {
   await runCodexReview(prNumber, worktreePath);
 }
