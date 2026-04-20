@@ -3,7 +3,7 @@
  * create-pr-and-wait: Create a PR and block until CI passes and LGTM is received.
  *
  * Usage:
- *   bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>]
+ *   bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>] [--no-wait]
  *   bun run tools/create-pr-and-wait.ts wait <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
  *
  * Both subcommands poll every 30s (up to 10 times = ~5 min). When a change is
@@ -17,6 +17,7 @@
  *   merged        PR was merged
  *   closed        PR was closed without merging
  *   pending       nothing actionable yet (poll timed out, call `wait` again)
+ *   created       PR was created (--no-wait mode, no polling performed)
  *
  * Exit code is always 0 on success. Non-zero only on errors (e.g., PR creation failure).
  */
@@ -340,6 +341,7 @@ async function create(args: string[]) {
       labels: { type: "string" },
       draft: { type: "boolean", default: false },
       base: { type: "string" },
+      "no-wait": { type: "boolean", default: false },
     },
   });
 
@@ -381,6 +383,25 @@ async function create(args: string[]) {
   const since = new Date();
 
   console.error(`PR created: ${url}`);
+
+  if (values["no-wait"]) {
+    // Return immediately with PR info, no polling
+    console.log(
+      JSON.stringify(
+        {
+          status: "created",
+          lgtm: false,
+          pr: { url, number },
+          ci: { state: "pending", failed: [] },
+          feedback: [],
+        },
+        null,
+        2,
+      ),
+    );
+    process.exit(0);
+  }
+
   console.error(`Polling PR #${number} every ${POLL_INTERVAL_SEC}s (max ${MAX_POLLS} checks)...`);
 
   await pollLoop(number, values.reviewer!, since);
@@ -428,12 +449,13 @@ switch (subcommand) {
     break;
   default:
     console.error(`Usage:
-  bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>]
+  bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>] [--no-wait]
   bun run tools/create-pr-and-wait.ts wait <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
 
 Subcommands:
   create   Create a PR then poll until CI passes and LGTM is received.
-           Options: --title, --body, --assignee, --reviewer, --labels, --draft, --base
+           Options: --title, --body, --assignee, --reviewer, --labels, --draft, --base, --no-wait
+           With --no-wait, creates the PR and exits immediately with status "created".
   wait     Resume polling an existing PR (use after fixing issues).
 
 Both subcommands poll every ${POLL_INTERVAL_SEC}s (up to ${MAX_POLLS} times) and exit when

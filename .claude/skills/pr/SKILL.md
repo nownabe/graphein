@@ -113,6 +113,18 @@ If a PR does not yet exist for this branch:
 
    Handle the result the same way as step 3. Repeat until `approved`.
 
+## Subagent Mode (--no-wait)
+
+When called from a parent orchestrator (e.g., handle-issue) that will manage the wait loop itself, use `--no-wait` to create the PR and return immediately:
+
+```bash
+bun run tools/create-pr-and-wait.ts create --title "<title>" --body "<body>" --no-wait
+```
+
+This returns JSON with `status: "created"` and the PR URL/number. The parent orchestrator is responsible for running the wait loop and notifying the user.
+
+**When to use --no-wait**: Only when explicitly instructed by the caller. By default (direct `/pr` invocation), always use the full wait loop.
+
 ## Important Rules
 
 - PRs should be small and focused on a single meaningful change.

@@ -153,10 +153,12 @@ All documentation, code comments, commit messages, issues, and pull requests mus
   ```bash
   # Create PR and poll for CI/review status (~5 min polling window)
   bun run tools/create-pr-and-wait.ts create --title "feat: ..." --body "..." [--labels "l1,l2"] [--draft] [--base <branch>]
+  # Create PR without polling (used by handle-issue orchestrator)
+  bun run tools/create-pr-and-wait.ts create --title "feat: ..." --body "..." --no-wait
   # Resume polling after fixing CI failures or addressing review feedback
   bun run tools/create-pr-and-wait.ts wait <pr-number> --since <iso-timestamp>
   ```
-  The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, or `pending`. Non-zero exit only on errors.
+  The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, `pending`, or `created` (with `--no-wait`). Non-zero exit only on errors.
 
 ## E2E Tests
 
