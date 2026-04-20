@@ -17,12 +17,33 @@ import type { SessionHelpers } from "../auth/session";
 // match what @hono/mcp actually provides at runtime.
 interface HonoOAuthServerProvider {
   readonly clientsStore: OAuthRegisteredClientsStore;
-  authorize(client: OAuthClientInformationFull, params: AuthorizationParams, c: Context): Promise<void>;
-  challengeForAuthorizationCode(client: OAuthClientInformationFull, authorizationCode: string): Promise<string>;
-  exchangeAuthorizationCode(client: OAuthClientInformationFull, authorizationCode: string, codeVerifier?: string, redirectUri?: string, resource?: URL): Promise<OAuthTokens>;
-  exchangeRefreshToken(client: OAuthClientInformationFull, refreshToken: string, scopes?: string[], resource?: URL): Promise<OAuthTokens>;
+  authorize(
+    client: OAuthClientInformationFull,
+    params: AuthorizationParams,
+    c: Context,
+  ): Promise<void>;
+  challengeForAuthorizationCode(
+    client: OAuthClientInformationFull,
+    authorizationCode: string,
+  ): Promise<string>;
+  exchangeAuthorizationCode(
+    client: OAuthClientInformationFull,
+    authorizationCode: string,
+    codeVerifier?: string,
+    redirectUri?: string,
+    resource?: URL,
+  ): Promise<OAuthTokens>;
+  exchangeRefreshToken(
+    client: OAuthClientInformationFull,
+    refreshToken: string,
+    scopes?: string[],
+    resource?: URL,
+  ): Promise<OAuthTokens>;
   verifyAccessToken(token: string): Promise<AuthInfo>;
-  revokeToken?(client: OAuthClientInformationFull, request: OAuthTokenRevocationRequest): Promise<void>;
+  revokeToken?(
+    client: OAuthClientInformationFull,
+    request: OAuthTokenRevocationRequest,
+  ): Promise<void>;
 }
 
 const ACCESS_TOKEN_EXPIRY_SECONDS = 60 * 60; // 1 hour
@@ -155,7 +176,11 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       throw new Error("Resource mismatch");
     }
 
-    const accessToken = await this.createAccessToken(codeData.userId, codeData.scope, codeData.resource);
+    const accessToken = await this.createAccessToken(
+      codeData.userId,
+      codeData.scope,
+      codeData.resource,
+    );
 
     const refreshToken = await this.oauthService.createRefreshToken({
       clientId: codeData.clientId,
@@ -186,7 +211,11 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
     );
     if (!tokenData) throw new Error("Invalid or expired refresh token");
 
-    const accessToken = await this.createAccessToken(tokenData.userId, tokenData.scope, tokenData.resource);
+    const accessToken = await this.createAccessToken(
+      tokenData.userId,
+      tokenData.scope,
+      tokenData.resource,
+    );
 
     const newRefreshToken = await this.oauthService.createRefreshToken({
       clientId: tokenData.clientId,
@@ -243,7 +272,11 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
     await this.oauthService.revokeRefreshToken(request.token);
   }
 
-  private async createAccessToken(userId: string, scope: string, resource: string): Promise<string> {
+  private async createAccessToken(
+    userId: string,
+    scope: string,
+    resource: string,
+  ): Promise<string> {
     const now = Math.floor(Date.now() / 1000);
     return sign(
       {

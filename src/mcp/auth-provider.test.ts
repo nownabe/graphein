@@ -10,7 +10,16 @@ const BASE_URL = "https://graphein.example.com";
 
 function createMockOAuthService(overrides: Partial<OAuthService> = {}): OAuthService {
   return {
-    registerClient: async () => ({ clientId: "new-client", clientSecret: "secret", clientName: "Test", redirectUris: [], grantTypes: [], id: "uuid", clientSecretHash: null, createdAt: new Date() }),
+    registerClient: async () => ({
+      clientId: "new-client",
+      clientSecret: "secret",
+      clientName: "Test",
+      redirectUris: [],
+      grantTypes: [],
+      id: "uuid",
+      clientSecretHash: null,
+      createdAt: new Date(),
+    }),
     getClient: async () => undefined,
     createAuthorizationCode: async () => "test-code",
     consumeAuthorizationCode: async () => null,
@@ -109,7 +118,12 @@ describe("GrapheinOAuthProvider", () => {
       app.get("/test", async (c) => {
         await provider.authorize(
           { client_id: "test-client", redirect_uris: ["https://example.com/cb"] } as any,
-          { redirectUri: "https://example.com/cb", codeChallenge: "challenge", state: "state123", scopes: ["graphein"] },
+          {
+            redirectUri: "https://example.com/cb",
+            codeChallenge: "challenge",
+            state: "state123",
+            scopes: ["graphein"],
+          },
           c,
         );
         return c.res;
@@ -141,7 +155,13 @@ describe("GrapheinOAuthProvider", () => {
       app.get("/test", async (c) => {
         await provider.authorize(
           { client_id: "test-client", redirect_uris: ["https://example.com/cb"] } as any,
-          { redirectUri: "https://example.com/cb", codeChallenge: "challenge", state: "state123", scopes: ["graphein"], resource: new URL("https://graphein.example.com/mcp") },
+          {
+            redirectUri: "https://example.com/cb",
+            codeChallenge: "challenge",
+            state: "state123",
+            scopes: ["graphein"],
+            resource: new URL("https://graphein.example.com/mcp"),
+          },
           c,
         );
         return c.res;
@@ -161,7 +181,10 @@ describe("GrapheinOAuthProvider", () => {
   describe("challengeForAuthorizationCode", () => {
     test("returns code challenge", async () => {
       mockOAuthService = createMockOAuthService({
-        getCodeChallenge: async () => ({ codeChallenge: "the-challenge", codeChallengeMethod: "S256" }),
+        getCodeChallenge: async () => ({
+          codeChallenge: "the-challenge",
+          codeChallengeMethod: "S256",
+        }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
@@ -176,7 +199,9 @@ describe("GrapheinOAuthProvider", () => {
     });
 
     test("throws when code not found", async () => {
-      await expect(provider.challengeForAuthorizationCode({} as any, "bad-code")).rejects.toThrow("Authorization code not found");
+      await expect(provider.challengeForAuthorizationCode({} as any, "bad-code")).rejects.toThrow(
+        "Authorization code not found",
+      );
     });
   });
 
@@ -216,7 +241,7 @@ describe("GrapheinOAuthProvider", () => {
       expect(tokens.scope).toBe("graphein");
 
       // Verify the access token is a valid JWT
-      const decoded = await verify(tokens.access_token, MCP_JWT_SECRET, "HS256") as any;
+      const decoded = (await verify(tokens.access_token, MCP_JWT_SECRET, "HS256")) as any;
       expect(decoded.sub).toBe("user-uuid");
       expect(decoded.aud).toBe("https://graphein.example.com/mcp");
       expect(decoded.typ).toBe("mcp+jwt");
@@ -319,7 +344,12 @@ describe("GrapheinOAuthProvider", () => {
 
     test("throws on invalid refresh token", async () => {
       await expect(
-        provider.exchangeRefreshToken({ client_id: "x" } as any, "bad", [], new URL("https://example.com/mcp")),
+        provider.exchangeRefreshToken(
+          { client_id: "x" } as any,
+          "bad",
+          [],
+          new URL("https://example.com/mcp"),
+        ),
       ).rejects.toThrow("Invalid or expired refresh token");
     });
   });
@@ -328,7 +358,14 @@ describe("GrapheinOAuthProvider", () => {
     test("verifies valid token", async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await sign(
-        { sub: "user-uuid", aud: "https://graphein.example.com/mcp", scope: "graphein", typ: "mcp+jwt", exp: now + 3600, iat: now },
+        {
+          sub: "user-uuid",
+          aud: "https://graphein.example.com/mcp",
+          scope: "graphein",
+          typ: "mcp+jwt",
+          exp: now + 3600,
+          iat: now,
+        },
         MCP_JWT_SECRET,
         "HS256",
       );
@@ -343,7 +380,14 @@ describe("GrapheinOAuthProvider", () => {
     test("rejects expired token", async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await sign(
-        { sub: "user-uuid", aud: "https://graphein.example.com/mcp", scope: "graphein", typ: "mcp+jwt", exp: now - 10, iat: now - 3610 },
+        {
+          sub: "user-uuid",
+          aud: "https://graphein.example.com/mcp",
+          scope: "graphein",
+          typ: "mcp+jwt",
+          exp: now - 10,
+          iat: now - 3610,
+        },
         MCP_JWT_SECRET,
         "HS256",
       );
@@ -354,7 +398,14 @@ describe("GrapheinOAuthProvider", () => {
     test("rejects wrong typ", async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await sign(
-        { sub: "user-uuid", aud: "https://graphein.example.com/mcp", scope: "graphein", typ: "wrong", exp: now + 3600, iat: now },
+        {
+          sub: "user-uuid",
+          aud: "https://graphein.example.com/mcp",
+          scope: "graphein",
+          typ: "wrong",
+          exp: now + 3600,
+          iat: now,
+        },
         MCP_JWT_SECRET,
         "HS256",
       );
@@ -375,7 +426,14 @@ describe("GrapheinOAuthProvider", () => {
 
       const now = Math.floor(Date.now() / 1000);
       const token = await sign(
-        { sub: "user-uuid", aud: "https://graphein.example.com/mcp", scope: "graphein", typ: "mcp+jwt", exp: now + 3600, iat: now },
+        {
+          sub: "user-uuid",
+          aud: "https://graphein.example.com/mcp",
+          scope: "graphein",
+          typ: "mcp+jwt",
+          exp: now + 3600,
+          iat: now,
+        },
         MCP_JWT_SECRET,
         "HS256",
       );
@@ -386,7 +444,14 @@ describe("GrapheinOAuthProvider", () => {
     test("rejects invalid signature", async () => {
       const now = Math.floor(Date.now() / 1000);
       const token = await sign(
-        { sub: "user-uuid", aud: "x", scope: "graphein", typ: "mcp+jwt", exp: now + 3600, iat: now },
+        {
+          sub: "user-uuid",
+          aud: "x",
+          scope: "graphein",
+          typ: "mcp+jwt",
+          exp: now + 3600,
+          iat: now,
+        },
         "wrong-secret",
         "HS256",
       );
@@ -399,7 +464,9 @@ describe("GrapheinOAuthProvider", () => {
     test("delegates to oauth service", async () => {
       let revokedToken: string | undefined;
       mockOAuthService = createMockOAuthService({
-        revokeRefreshToken: async (token: string) => { revokedToken = token; },
+        revokeRefreshToken: async (token: string) => {
+          revokedToken = token;
+        },
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
