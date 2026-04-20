@@ -255,6 +255,47 @@ export const apiKeys = pgTable("api_keys", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// OAuth clients — dynamically registered OAuth clients for MCP authentication
+export const oauthClients = pgTable("oauth_clients", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: text("client_id").notNull().unique(),
+  clientSecretHash: bytea("client_secret_hash"),
+  clientName: text("client_name").notNull(),
+  redirectUris: text("redirect_uris").array().notNull(),
+  grantTypes: text("grant_types").array().notNull().default(["authorization_code"]),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// OAuth authorization codes — temporary storage for authorization codes (5 min TTL)
+export const oauthAuthorizationCodes = pgTable("oauth_authorization_codes", {
+  code: text("code").primaryKey(),
+  clientId: text("client_id").notNull(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  redirectUri: text("redirect_uri").notNull(),
+  scope: text("scope").notNull(),
+  resource: text("resource").notNull(),
+  codeChallenge: text("code_challenge").notNull(),
+  codeChallengeMethod: text("code_challenge_method").notNull().default("S256"),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// OAuth refresh tokens — stores refresh tokens as SHA-256 hash (30 day expiry) with soft-delete via revoked_at
+export const oauthRefreshTokens = pgTable("oauth_refresh_tokens", {
+  tokenHash: text("token_hash").primaryKey(),
+  clientId: text("client_id").notNull(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id),
+  scope: text("scope").notNull(),
+  resource: text("resource").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   createdTasks: many(tasks),
@@ -266,6 +307,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   kudos: many(kudos),
   kudosEntryMentions: many(kudosEntryMentionedUsers),
   apiKeys: many(apiKeys),
+  oauthAuthorizationCodes: many(oauthAuthorizationCodes),
+  oauthRefreshTokens: many(oauthRefreshTokens),
 }));
 
 export const apiKeysRelations = relations(apiKeys, ({ one }) => ({
@@ -398,3 +441,17 @@ export const kudosEntryMentionedUsergroupsRelations = relations(
     }),
   }),
 );
+
+export const oauthAuthorizationCodesRelations = relations(oauthAuthorizationCodes, ({ one }) => ({
+  user: one(users, {
+    fields: [oauthAuthorizationCodes.userId],
+    references: [users.id],
+  }),
+}));
+
+export const oauthRefreshTokensRelations = relations(oauthRefreshTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [oauthRefreshTokens.userId],
+    references: [users.id],
+  }),
+}));
