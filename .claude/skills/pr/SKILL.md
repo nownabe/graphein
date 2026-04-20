@@ -70,17 +70,25 @@ If a PR does not yet exist for this branch:
    git diff main...HEAD
    ```
 
-2. Create the PR and start waiting with the `create-pr-and-wait` tool. Set a 600000ms timeout:
+2. Create the PR with `create-pr` tool:
 
    ```bash
-   bun run tools/create-pr-and-wait.ts create --title "<title>" --body "<body>"
+   bun run tools/create-pr.ts --title "<title>" --body "<body>"
    ```
 
    - Title: concise, under 70 characters
    - Body: summary of changes with context on "why"
-   - The tool creates the PR, then automatically polls every 30s (up to ~5 min) for CI and review status
+   - Returns JSON with `url` and `number`
 
-3. **Handle the result based on the `status` field in the JSON output:**
+3. Start waiting with `wait-pr` tool. Set a 600000ms timeout:
+
+   ```bash
+   bun run tools/wait-pr.ts <pr-number>
+   ```
+
+   The tool polls every 30s (up to ~5 min) for CI and review status.
+
+4. **Handle the result based on the `status` field in the JSON output:**
    - **`approved`**: CI passed and LGTM received. Output the PR URL and stop.
 
    - **`ci_failed`**: One or more CI checks failed.
@@ -105,25 +113,19 @@ If a PR does not yet exist for this branch:
 
    - **`pending`**: CI still running, no feedback yet. Resume waiting (see below).
 
-4. **Resume waiting** after fixing issues or on pending timeout. Use `wait` with `--since` set to the current UTC timestamp to filter out already-addressed feedback. Set a 600000ms timeout:
+5. **Resume waiting** after fixing issues or on pending timeout. Use `--since` set to the current UTC timestamp to filter out already-addressed feedback. Set a 600000ms timeout:
 
    ```bash
-   bun run tools/create-pr-and-wait.ts wait <pr-number> --since $(date -u +%Y-%m-%dT%H:%M:%SZ)
+   bun run tools/wait-pr.ts <pr-number> --since $(date -u +%Y-%m-%dT%H:%M:%SZ)
    ```
 
-   Handle the result the same way as step 3. Repeat until `approved`.
+   Handle the result the same way as step 4. Repeat until `approved`.
 
-## Subagent Mode (--no-wait)
+## Subagent Mode (create only, no wait)
 
-When called from a parent orchestrator (e.g., handle-issue) that will manage the wait loop itself, use `--no-wait` to create the PR and return immediately:
+When called from a parent orchestrator (e.g., handle-issue) that will manage the wait loop itself, only run `create-pr.ts` and return the result. Do NOT run `wait-pr.ts`.
 
-```bash
-bun run tools/create-pr-and-wait.ts create --title "<title>" --body "<body>" --no-wait
-```
-
-This returns JSON with `status: "created"` and the PR URL/number. The parent orchestrator is responsible for running the wait loop and notifying the user.
-
-**When to use --no-wait**: Only when explicitly instructed by the caller. By default (direct `/pr` invocation), always use the full wait loop.
+**When to use**: Only when explicitly instructed by the caller. By default (direct `/pr` invocation), always run both create and wait.
 
 ## Important Rules
 

@@ -1,14 +1,12 @@
 #!/usr/bin/env bun
 /**
- * create-pr-and-wait: Create a PR and block until CI passes and LGTM is received.
+ * wait-pr: Poll a PR until CI passes and LGTM is received, or an actionable state is reached.
  *
  * Usage:
- *   bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>] [--no-wait]
- *   bun run tools/create-pr-and-wait.ts wait <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
+ *   bun run tools/wait-pr.ts <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
  *
- * Both subcommands poll every 30s (up to 10 times = ~5 min). When a change is
- * detected the tool waits a few seconds for all related data to settle, then
- * re-fetches everything and exits with the final result.
+ * Polls every 30s (up to 10 times = ~5 min). When a change is detected the tool
+ * waits a few seconds for related data to settle, then re-fetches and exits.
  *
  * The JSON output includes a `status` field indicating the result:
  *   approved      LGTM received and all CI checks passed
@@ -16,10 +14,9 @@
  *   has_feedback  review comments or PR comments to address
  *   merged        PR was merged
  *   closed        PR was closed without merging
- *   pending       nothing actionable yet (poll timed out, call `wait` again)
- *   created       PR was created (--no-wait mode, no polling performed)
+ *   pending       nothing actionable yet (poll timed out, call again)
  *
- * Exit code is always 0 on success. Non-zero only on errors (e.g., PR creation failure).
+ * Exit code is always 0 on success. Non-zero only on errors.
  */
 
 import { parseArgs } from "util";
@@ -327,141 +324,33 @@ async function pollLoop(prNumber: string, reviewer: string, since: Date | null):
 }
 
 // ---------------------------------------------------------------------------
-// create — create PR then poll
-// ---------------------------------------------------------------------------
-
-async function create(args: string[]) {
-  const { values } = parseArgs({
-    args,
-    options: {
-      title: { type: "string" },
-      body: { type: "string" },
-      assignee: { type: "string", default: "nownabe" },
-      reviewer: { type: "string", default: "nownabe" },
-      labels: { type: "string" },
-      draft: { type: "boolean", default: false },
-      base: { type: "string" },
-      "no-wait": { type: "boolean", default: false },
-    },
-  });
-
-  if (!values.title || !values.body) {
-    console.error("Error: --title and --body are required");
-    process.exit(1);
-  }
-
-  const ghArgs = [
-    "pr",
-    "create",
-    "--title",
-    values.title,
-    "--body",
-    values.body,
-    "--assignee",
-    values.assignee!,
-  ];
-
-  if (values.labels) {
-    ghArgs.push("--label", values.labels);
-  }
-  if (values.draft) {
-    ghArgs.push("--draft");
-  }
-  if (values.base) {
-    ghArgs.push("--base", values.base);
-  }
-
-  const result = await gh(...ghArgs);
-
-  if (result.exitCode !== 0) {
-    console.error(`Failed to create PR: ${result.stderr}`);
-    process.exit(1);
-  }
-
-  const url = result.stdout;
-  const number = url.split("/").pop()!;
-  const since = new Date();
-
-  console.error(`PR created: ${url}`);
-
-  if (values["no-wait"]) {
-    // Return immediately with PR info, no polling
-    console.log(
-      JSON.stringify(
-        {
-          status: "created",
-          lgtm: false,
-          pr: { url, number },
-          ci: { state: "pending", failed: [] },
-          feedback: [],
-        },
-        null,
-        2,
-      ),
-    );
-    process.exit(0);
-  }
-
-  console.error(`Polling PR #${number} every ${POLL_INTERVAL_SEC}s (max ${MAX_POLLS} checks)...`);
-
-  await pollLoop(number, values.reviewer!, since);
-}
-
-// ---------------------------------------------------------------------------
-// wait — resume polling an existing PR
-// ---------------------------------------------------------------------------
-
-async function wait(args: string[]) {
-  const { values, positionals } = parseArgs({
-    args,
-    options: {
-      reviewer: { type: "string", default: "nownabe" },
-      since: { type: "string" },
-    },
-    allowPositionals: true,
-  });
-
-  const prNumber = positionals[0];
-  if (!prNumber) {
-    console.error("Error: PR number is required");
-    process.exit(1);
-  }
-
-  const since = values.since ? new Date(values.since) : null;
-
-  console.error(`Polling PR #${prNumber} every ${POLL_INTERVAL_SEC}s (max ${MAX_POLLS} checks)...`);
-
-  await pollLoop(prNumber, values.reviewer!, since);
-}
-
-// ---------------------------------------------------------------------------
 // main
 // ---------------------------------------------------------------------------
 
-const [subcommand, ...rest] = process.argv.slice(2);
+const { values, positionals } = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    reviewer: { type: "string", default: "nownabe" },
+    since: { type: "string" },
+  },
+  allowPositionals: true,
+});
 
-switch (subcommand) {
-  case "create":
-    await create(rest);
-    break;
-  case "wait":
-    await wait(rest);
-    break;
-  default:
-    console.error(`Usage:
-  bun run tools/create-pr-and-wait.ts create --title <title> --body <body> [--assignee <user>] [--reviewer <user>] [--labels <l1,l2>] [--draft] [--base <branch>] [--no-wait]
-  bun run tools/create-pr-and-wait.ts wait <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
+const prNumber = positionals[0];
+if (!prNumber) {
+  console.error(`Usage:
+  bun run tools/wait-pr.ts <pr-number> [--reviewer <user>] [--since <iso-timestamp>]
 
-Subcommands:
-  create   Create a PR then poll until CI passes and LGTM is received.
-           Options: --title, --body, --assignee, --reviewer, --labels, --draft, --base, --no-wait
-           With --no-wait, creates the PR and exits immediately with status "created".
-  wait     Resume polling an existing PR (use after fixing issues).
-
-Both subcommands poll every ${POLL_INTERVAL_SEC}s (up to ${MAX_POLLS} times) and exit when
+Polls every ${POLL_INTERVAL_SEC}s (up to ${MAX_POLLS} times) and exits when
 an actionable state is reached.
 
-The JSON output includes a "status" field: approved, ci_failed, has_feedback, or pending.
+The JSON output includes a "status" field: approved, ci_failed, has_feedback, merged, closed, or pending.
 Exit code is always 0 on success. Non-zero only on errors.`);
-    process.exit(1);
+  process.exit(1);
 }
+
+const since = values.since ? new Date(values.since) : null;
+
+console.error(`Polling PR #${prNumber} every ${POLL_INTERVAL_SEC}s (max ${MAX_POLLS} checks)...`);
+
+await pollLoop(prNumber, values.reviewer!, since);

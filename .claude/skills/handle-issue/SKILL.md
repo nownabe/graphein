@@ -22,15 +22,14 @@ Use the `Agent` tool with the following parameters:
 
 - `subagent_type`: `"issue-handler"`
 - `isolation`: `"worktree"`
-- `prompt`: Include the issue reference AND instruct it to use `--no-wait` mode for PR creation:
+- `prompt`: Include the issue reference AND instruct it to use subagent mode (create only, no wait):
 
   ```
   Handle issue $ARGUMENTS
 
-  IMPORTANT: When creating the PR (step 5 of /pr skill), use --no-wait flag:
-    bun run tools/create-pr-and-wait.ts create --title "..." --body "..." --no-wait
-  This returns immediately with the PR URL and number. Do NOT run the wait loop.
-  Return the full JSON output from the create command in your response.
+  IMPORTANT: When creating the PR (step 5 of /pr skill), use subagent mode:
+  only run create-pr.ts, do NOT run wait-pr.ts. The parent orchestrator
+  handles the wait loop. Return the JSON output from create-pr.ts in your response.
   ```
 
 - `description`: `"Implement issue $ARGUMENTS"`
@@ -39,7 +38,7 @@ Use the `Agent` tool with the following parameters:
 
 After the agent returns:
 
-1. **Parse the PR info** from the agent's response (look for the JSON with `status: "created"`, extract `pr.url` and `pr.number`).
+1. **Parse the PR info** from the agent's response (look for the JSON with `url` and `number` fields).
 
 2. **Notify the user** by outputting a message:
 
@@ -51,7 +50,7 @@ After the agent returns:
 3. **Run the wait loop**. Use Bash with a 600000ms timeout:
 
    ```bash
-   bun run tools/create-pr-and-wait.ts wait <pr-number> --since <iso-timestamp>
+   bun run tools/wait-pr.ts <pr-number> --since <iso-timestamp>
    ```
 
    Use the current UTC time as `--since`.
