@@ -3,7 +3,7 @@
  * handle-issue: Orchestrate handling a GitHub issue end-to-end.
  *
  * Usage:
- *   bun run tools/handle-issue.ts <issue-number-or-url>
+ *   bin/handle-issue <issue-number-or-url>
  *
  * This script controls the workflow deterministically:
  *   1. Create a git worktree for isolated development
@@ -20,7 +20,7 @@ const MAX_FIX_ROUNDS = 5;
 
 const issueRef = process.argv[2];
 if (!issueRef) {
-  console.error("Usage: bun run tools/handle-issue.ts <issue-number-or-url>");
+  console.error("Usage: bin/handle-issue <issue-number-or-url>");
   process.exit(1);
 }
 
