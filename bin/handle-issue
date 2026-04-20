@@ -16,11 +16,23 @@
  * The claude CLI uses all existing project assets (CLAUDE.md, hooks, skills, etc).
  */
 
+import { parseArgs } from "util";
+
 const MAX_FIX_ROUNDS = 5;
 
-const issueRef = process.argv[2];
+const { values, positionals } = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    "codex-review": { type: "boolean", default: false },
+  },
+  allowPositionals: true,
+});
+
+const issueRef = positionals[0];
+const enableCodexReview = values["codex-review"]!;
+
 if (!issueRef) {
-  console.error("Usage: bin/handle-issue <issue-number-or-url>");
+  console.error("Usage: bin/handle-issue <issue-number-or-url> [--codex-review]");
   process.exit(1);
 }
 
@@ -57,6 +69,47 @@ function extractSessionId(jsonOutput: string): string | null {
     return result.session_id ?? null;
   } catch {
     return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Codex review helper
+// ---------------------------------------------------------------------------
+
+async function runCodexReview(prNumber: string, cwd: string): Promise<void> {
+  console.log(`\n🔍 Running Codex CLI review...`);
+
+  const codexResult = await run(["codex", "review", "--base", "main"], {
+    timeout: 300_000,
+    cwd,
+  });
+
+  if (codexResult.exitCode !== 0) {
+    console.error("⚠️  Codex review failed (non-zero exit), skipping.");
+    return;
+  }
+
+  const output = codexResult.stdout;
+  if (!output.trim()) {
+    console.log("   Codex review: no output.");
+    return;
+  }
+
+  console.log("   Codex review: posting findings as PR comment...");
+
+  const commentBody = `## Codex CLI Review\n\n${output}`;
+  const tmpFile = `${cwd}/.codex-review-comment.tmp`;
+  await Bun.write(tmpFile, commentBody);
+  const commentResult = await run(
+    ["gh", "pr", "comment", prNumber, "--body-file", tmpFile],
+    { cwd },
+  );
+  await run(["rm", "-f", tmpFile], { cwd });
+
+  if (commentResult.exitCode === 0) {
+    console.log("   Posted Codex review comment on PR.");
+  } else {
+    console.error("⚠️  Failed to post Codex review comment.");
   }
 }
 
@@ -164,10 +217,18 @@ console.log(`   Session: ${sessionId}`);
 for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
   console.log(`\n⏳ Waiting for CI/review (round ${round}/${MAX_FIX_ROUNDS})...`);
 
-  const waitResult = await run(["bun", "run", "tools/wait-pr.ts", prNumber], {
+  // Run Codex review in parallel with wait-pr so findings appear as PR comments
+  // that wait-pr will pick up as feedback
+  const waitPromise = run(["bun", "run", "tools/wait-pr.ts", prNumber], {
     timeout: 600_000,
     cwd: worktreePath,
   });
+
+  if (enableCodexReview) {
+    await runCodexReview(prNumber, worktreePath);
+  }
+
+  const waitResult = await waitPromise;
 
   if (waitResult.exitCode !== 0) {
     console.error("❌ wait-pr.ts failed");
