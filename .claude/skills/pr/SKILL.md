@@ -70,15 +70,15 @@ If a PR does not yet exist for this branch:
    git diff main...HEAD
    ```
 
-2. Create the PR with `create-pr` tool:
+2. Create the PR:
 
    ```bash
-   bun run tools/create-pr.ts --title "<title>" --body "<body>"
+   gh pr create --title "<title>" --body "<body>" --assignee nownabe
    ```
 
    - Title: concise, under 70 characters
    - Body: summary of changes with context on "why"
-   - Returns JSON with `url` and `number`
+   - Returns the PR URL; extract the number from the URL path
 
 3. Start waiting with `wait-pr` tool. Set a 600000ms timeout:
 
@@ -123,7 +123,7 @@ If a PR does not yet exist for this branch:
 
 ## Subagent Mode (create only, no wait)
 
-When called from a parent orchestrator (e.g., handle-issue) that will manage the wait loop itself, only run `create-pr.ts` and return the result. Do NOT run `wait-pr.ts`.
+When called from a parent orchestrator (e.g., handle-issue) that will manage the wait loop itself, only run `gh pr create` and return the PR URL. Do NOT run `wait-pr.ts`.
 
 **When to use**: Only when explicitly instructed by the caller. By default (direct `/pr` invocation), always run both create and wait.
 

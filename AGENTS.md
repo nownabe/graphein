@@ -149,14 +149,6 @@ All documentation, code comments, commit messages, issues, and pull requests mus
   bun run tools/run-sql.ts --file path/to/query.sql             # from file
   ```
 
-- **`tools/create-pr.ts`**: Create a GitHub PR. Used by the `/pr` skill instead of `gh pr create` directly. Do not use `gh pr create` — it is forbidden by hooks.
-
-  ```bash
-  bun run tools/create-pr.ts --title "feat: ..." --body "..." [--labels "l1,l2"] [--draft] [--base <branch>]
-  ```
-
-  Outputs JSON: `{ "url": "https://...", "number": "123" }`. Non-zero exit only on errors.
-
 - **`tools/wait-pr.ts`**: Poll a PR until CI passes and LGTM is received, or an actionable state is reached.
   ```bash
   bun run tools/wait-pr.ts <pr-number> [--reviewer <user>] [--since <iso-timestamp>]

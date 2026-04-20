@@ -28,8 +28,8 @@ Use the `Agent` tool with the following parameters:
   Handle issue $ARGUMENTS
 
   IMPORTANT: When creating the PR (step 5 of /pr skill), use subagent mode:
-  only run create-pr.ts, do NOT run wait-pr.ts. The parent orchestrator
-  handles the wait loop. Return the JSON output from create-pr.ts in your response.
+  only run `gh pr create`, do NOT run wait-pr.ts. The parent orchestrator
+  handles the wait loop. Return the PR URL in your response.
   ```
 
 - `description`: `"Implement issue $ARGUMENTS"`
@@ -38,7 +38,7 @@ Use the `Agent` tool with the following parameters:
 
 After the agent returns:
 
-1. **Parse the PR info** from the agent's response (look for the JSON with `url` and `number` fields).
+1. **Parse the PR info** from the agent's response (look for the PR URL like `https://github.com/.../pull/123` and extract the number from the path).
 
 2. **Notify the user** by outputting a message:
 

@@ -1,9 +1,6 @@
 {
   "preBash": {
     "allowedPatterns": {
-      "bun run tools/create-pr.ts *": {
-        "multiline": true
-      },
       "bun run tools/wait-pr.ts *": {
         "multiline": true
       }
@@ -12,10 +9,6 @@
       "npx *": {
         "reason": "npx is not allowed in this project",
         "suggestion": "Use bunx instead of npx"
-      },
-      "gh pr create*": {
-        "reason": "Use tools/create-pr.ts instead of gh pr create",
-        "suggestion": "Use `bun run tools/create-pr.ts --title '...' --body '...'` to create a PR"
       }
     }
   }
