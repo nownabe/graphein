@@ -127,53 +127,12 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       return;
     }
 
-    // Check if the user explicitly approved via the consent form.
-    // The consent page redirects back to /oauth/authorize with consent=approved
-    // appended to the query string.
-    const consent = c.req.query("consent");
-
-    if (consent === "denied") {
-      const redirectUrl = new URL(params.redirectUri);
-      redirectUrl.searchParams.set("error", "access_denied");
-      if (params.state) redirectUrl.searchParams.set("state", params.state);
-      c.res = new Response(null, {
-        status: 302,
-        headers: { Location: redirectUrl.toString() },
-      });
-      return;
-    }
-
-    if (consent === "approved") {
-      // User approved — generate authorization code and redirect
-      const scope = params.scopes?.join(" ") || "graphein";
-      const resource = params.resource?.toString() || `${this.baseUrl}/mcp`;
-
-      const code = await this.oauthService.createAuthorizationCode({
-        clientId: client.client_id,
-        userId: payload.sub,
-        redirectUri: params.redirectUri,
-        scope,
-        resource,
-        codeChallenge: params.codeChallenge,
-      });
-
-      const redirectUrl = new URL(params.redirectUri);
-      redirectUrl.searchParams.set("code", code);
-      if (params.state) redirectUrl.searchParams.set("state", params.state);
-
-      c.res = new Response(null, {
-        status: 302,
-        headers: { Location: redirectUrl.toString() },
-      });
-      return;
-    }
-
-    // No consent decision yet — show consent page
+    // Show consent page. The form POSTs to /oauth/consent (a separate
+    // endpoint protected by the CSRF middleware's Origin/Referer check).
     const scope = params.scopes?.join(" ") || "graphein";
     const consentHtml = renderConsentPage({
       clientName: client.client_name ?? client.client_id,
       scope,
-      baseUrl: this.baseUrl,
       clientId: client.client_id,
       redirectUri: params.redirectUri,
       codeChallenge: params.codeChallenge,
@@ -185,6 +144,62 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8" },
     });
+  }
+
+  /**
+   * Handles the consent form POST from /oauth/consent.
+   * This is mounted as a separate route so the existing CSRF middleware
+   * protects it via Origin/Referer validation.
+   */
+  async handleConsent(c: Context): Promise<Response> {
+    const token = getCookie(c, "token");
+    const payload = token ? await this.session.verifyToken(token) : null;
+    if (!payload) {
+      return c.text("Unauthorized", 401);
+    }
+
+    const body = await c.req.parseBody();
+    const decision = body.decision as string;
+    const redirectUri = body.redirect_uri as string;
+    const state = body.state as string | undefined;
+
+    if (!redirectUri) {
+      return c.text("Bad Request", 400);
+    }
+
+    if (decision === "deny") {
+      const redirectUrl = new URL(redirectUri);
+      redirectUrl.searchParams.set("error", "access_denied");
+      if (state) redirectUrl.searchParams.set("state", state);
+      return c.redirect(redirectUrl.toString(), 302);
+    }
+
+    if (decision !== "approve") {
+      return c.text("Bad Request", 400);
+    }
+
+    const clientId = body.client_id as string;
+    const codeChallenge = body.code_challenge as string;
+    const scope = (body.scope as string) || "graphein";
+    const resource = (body.resource as string) || `${this.baseUrl}/mcp`;
+
+    if (!clientId || !codeChallenge) {
+      return c.text("Bad Request", 400);
+    }
+
+    const code = await this.oauthService.createAuthorizationCode({
+      clientId,
+      userId: payload.sub,
+      redirectUri,
+      scope,
+      resource,
+      codeChallenge,
+    });
+
+    const redirectUrl = new URL(redirectUri);
+    redirectUrl.searchParams.set("code", code);
+    if (state) redirectUrl.searchParams.set("state", state);
+    return c.redirect(redirectUrl.toString(), 302);
   }
 
   async challengeForAuthorizationCode(
@@ -352,7 +367,6 @@ function escapeHtml(s: string): string {
 function renderConsentPage(opts: {
   clientName: string;
   scope: string;
-  baseUrl: string;
   clientId: string;
   redirectUri: string;
   codeChallenge: string;
@@ -362,23 +376,19 @@ function renderConsentPage(opts: {
   const name = escapeHtml(opts.clientName);
   const scope = escapeHtml(opts.scope);
 
-  // Build approve/deny URLs that redirect back to /oauth/authorize with consent param
-  function buildConsentUrl(decision: "approved" | "denied"): string {
-    const url = new URL(`${opts.baseUrl}/oauth/authorize`);
-    url.searchParams.set("client_id", opts.clientId);
-    url.searchParams.set("redirect_uri", opts.redirectUri);
-    url.searchParams.set("code_challenge", opts.codeChallenge);
-    url.searchParams.set("code_challenge_method", "S256");
-    url.searchParams.set("response_type", "code");
-    url.searchParams.set("consent", decision);
-    if (opts.state) url.searchParams.set("state", opts.state);
-    if (opts.scope) url.searchParams.set("scope", opts.scope);
-    if (opts.resource) url.searchParams.set("resource", opts.resource);
-    return escapeHtml(url.toString());
-  }
-
-  const approveUrl = buildConsentUrl("approved");
-  const denyUrl = buildConsentUrl("denied");
+  // Hidden fields shared by both approve and deny forms
+  const hiddenFields = [
+    `<input type="hidden" name="client_id" value="${escapeHtml(opts.clientId)}">`,
+    `<input type="hidden" name="redirect_uri" value="${escapeHtml(opts.redirectUri)}">`,
+    `<input type="hidden" name="code_challenge" value="${escapeHtml(opts.codeChallenge)}">`,
+    opts.state ? `<input type="hidden" name="state" value="${escapeHtml(opts.state)}">` : "",
+    opts.scope ? `<input type="hidden" name="scope" value="${escapeHtml(opts.scope)}">` : "",
+    opts.resource
+      ? `<input type="hidden" name="resource" value="${escapeHtml(opts.resource)}">`
+      : "",
+  ]
+    .filter(Boolean)
+    .join("\n        ");
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -416,18 +426,15 @@ function renderConsentPage(opts: {
       margin-top: 0.25rem;
     }
     .actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
-    .actions a {
+    .actions form { flex: 1; display: flex; }
+    button {
       flex: 1;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       padding: 0.625rem 1rem;
       border: none;
       border-radius: 8px;
       font-size: 0.9375rem;
       font-weight: 500;
       cursor: pointer;
-      text-decoration: none;
     }
     .approve { background: #7c8aff; color: #fff; }
     .approve:hover { background: #6b79ee; }
@@ -442,8 +449,16 @@ function renderConsentPage(opts: {
     <div class="scope-label">Requested permissions</div>
     <div class="scope-value">${scope}</div>
     <div class="actions">
-      <a href="${approveUrl}" class="approve">Approve</a>
-      <a href="${denyUrl}" class="deny">Deny</a>
+      <form method="POST" action="/oauth/consent">
+        <input type="hidden" name="decision" value="approve">
+        ${hiddenFields}
+        <button type="submit" class="approve">Approve</button>
+      </form>
+      <form method="POST" action="/oauth/consent">
+        <input type="hidden" name="decision" value="deny">
+        ${hiddenFields}
+        <button type="submit" class="deny">Deny</button>
+      </form>
     </div>
   </div>
 </body>
