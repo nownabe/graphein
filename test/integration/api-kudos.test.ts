@@ -390,7 +390,10 @@ describe("GET /kudos", () => {
   });
 
   test("response includes expected fields", async () => {
-    const poster = await createUser({ displayName: "Alice", avatarUrl: "https://example.com/a.png" });
+    const poster = await createUser({
+      displayName: "Alice",
+      avatarUrl: "https://example.com/a.png",
+    });
     const recipient = await createUser({ slackUserId: "U_BOB", displayName: "Bob" });
 
     await createKudosEntry({
