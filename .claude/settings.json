@@ -4,7 +4,6 @@
     "allow": [
       "Bash(bun build:*)",
       "Bash(bun install:*)",
-      "Bash(bun run tools/wait-pr.ts:*)",
       "Bash(git switch:*)",
       "Bash(git add:*)",
       "Bash(git commit:*)",
@@ -22,6 +21,7 @@
       "Bash(oxlint:*)",
       "Bash(oxfmt:*)",
       "Bash(bun run tools/run-sql.ts:*)",
+      "Bash(bun run tools/wait-pr.ts:*)",
       "mcp__chrome-devtools__*",
       "Skill(commit)",
       "Skill(pr)",
