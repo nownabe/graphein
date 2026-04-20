@@ -214,18 +214,21 @@ console.log(`   Session: ${sessionId}`);
 // Phase 2-3: Wait and fix loop
 // ---------------------------------------------------------------------------
 
-// Run Codex review before entering the wait loop
-if (enableCodexReview) {
-  await runCodexReview(prNumber, worktreePath);
-}
-
 for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
   console.log(`\n⏳ Waiting for CI/review (round ${round}/${MAX_FIX_ROUNDS})...`);
 
-  const waitResult = await run(["bun", "run", "tools/wait-pr.ts", prNumber], {
+  // Run Codex review in parallel with wait-pr so findings appear as PR comments
+  // that wait-pr will pick up as feedback
+  const waitPromise = run(["bun", "run", "tools/wait-pr.ts", prNumber], {
     timeout: 600_000,
     cwd: worktreePath,
   });
+
+  if (enableCodexReview) {
+    await runCodexReview(prNumber, worktreePath);
+  }
+
+  const waitResult = await waitPromise;
 
   if (waitResult.exitCode !== 0) {
     console.error("❌ wait-pr.ts failed");
