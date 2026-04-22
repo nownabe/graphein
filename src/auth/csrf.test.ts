@@ -13,6 +13,11 @@ function createApp() {
   app.delete("/remove", (c) => c.text("ok"));
   app.post("/slack/events", (c) => c.text("ok"));
   app.post("/slack/interactions", (c) => c.text("ok"));
+  app.post("/mcp", (c) => c.text("ok"));
+  app.post("/oauth/token", (c) => c.text("ok"));
+  app.post("/oauth/register", (c) => c.text("ok"));
+  app.post("/oauth/revoke", (c) => c.text("ok"));
+  app.post("/oauth/authorize", (c) => c.text("ok"));
   return app;
 }
 
@@ -119,5 +124,30 @@ describe("csrfMiddleware", () => {
   test("exempts /slack/interactions from CSRF check", async () => {
     const res = await app.request("/slack/interactions", { method: "POST" });
     expect(res.status).toBe(200);
+  });
+
+  test("exempts /mcp from CSRF check", async () => {
+    const res = await app.request("/mcp", { method: "POST" });
+    expect(res.status).toBe(200);
+  });
+
+  test("exempts /oauth/token from CSRF check", async () => {
+    const res = await app.request("/oauth/token", { method: "POST" });
+    expect(res.status).toBe(200);
+  });
+
+  test("exempts /oauth/register from CSRF check", async () => {
+    const res = await app.request("/oauth/register", { method: "POST" });
+    expect(res.status).toBe(200);
+  });
+
+  test("exempts /oauth/revoke from CSRF check", async () => {
+    const res = await app.request("/oauth/revoke", { method: "POST" });
+    expect(res.status).toBe(200);
+  });
+
+  test("does NOT exempt /oauth/authorize from CSRF check", async () => {
+    const res = await app.request("/oauth/authorize", { method: "POST" });
+    expect(res.status).toBe(403);
   });
 });
