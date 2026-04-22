@@ -159,6 +159,10 @@ const deactivateUserRoute = createRoute({
       description: "User deactivated.",
       content: { "application/json": { schema: DeactivateUserResponseSchema } },
     },
+    400: {
+      description: "Invalid request — cannot deactivate yourself.",
+      content: { "application/json": { schema: ErrorResponseSchema } },
+    },
     401: UnauthorizedResponse,
     403: {
       description: "Forbidden — admin role required.",
