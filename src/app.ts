@@ -211,6 +211,7 @@ export function createHonoApp(config: HonoAppConfig) {
     session,
     config.baseUrl,
     mcpJwtSecret,
+    config.devMode,
   );
   app.post("/oauth/consent", (c) => oauthProvider.handleConsent(c));
 
