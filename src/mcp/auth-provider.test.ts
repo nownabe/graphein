@@ -195,6 +195,11 @@ describe("GrapheinOAuthProvider", () => {
       expect(html).toContain('action="/oauth/consent"');
       expect(html).toContain('name="decision" value="approve"');
       expect(html).toContain('name="decision" value="deny"');
+      // Auth params are in a signed request_token, not as individual hidden fields
+      expect(html).toContain('name="request_token"');
+      expect(html).not.toContain('name="client_id"');
+      expect(html).not.toContain('name="redirect_uri"');
+      expect(html).not.toContain('name="code_challenge"');
       // Must not contain GET-based consent params
       expect(html).not.toContain("consent=approved");
     });
@@ -205,6 +210,26 @@ describe("GrapheinOAuthProvider", () => {
       return Object.entries(fields)
         .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
         .join("&");
+    }
+
+    async function createRequestToken(overrides: Record<string, unknown> = {}): Promise<string> {
+      const now = Math.floor(Date.now() / 1000);
+      return sign(
+        {
+          typ: "consent_req",
+          client_id: "test-client",
+          redirect_uri: "https://example.com/cb",
+          code_challenge: "challenge",
+          state: "state123",
+          scope: "graphein",
+          resource: "https://graphein.example.com/mcp",
+          exp: now + 600,
+          iat: now,
+          ...overrides,
+        },
+        MCP_JWT_SECRET,
+        "HS256",
+      );
     }
 
     test("generates code and redirects on approve", async () => {
@@ -225,6 +250,7 @@ describe("GrapheinOAuthProvider", () => {
       const app = new Hono();
       app.post("/oauth/consent", (c) => provider.handleConsent(c));
 
+      const requestToken = await createRequestToken();
       const res = await app.request("/oauth/consent", {
         method: "POST",
         headers: {
@@ -233,12 +259,7 @@ describe("GrapheinOAuthProvider", () => {
         },
         body: buildFormBody({
           decision: "approve",
-          client_id: "test-client",
-          redirect_uri: "https://example.com/cb",
-          code_challenge: "challenge",
-          scope: "graphein",
-          resource: "https://graphein.example.com/mcp",
-          state: "state123",
+          request_token: requestToken,
         }),
       });
       expect(res.status).toBe(302);
@@ -263,6 +284,7 @@ describe("GrapheinOAuthProvider", () => {
       const app = new Hono();
       app.post("/oauth/consent", (c) => provider.handleConsent(c));
 
+      const requestToken = await createRequestToken();
       const res = await app.request("/oauth/consent", {
         method: "POST",
         headers: {
@@ -271,8 +293,7 @@ describe("GrapheinOAuthProvider", () => {
         },
         body: buildFormBody({
           decision: "deny",
-          redirect_uri: "https://example.com/cb",
-          state: "state123",
+          request_token: requestToken,
         }),
       });
       expect(res.status).toBe(302);
@@ -285,20 +306,19 @@ describe("GrapheinOAuthProvider", () => {
       const app = new Hono();
       app.post("/oauth/consent", (c) => provider.handleConsent(c));
 
+      const requestToken = await createRequestToken();
       const res = await app.request("/oauth/consent", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: buildFormBody({
           decision: "approve",
-          client_id: "test-client",
-          redirect_uri: "https://example.com/cb",
-          code_challenge: "challenge",
+          request_token: requestToken,
         }),
       });
       expect(res.status).toBe(401);
     });
 
-    test("returns 400 for missing redirect_uri", async () => {
+    test("returns 400 for missing request_token", async () => {
       mockSession = createMockSession({
         verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
       });
@@ -319,7 +339,39 @@ describe("GrapheinOAuthProvider", () => {
           Cookie: "token=valid-jwt",
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: buildFormBody({ decision: "approve", client_id: "x", code_challenge: "c" }),
+        body: buildFormBody({ decision: "approve" }),
+      });
+      expect(res.status).toBe(400);
+    });
+
+    test("returns 400 for tampered request_token", async () => {
+      mockSession = createMockSession({
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+      });
+      provider = new GrapheinOAuthProvider(
+        mockOAuthService,
+        createMockUserService(),
+        mockSession,
+        BASE_URL,
+        MCP_JWT_SECRET,
+      );
+
+      const app = new Hono();
+      app.post("/oauth/consent", (c) => provider.handleConsent(c));
+
+      // Sign with wrong secret to simulate tampering
+      const tamperedToken = await sign(
+        { typ: "consent_req", client_id: "evil", redirect_uri: "https://evil.com/cb" },
+        "wrong-secret",
+        "HS256",
+      );
+      const res = await app.request("/oauth/consent", {
+        method: "POST",
+        headers: {
+          Cookie: "token=valid-jwt",
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: buildFormBody({ decision: "approve", request_token: tamperedToken }),
       });
       expect(res.status).toBe(400);
     });
@@ -339,13 +391,14 @@ describe("GrapheinOAuthProvider", () => {
       const app = new Hono();
       app.post("/oauth/consent", (c) => provider.handleConsent(c));
 
+      const requestToken = await createRequestToken();
       const res = await app.request("/oauth/consent", {
         method: "POST",
         headers: {
           Cookie: "token=valid-jwt",
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        body: buildFormBody({ decision: "maybe", redirect_uri: "https://example.com/cb" }),
+        body: buildFormBody({ decision: "maybe", request_token: requestToken }),
       });
       expect(res.status).toBe(400);
     });
@@ -450,6 +503,36 @@ describe("GrapheinOAuthProvider", () => {
       await expect(
         provider.exchangeAuthorizationCode({ client_id: "test-client" } as any, "code"),
       ).rejects.toThrow("Client ID mismatch");
+    });
+
+    test("throws on redirect URI mismatch", async () => {
+      mockOAuthService = createMockOAuthService({
+        consumeAuthorizationCode: async () => ({
+          clientId: "test-client",
+          userId: "u",
+          redirectUri: "https://example.com/cb",
+          scope: "s",
+          resource: "https://graphein.example.com/mcp",
+          codeChallenge: "c",
+          codeChallengeMethod: "S256",
+        }),
+      });
+      provider = new GrapheinOAuthProvider(
+        mockOAuthService,
+        createMockUserService(),
+        mockSession,
+        BASE_URL,
+        MCP_JWT_SECRET,
+      );
+
+      await expect(
+        provider.exchangeAuthorizationCode(
+          { client_id: "test-client" } as any,
+          "code",
+          "verifier",
+          "https://evil.example.com/cb",
+        ),
+      ).rejects.toThrow("Redirect URI mismatch");
     });
 
     test("throws on resource mismatch", async () => {

@@ -47,6 +47,7 @@ interface HonoOAuthServerProvider {
 }
 
 const ACCESS_TOKEN_EXPIRY_SECONDS = 60 * 60; // 1 hour
+const CONSENT_REQUEST_EXPIRY_SECONDS = 10 * 60; // 10 minutes
 
 interface McpJwtPayload {
   sub: string;
@@ -127,17 +128,30 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       return;
     }
 
-    // Show consent page. The form POSTs to /oauth/consent (a separate
-    // endpoint protected by the CSRF middleware's Origin/Referer check).
+    // Show consent page. Authorization params are stored in a signed JWT
+    // ("request token") so the consent form cannot be tampered with.
     const scope = params.scopes?.join(" ") || "graphein";
+    const now = Math.floor(Date.now() / 1000);
+    const requestToken = await sign(
+      {
+        typ: "consent_req",
+        client_id: client.client_id,
+        redirect_uri: params.redirectUri,
+        code_challenge: params.codeChallenge,
+        state: params.state ?? "",
+        scope,
+        resource: params.resource?.toString() ?? "",
+        exp: now + CONSENT_REQUEST_EXPIRY_SECONDS,
+        iat: now,
+      },
+      this.mcpJwtSecret,
+      "HS256",
+    );
+
     const consentHtml = renderConsentPage({
       clientName: client.client_name ?? client.client_id,
       scope,
-      clientId: client.client_id,
-      redirectUri: params.redirectUri,
-      codeChallenge: params.codeChallenge,
-      state: params.state,
-      resource: params.resource?.toString(),
+      requestToken,
     });
 
     c.res = new Response(consentHtml, {
@@ -160,12 +174,29 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
 
     const body = await c.req.parseBody();
     const decision = body.decision as string;
-    const redirectUri = body.redirect_uri as string;
-    const state = body.state as string | undefined;
+    const requestToken = body.request_token as string;
 
-    if (!redirectUri) {
+    if (!requestToken) {
       return c.text("Bad Request", 400);
     }
+
+    // Verify the signed request token to recover the original authorization params
+    let reqPayload: Record<string, unknown>;
+    try {
+      reqPayload = (await verify(requestToken, this.mcpJwtSecret, "HS256")) as Record<
+        string,
+        unknown
+      >;
+    } catch {
+      return c.text("Invalid or expired consent request", 400);
+    }
+
+    if (reqPayload.typ !== "consent_req") {
+      return c.text("Invalid consent request", 400);
+    }
+
+    const redirectUri = reqPayload.redirect_uri as string;
+    const state = reqPayload.state as string;
 
     if (decision === "deny") {
       const redirectUrl = new URL(redirectUri);
@@ -178,14 +209,10 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       return c.text("Bad Request", 400);
     }
 
-    const clientId = body.client_id as string;
-    const codeChallenge = body.code_challenge as string;
-    const scope = (body.scope as string) || "graphein";
-    const resource = (body.resource as string) || `${this.baseUrl}/mcp`;
-
-    if (!clientId || !codeChallenge) {
-      return c.text("Bad Request", 400);
-    }
+    const clientId = reqPayload.client_id as string;
+    const codeChallenge = reqPayload.code_challenge as string;
+    const scope = (reqPayload.scope as string) || "graphein";
+    const resource = (reqPayload.resource as string) || `${this.baseUrl}/mcp`;
 
     const code = await this.oauthService.createAuthorizationCode({
       clientId,
@@ -215,7 +242,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
     client: OAuthClientInformationFull,
     authorizationCode: string,
     _codeVerifier?: string,
-    _redirectUri?: string,
+    redirectUri?: string,
     resource?: URL,
   ): Promise<OAuthTokens> {
     const codeData = await this.oauthService.consumeAuthorizationCode(authorizationCode);
@@ -223,6 +250,10 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
 
     if (codeData.clientId !== client.client_id) {
       throw new Error("Client ID mismatch");
+    }
+
+    if (redirectUri && codeData.redirectUri !== redirectUri) {
+      throw new Error("Redirect URI mismatch");
     }
 
     if (resource && codeData.resource !== resource.toString()) {
@@ -367,28 +398,14 @@ function escapeHtml(s: string): string {
 function renderConsentPage(opts: {
   clientName: string;
   scope: string;
-  clientId: string;
-  redirectUri: string;
-  codeChallenge: string;
-  state?: string;
-  resource?: string;
+  requestToken: string;
 }): string {
   const name = escapeHtml(opts.clientName);
   const scope = escapeHtml(opts.scope);
 
-  // Hidden fields shared by both approve and deny forms
-  const hiddenFields = [
-    `<input type="hidden" name="client_id" value="${escapeHtml(opts.clientId)}">`,
-    `<input type="hidden" name="redirect_uri" value="${escapeHtml(opts.redirectUri)}">`,
-    `<input type="hidden" name="code_challenge" value="${escapeHtml(opts.codeChallenge)}">`,
-    opts.state ? `<input type="hidden" name="state" value="${escapeHtml(opts.state)}">` : "",
-    opts.scope ? `<input type="hidden" name="scope" value="${escapeHtml(opts.scope)}">` : "",
-    opts.resource
-      ? `<input type="hidden" name="resource" value="${escapeHtml(opts.resource)}">`
-      : "",
-  ]
-    .filter(Boolean)
-    .join("\n        ");
+  // A single signed request token carries all authorization params,
+  // preventing client-side tampering with hidden form fields.
+  const hiddenFields = `<input type="hidden" name="request_token" value="${escapeHtml(opts.requestToken)}">`;
 
   return `<!DOCTYPE html>
 <html lang="en">
