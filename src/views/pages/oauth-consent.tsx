@@ -98,7 +98,7 @@ export function OAuthConsentPage({
 
             {/* Actions */}
             <div class="flex gap-3">
-              <form method="post" action="/oauth/consent" class="flex-1">
+              <form method="post" action="/oauth/consent" hx-boost="false" class="flex-1">
                 <input type="hidden" name="decision" value="deny" />
                 <input type="hidden" name="request_token" value={requestToken} />
                 <button
@@ -108,7 +108,7 @@ export function OAuthConsentPage({
                   {t(locale, "oauth.consent.deny")}
                 </button>
               </form>
-              <form method="post" action="/oauth/consent" class="flex-1">
+              <form method="post" action="/oauth/consent" hx-boost="false" class="flex-1">
                 <input type="hidden" name="decision" value="approve" />
                 <input type="hidden" name="request_token" value={requestToken} />
                 <button

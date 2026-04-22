@@ -195,8 +195,8 @@ describe("GrapheinOAuthProvider", () => {
       // Redirect URI displayed
       expect(html).toContain("https://example.com/cb");
       // Consent forms must POST to /oauth/consent (CSRF-protected)
-      expect(html).toContain('method="post"');
-      expect(html).toContain('action="/oauth/consent"');
+      // hx-boost="false" ensures full-page navigation for OAuth redirects
+      expect(html).toContain('method="post" action="/oauth/consent" hx-boost="false"');
       expect(html).toContain('name="decision" value="approve"');
       expect(html).toContain('name="decision" value="deny"');
       // Auth params are in a signed request_token, not as individual hidden fields
