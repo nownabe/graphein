@@ -1,0 +1,352 @@
+#!/usr/bin/env bun
+/**
+ * codex-review: Review a pull request with Codex CLI until it is approved.
+ *
+ * Usage:
+ *   bin/codex-review <pr-number-or-url> [--poll-interval <seconds>]
+ *
+ * Workflow:
+ *   1. Resolve PR metadata from GitHub
+ *   2. Create an isolated git worktree for the review
+ *   3. Run `codex review` against the PR head commit
+ *   4. Post findings as a PR comment when action is required
+ *   5. Wait for the PR head commit to change, then review again
+ *   6. Post `codex approved` and exit when no actionable findings remain
+ */
+
+import { mkdtemp, rm, unlink } from "node:fs/promises";
+import os from "node:os";
+import { join } from "node:path";
+import { parseArgs } from "node:util";
+
+const DEFAULT_POLL_INTERVAL_SEC = 30;
+const CODEX_APPROVED_COMMENT = "codex approved";
+
+type CommandResult = {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+};
+
+type PullRequest = {
+  number: string;
+  url: string;
+  state: "OPEN" | "MERGED" | "CLOSED";
+  title: string;
+  baseRefName: string;
+  headRefName: string;
+  headRefOid: string;
+};
+
+type ReviewOutput = {
+  status: "approved" | "changes_requested";
+  comment: string;
+};
+
+type WorktreeContext = {
+  rootDir: string;
+  worktreePath: string;
+};
+
+const { values, positionals } = parseArgs({
+  args: process.argv.slice(2),
+  options: {
+    "poll-interval": { type: "string", default: String(DEFAULT_POLL_INTERVAL_SEC) },
+  },
+  allowPositionals: true,
+});
+
+const prRef = positionals[0];
+const pollIntervalSec = Number(values["poll-interval"]);
+
+if (!prRef || !Number.isInteger(pollIntervalSec) || pollIntervalSec <= 0) {
+  console.error(`Usage:
+  bin/codex-review <pr-number-or-url> [--poll-interval <seconds>]
+
+Examples:
+  bin/codex-review 123
+  bin/codex-review https://github.com/nownabe/graphein/pull/123
+  bin/codex-review 123 --poll-interval 15`);
+  process.exit(1);
+}
+
+async function run(
+  cmd: string[],
+  opts?: { cwd?: string; timeout?: number },
+): Promise<CommandResult> {
+  const proc = Bun.spawn(cmd, {
+    cwd: opts?.cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+    timeout: opts?.timeout,
+  });
+
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+
+  return {
+    stdout: stdout.trim(),
+    stderr: stderr.trim(),
+    exitCode,
+  };
+}
+
+function ensureSuccess(result: CommandResult, context: string): string {
+  if (result.exitCode === 0) return result.stdout;
+
+  const detail = [result.stderr, result.stdout].filter(Boolean).join("\n");
+  throw new Error(`${context}\n${detail}`.trim());
+}
+
+function parsePullRequest(jsonText: string): PullRequest {
+  const pr = JSON.parse(jsonText) as {
+    number: number;
+    url: string;
+    state: PullRequest["state"];
+    title: string;
+    baseRefName: string;
+    headRefName: string;
+    headRefOid: string;
+  };
+
+  return {
+    number: String(pr.number),
+    url: pr.url,
+    state: pr.state,
+    title: pr.title,
+    baseRefName: pr.baseRefName,
+    headRefName: pr.headRefName,
+    headRefOid: pr.headRefOid,
+  };
+}
+
+function parseReviewOutput(output: string): ReviewOutput {
+  const tryParse = (text: string): ReviewOutput | null => {
+    try {
+      const parsed = JSON.parse(text) as Partial<ReviewOutput>;
+      if (
+        (parsed.status === "approved" || parsed.status === "changes_requested") &&
+        typeof parsed.comment === "string" &&
+        parsed.comment.trim()
+      ) {
+        return {
+          status: parsed.status,
+          comment: parsed.comment.trim(),
+        };
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  };
+
+  const direct = tryParse(output);
+  if (direct) return direct;
+
+  const firstBrace = output.indexOf("{");
+  const lastBrace = output.lastIndexOf("}");
+  if (firstBrace >= 0 && lastBrace > firstBrace) {
+    const extracted = tryParse(output.slice(firstBrace, lastBrace + 1));
+    if (extracted) return extracted;
+  }
+
+  throw new Error(`Failed to parse Codex review output as JSON:\n${output}`);
+}
+
+function buildReviewPrompt(pr: PullRequest): string {
+  const shortSha = pr.headRefOid.slice(0, 7);
+
+  return [
+    `Review pull request #${pr.number}: ${pr.title}`,
+    `Base branch: ${pr.baseRefName}`,
+    `Head branch: ${pr.headRefName}`,
+    `Head commit: ${pr.headRefOid}`,
+    "",
+    "Only report actionable bugs, regressions, security issues, or missing edge cases.",
+    "Ignore style, formatting, naming, and other nits that automated tooling already covers.",
+    "",
+    "Return strict JSON with no markdown fences and no surrounding text:",
+    '{"status":"approved"|"changes_requested","comment":"..."}',
+    "",
+    "Rules:",
+    `- If there are no actionable findings, return exactly {"status":"approved","comment":"${CODEX_APPROVED_COMMENT}"}.`,
+    `- If there are actionable findings, return {"status":"changes_requested","comment":"..."} and make the comment valid Markdown.`,
+    `- For changes requested, the comment must start with "## Codex review (${shortSha})".`,
+    "- Use a numbered list.",
+    "- Each item should mention the affected file and line when possible.",
+    "- Keep the comment concise and focused on issues that require code changes.",
+  ].join("\n");
+}
+
+async function fetchPullRequest(pr: string): Promise<PullRequest> {
+  const result = await run(
+    [
+      "gh",
+      "pr",
+      "view",
+      pr,
+      "--json",
+      "number,url,state,title,baseRefName,headRefName,headRefOid",
+    ],
+    { timeout: 60_000 },
+  );
+
+  return parsePullRequest(ensureSuccess(result, `Failed to fetch PR metadata for ${pr}`));
+}
+
+async function createWorktree(baseRefName: string): Promise<WorktreeContext> {
+  const rootDir = await mkdtemp(join(os.tmpdir(), "graphein-codex-review-"));
+  const worktreePath = join(rootDir, "repo");
+
+  ensureSuccess(
+    await run(["git", "fetch", "origin", baseRefName], { timeout: 120_000 }),
+    `Failed to fetch origin/${baseRefName}`,
+  );
+  ensureSuccess(
+    await run(["git", "worktree", "add", "--detach", worktreePath, `origin/${baseRefName}`], {
+      timeout: 120_000,
+    }),
+    `Failed to create worktree at ${worktreePath}`,
+  );
+
+  return { rootDir, worktreePath };
+}
+
+async function syncWorktreeToPrHead(pr: PullRequest, worktreePath: string): Promise<void> {
+  ensureSuccess(
+    await run(["git", "fetch", "origin", pr.baseRefName], {
+      cwd: worktreePath,
+      timeout: 120_000,
+    }),
+    `Failed to refresh origin/${pr.baseRefName}`,
+  );
+  ensureSuccess(
+    await run(["git", "fetch", "origin", `pull/${pr.number}/head`], {
+      cwd: worktreePath,
+      timeout: 120_000,
+    }),
+    `Failed to fetch PR #${pr.number} head`,
+  );
+  ensureSuccess(
+    await run(["git", "checkout", "--detach", pr.headRefOid], {
+      cwd: worktreePath,
+      timeout: 120_000,
+    }),
+    `Failed to checkout ${pr.headRefOid}`,
+  );
+}
+
+async function runCodexReview(pr: PullRequest, worktreePath: string): Promise<ReviewOutput> {
+  const prompt = buildReviewPrompt(pr);
+  const result = await run(
+    ["codex", "review", "--base", `origin/${pr.baseRefName}`, prompt],
+    { cwd: worktreePath, timeout: 300_000 },
+  );
+
+  const output = ensureSuccess(result, "Codex review failed");
+  return parseReviewOutput(output);
+}
+
+async function postPrComment(prNumber: string, comment: string, cwd: string): Promise<void> {
+  const tempFile = join(cwd, `.codex-review-comment-${Date.now()}.md`);
+  await Bun.write(tempFile, comment);
+
+  try {
+    ensureSuccess(
+      await run(["gh", "pr", "comment", prNumber, "--body-file", tempFile], {
+        cwd,
+        timeout: 60_000,
+      }),
+      `Failed to post PR comment to #${prNumber}`,
+    );
+  } finally {
+    await unlink(tempFile).catch(() => undefined);
+  }
+}
+
+async function waitForNewHead(pr: PullRequest, reviewedHeadOid: string): Promise<PullRequest> {
+  console.log(
+    `Waiting for a new commit on PR #${pr.number} (current head ${reviewedHeadOid.slice(0, 7)})...`,
+  );
+
+  while (true) {
+    await Bun.sleep(pollIntervalSec * 1000);
+
+    const latest = await fetchPullRequest(pr.number);
+    if (latest.state !== "OPEN") {
+      return latest;
+    }
+
+    if (latest.headRefOid !== reviewedHeadOid) {
+      return latest;
+    }
+  }
+}
+
+async function cleanupWorktree(context: WorktreeContext | null): Promise<void> {
+  if (!context) return;
+
+  await run(["git", "worktree", "remove", "--force", context.worktreePath], { timeout: 120_000 });
+  await rm(context.rootDir, { recursive: true, force: true });
+}
+
+let worktree: WorktreeContext | null = null;
+
+try {
+  let pr = await fetchPullRequest(prRef);
+
+  if (pr.state !== "OPEN") {
+    console.error(`PR #${pr.number} is ${pr.state.toLowerCase()}. Nothing to review.`);
+    process.exit(1);
+  }
+
+  worktree = await createWorktree(pr.baseRefName);
+  console.log(`Reviewing ${pr.url}`);
+  console.log(`Using worktree ${worktree.worktreePath}`);
+
+  let round = 1;
+
+  while (true) {
+    console.log(`\nReview round ${round} for ${pr.headRefOid.slice(0, 7)}...`);
+
+    await syncWorktreeToPrHead(pr, worktree.worktreePath);
+    const reviewedHeadOid = pr.headRefOid;
+    const review = await runCodexReview(pr, worktree.worktreePath);
+
+    const latest = await fetchPullRequest(pr.number);
+    if (latest.state !== "OPEN") {
+      console.log(`PR #${latest.number} is ${latest.state.toLowerCase()}. Stopping.`);
+      break;
+    }
+
+    if (latest.headRefOid !== reviewedHeadOid) {
+      console.log(
+        `PR head changed during review (${reviewedHeadOid.slice(0, 7)} -> ${latest.headRefOid.slice(0, 7)}). Re-reviewing latest commit.`,
+      );
+      pr = latest;
+      continue;
+    }
+
+    if (review.status === "approved") {
+      await postPrComment(pr.number, CODEX_APPROVED_COMMENT, worktree.worktreePath);
+      console.log(`Posted "${CODEX_APPROVED_COMMENT}" to PR #${pr.number}.`);
+      break;
+    }
+
+    await postPrComment(pr.number, review.comment, worktree.worktreePath);
+    console.log(`Posted review findings for ${reviewedHeadOid.slice(0, 7)}.`);
+
+    pr = await waitForNewHead(pr, reviewedHeadOid);
+    if (pr.state !== "OPEN") {
+      console.log(`PR #${pr.number} is ${pr.state.toLowerCase()}. Stopping.`);
+      break;
+    }
+
+    round += 1;
+  }
+} finally {
+  await cleanupWorktree(worktree);
+}
