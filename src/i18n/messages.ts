@@ -286,6 +286,16 @@ const messages: Record<Locale, Record<string, string>> = {
     "apiKeys.error.limitExceeded": "有効なAPIキーは最大10個までです。",
     "apiKeys.error.adminRequired": "管理者ロールのキーを作成する権限がありません。",
 
+    // OAuth consent
+    "oauth.consent.title": "アプリケーションを認可",
+    "oauth.consent.description":
+      "このアプリケーションはあなたのGrapheinアカウントへのアクセスを要求しています。",
+    "oauth.consent.permissions": "要求される権限",
+    "oauth.consent.scopeDescription": "タスク、日報、Kudosへのアクセス",
+    "oauth.consent.redirectUri": "リダイレクト先",
+    "oauth.consent.approve": "許可する",
+    "oauth.consent.deny": "拒否する",
+
     // Admin settings
     "admin.tab.settings": "設定",
     "admin.settings.title": "設定",
@@ -582,6 +592,15 @@ const messages: Record<Locale, Record<string, string>> = {
     "apiKeys.copy": "Copy",
     "apiKeys.error.limitExceeded": "You can have at most 10 active API keys.",
     "apiKeys.error.adminRequired": "You do not have permission to create admin-scoped keys.",
+
+    // OAuth consent
+    "oauth.consent.title": "Authorize Application",
+    "oauth.consent.description": "This application is requesting access to your Graphein account.",
+    "oauth.consent.permissions": "Requested permissions",
+    "oauth.consent.scopeDescription": "Access your tasks, snippets, and kudos",
+    "oauth.consent.redirectUri": "Redirect URI",
+    "oauth.consent.approve": "Approve",
+    "oauth.consent.deny": "Deny",
 
     // Admin settings
     "admin.tab.settings": "Settings",

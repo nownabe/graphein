@@ -11,6 +11,7 @@ import type {
 import type { OAuthService } from "../oauth/service";
 import type { UserService } from "../users/service";
 import type { SessionHelpers } from "../auth/session";
+import { OAuthConsentPage } from "../views/pages/oauth-consent";
 
 // @hono/mcp passes Hono Context instead of express Response to authorize(),
 // but the SDK type declares express.Response. We define our own interface to
@@ -65,6 +66,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
     private session: SessionHelpers,
     private baseUrl: string,
     private mcpJwtSecret: string,
+    private devMode: boolean = false,
   ) {}
 
   get clientsStore(): OAuthRegisteredClientsStore {
@@ -148,16 +150,22 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       "HS256",
     );
 
-    const consentHtml = renderConsentPage({
-      clientName: client.client_name ?? client.client_id,
-      scope,
-      requestToken,
-    });
+    const locale = getCookie(c, "locale") === "ja" ? "ja" : "en";
+    const theme = getCookie(c, "theme") === "light" ? "light" : "dark";
+    const redirectUri = params.redirectUri;
 
-    c.res = new Response(consentHtml, {
-      status: 200,
-      headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
+    const html = c.html(
+      <OAuthConsentPage
+        clientName={client.client_name ?? client.client_id}
+        redirectUri={redirectUri}
+        scope={scope}
+        requestToken={requestToken}
+        locale={locale}
+        theme={theme}
+        devMode={this.devMode}
+      />,
+    );
+    c.res = html instanceof Promise ? await html : html;
   }
 
   /**
@@ -385,99 +393,4 @@ function getCookie(c: Context, name: string): string | undefined {
   if (!header) return undefined;
   const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
   return match?.[1];
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
-function renderConsentPage(opts: {
-  clientName: string;
-  scope: string;
-  requestToken: string;
-}): string {
-  const name = escapeHtml(opts.clientName);
-  const scope = escapeHtml(opts.scope);
-
-  // A single signed request token carries all authorization params,
-  // preventing client-side tampering with hidden form fields.
-  const hiddenFields = `<input type="hidden" name="request_token" value="${escapeHtml(opts.requestToken)}">`;
-
-  return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Authorize ${name} — Graphein</title>
-  <style>
-    body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #0f0f14;
-      color: #e0e0e6;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
-    }
-    .card {
-      background: #1a1a24;
-      border: 1px solid #2a2a3a;
-      border-radius: 16px;
-      padding: 2rem;
-      max-width: 420px;
-      width: 100%;
-    }
-    h1 { font-size: 1.25rem; margin: 0 0 1rem; }
-    .client-name { color: #7c8aff; font-weight: 600; }
-    .scope-label { color: #9ca3af; font-size: 0.875rem; margin-top: 1rem; }
-    .scope-value {
-      font-family: monospace;
-      background: #12121a;
-      padding: 0.5rem;
-      border-radius: 8px;
-      margin-top: 0.25rem;
-    }
-    .actions { display: flex; gap: 0.75rem; margin-top: 1.5rem; }
-    .actions form { flex: 1; display: flex; }
-    button {
-      flex: 1;
-      padding: 0.625rem 1rem;
-      border: none;
-      border-radius: 8px;
-      font-size: 0.9375rem;
-      font-weight: 500;
-      cursor: pointer;
-    }
-    .approve { background: #7c8aff; color: #fff; }
-    .approve:hover { background: #6b79ee; }
-    .deny { background: #2a2a3a; color: #e0e0e6; }
-    .deny:hover { background: #3a3a4a; }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h1>Authorize <span class="client-name">${name}</span></h1>
-    <p>This application is requesting access to your Graphein account.</p>
-    <div class="scope-label">Requested permissions</div>
-    <div class="scope-value">${scope}</div>
-    <div class="actions">
-      <form method="POST" action="/oauth/consent">
-        <input type="hidden" name="decision" value="approve">
-        ${hiddenFields}
-        <button type="submit" class="approve">Approve</button>
-      </form>
-      <form method="POST" action="/oauth/consent">
-        <input type="hidden" name="decision" value="deny">
-        ${hiddenFields}
-        <button type="submit" class="deny">Deny</button>
-      </form>
-    </div>
-  </div>
-</body>
-</html>`;
 }

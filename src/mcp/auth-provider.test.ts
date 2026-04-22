@@ -187,12 +187,16 @@ describe("GrapheinOAuthProvider", () => {
       });
       expect(res.status).toBe(200);
       const html = await res.text();
+      // Client name displayed
       expect(html).toContain("My MCP App");
+      // i18n button labels (en locale)
       expect(html).toContain("Approve");
       expect(html).toContain("Deny");
+      // Redirect URI displayed
+      expect(html).toContain("https://example.com/cb");
       // Consent forms must POST to /oauth/consent (CSRF-protected)
-      expect(html).toContain('method="POST"');
-      expect(html).toContain('action="/oauth/consent"');
+      // hx-boost="false" ensures full-page navigation for OAuth redirects
+      expect(html).toContain('method="post" action="/oauth/consent" hx-boost="false"');
       expect(html).toContain('name="decision" value="approve"');
       expect(html).toContain('name="decision" value="deny"');
       // Auth params are in a signed request_token, not as individual hidden fields
@@ -202,6 +206,52 @@ describe("GrapheinOAuthProvider", () => {
       expect(html).not.toContain('name="code_challenge"');
       // Must not contain GET-based consent params
       expect(html).not.toContain("consent=approved");
+      // Uses Layout (has DOCTYPE, stylesheets)
+      expect(html).toContain("<!DOCTYPE html>");
+      expect(html).toContain("styles.css");
+    });
+
+    test("renders consent page in Japanese when locale cookie is ja", async () => {
+      mockSession = createMockSession({
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+      });
+      provider = new GrapheinOAuthProvider(
+        mockOAuthService,
+        createMockUserService(),
+        mockSession,
+        BASE_URL,
+        MCP_JWT_SECRET,
+      );
+
+      const app = new Hono();
+      app.get("/test", async (c) => {
+        await provider.authorize(
+          {
+            client_id: "test-client",
+            client_name: "My MCP App",
+            redirect_uris: ["https://example.com/cb"],
+          } as any,
+          {
+            redirectUri: "https://example.com/cb",
+            codeChallenge: "challenge",
+            state: "state123",
+            scopes: ["graphein"],
+            resource: new URL("https://graphein.example.com/mcp"),
+          },
+          c,
+        );
+        return c.res;
+      });
+
+      const res = await app.request("/test", {
+        headers: { Cookie: "token=valid-jwt; locale=ja" },
+      });
+      expect(res.status).toBe(200);
+      const html = await res.text();
+      expect(html).toContain("My MCP App");
+      expect(html).toContain('lang="ja"');
+      expect(html).toContain("許可する");
+      expect(html).toContain("拒否する");
     });
   });
 
