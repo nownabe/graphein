@@ -65,6 +65,22 @@ export const ErrorResponseSchema = z
   .openapi("ErrorResponse");
 
 // ---------------------------------------------------------------------------
+// Common error responses (for OpenAPI documentation)
+// ---------------------------------------------------------------------------
+
+/** 401 Unauthorized response content definition. */
+export const UnauthorizedResponse = {
+  description: "Unauthorized — missing or invalid Bearer token.",
+  content: { "application/json": { schema: ErrorResponseSchema } },
+} as const;
+
+/** 429 Too Many Requests response content definition. */
+export const RateLimitedResponse = {
+  description: "Too many requests — rate limit exceeded (60 requests/minute).",
+  content: { "application/json": { schema: ErrorResponseSchema } },
+} as const;
+
+// ---------------------------------------------------------------------------
 // Embedded objects
 // ---------------------------------------------------------------------------
 

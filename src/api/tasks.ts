@@ -15,7 +15,12 @@ import {
 import type { Database } from "../db/client";
 import { tasks, taskAssignees, taskOwners, users } from "../db/schema";
 import type { TaskService } from "../tasks/service";
-import { CreatedBySchema, ErrorResponseSchema } from "./schemas";
+import {
+  CreatedBySchema,
+  ErrorResponseSchema,
+  UnauthorizedResponse,
+  RateLimitedResponse,
+} from "./schemas";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -300,10 +305,12 @@ const listAssignedTasksRoute = createRoute({
       description: "Paginated list of assigned tasks.",
       content: { "application/json": { schema: ListAssignedTasksResponseSchema } },
     },
+    401: UnauthorizedResponse,
     422: {
       description: "Validation error.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -320,10 +327,12 @@ const listOwnedTasksRoute = createRoute({
       description: "Paginated list of owned tasks.",
       content: { "application/json": { schema: ListOwnedTasksResponseSchema } },
     },
+    401: UnauthorizedResponse,
     422: {
       description: "Validation error.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -342,6 +351,7 @@ const listAssigneesRoute = createRoute({
       description: "Paginated assignee list.",
       content: { "application/json": { schema: ListAssigneesResponseSchema } },
     },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden.",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -354,6 +364,7 @@ const listAssigneesRoute = createRoute({
       description: "Validation error.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -369,6 +380,7 @@ const archiveTaskRoute = createRoute({
       description: "Task archived.",
       content: { "application/json": { schema: ArchiveResponseSchema } },
     },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden.",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -377,6 +389,7 @@ const archiveTaskRoute = createRoute({
       description: "Task not found.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -392,6 +405,7 @@ const unarchiveTaskRoute = createRoute({
       description: "Task unarchived.",
       content: { "application/json": { schema: ArchiveResponseSchema } },
     },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden.",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -400,6 +414,7 @@ const unarchiveTaskRoute = createRoute({
       description: "Task not found.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
