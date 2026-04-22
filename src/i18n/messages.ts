@@ -288,7 +288,8 @@ const messages: Record<Locale, Record<string, string>> = {
 
     // OAuth consent
     "oauth.consent.title": "アプリケーションを認可",
-    "oauth.consent.description": "このアプリケーションはあなたのGrapheinアカウントへのアクセスを要求しています。",
+    "oauth.consent.description":
+      "このアプリケーションはあなたのGrapheinアカウントへのアクセスを要求しています。",
     "oauth.consent.permissions": "要求される権限",
     "oauth.consent.scopeDescription": "タスク、日報、Kudosへのアクセス",
     "oauth.consent.redirectUri": "リダイレクト先",

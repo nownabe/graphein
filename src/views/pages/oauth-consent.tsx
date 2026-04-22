@@ -4,7 +4,7 @@ import { Layout } from "../layout";
 export function OAuthConsentPage({
   clientName,
   redirectUri,
-  scope,
+  scope: _scope,
   requestToken,
   locale,
   theme,
@@ -19,7 +19,12 @@ export function OAuthConsentPage({
   devMode?: boolean;
 }) {
   return (
-    <Layout title={t(locale, "oauth.consent.title")} locale={locale} theme={theme} devMode={devMode}>
+    <Layout
+      title={t(locale, "oauth.consent.title")}
+      locale={locale}
+      theme={theme}
+      devMode={devMode}
+    >
       <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-page">
         {/* Ambient accent glow */}
         <div
@@ -62,7 +67,13 @@ export function OAuthConsentPage({
                 {t(locale, "oauth.consent.permissions")}
               </div>
               <div class="bg-page border border-edge rounded-[var(--radius-sm)] px-4 py-3 flex items-center gap-3">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" class="text-success shrink-0">
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  class="text-success shrink-0"
+                >
                   <path
                     d="M13.5 4.5L6 12 2.5 8.5"
                     stroke="currentColor"

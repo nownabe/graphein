@@ -394,4 +394,3 @@ function getCookie(c: Context, name: string): string | undefined {
   const match = header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]*)`));
   return match?.[1];
 }
-
