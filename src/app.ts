@@ -14,6 +14,7 @@ import { createApiKeyRoutes } from "./api-keys/routes.tsx";
 import { clickjackingMiddleware } from "./auth/clickjacking";
 import { createApiMiddleware } from "./api/middleware";
 import { createApiRoutes } from "./api/routes";
+import { GrapheinOAuthProvider } from "./mcp/auth-provider";
 import type { HonoAppConfig } from "./config";
 
 export function createHonoApp(config: HonoAppConfig) {
@@ -26,6 +27,8 @@ export function createHonoApp(config: HonoAppConfig) {
     kudosService,
     settingsService,
     apiKeyService,
+    oauthService,
+    mcpJwtSecret,
     buildMrkdwnLabels,
   } = config;
 
@@ -194,6 +197,16 @@ export function createHonoApp(config: HonoAppConfig) {
 
   // Auth routes
   app.route("/auth", authRoutes);
+
+  // OAuth consent endpoint for MCP authorization flow
+  const oauthProvider = new GrapheinOAuthProvider(
+    oauthService,
+    userService,
+    session,
+    config.baseUrl,
+    mcpJwtSecret,
+  );
+  app.post("/oauth/consent", (c) => oauthProvider.handleConsent(c));
 
   // Slack events/interactions (HTTP mode only, not used in Socket Mode)
   if (config.slackReceiver) {

@@ -7,6 +7,7 @@ import { createKudosService } from "./kudos/service";
 import { createUsergroupService } from "./usergroups/service";
 import { createSettingsService } from "./settings/service";
 import { createApiKeyService } from "./api-keys/service";
+import { createOAuthService } from "./oauth/service";
 import { createSessionHelpers } from "./auth/session";
 import { createGeminiClient } from "./llm/gemini";
 import { createBolt } from "./slack/bolt";
@@ -36,8 +37,9 @@ const snippetService = createSnippetService(db);
 const kudosService = createKudosService(db);
 const settingsService = createSettingsService(db);
 const apiKeyService = createApiKeyService(db);
+const oauthService = createOAuthService(db);
 const session = createSessionHelpers(requireEnv("JWT_SECRET"));
-requireEnv("MCP_JWT_SECRET");
+const mcpJwtSecret = requireEnv("MCP_JWT_SECRET");
 
 // Create Bolt app and Slack label builder
 const geminiClient = createGeminiClient(requireEnv("GEMINI_API_KEY"));
@@ -70,6 +72,8 @@ const app = createHonoApp({
   kudosService,
   settingsService,
   apiKeyService,
+  oauthService,
+  mcpJwtSecret,
   buildMrkdwnLabels,
   resolveChannelName: slackLabelResolver.channel.bind(slackLabelResolver),
   slackReceiver: receiver ?? undefined,
