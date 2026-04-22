@@ -7,6 +7,7 @@ import type { KudosService } from "./kudos/service";
 import type { UsergroupService } from "./usergroups/service";
 import type { SettingsService } from "./settings/service";
 import type { ApiKeyService } from "./api-keys/service";
+import type { OAuthService } from "./oauth/service";
 import type { MrkdwnOptions } from "./slack/mrkdwn";
 import type { HonoReceiver } from "./slack/receiver";
 
@@ -28,6 +29,8 @@ export interface HonoAppConfig {
   kudosService: KudosService;
   settingsService: SettingsService;
   apiKeyService: ApiKeyService;
+  oauthService: OAuthService;
+  mcpJwtSecret: string;
   buildMrkdwnLabels: BuildMrkdwnLabels;
   resolveChannelName: ResolveChannelName;
   slackReceiver?: HonoReceiver;
