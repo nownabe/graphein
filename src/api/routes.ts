@@ -32,8 +32,7 @@ export function createApiRoutes(deps: ApiRouteDeps) {
   app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
     type: "http",
     scheme: "bearer",
-    description:
-      "API key passed as a Bearer token. Generate keys via the admin UI or API.",
+    description: "API key passed as a Bearer token. Generate keys via the admin UI or API.",
   });
 
   // --- OpenAPI spec endpoint ---
