@@ -14,6 +14,8 @@ import {
   EmbeddedUserWithAvatarSchema,
   EmbeddedUserSchema,
   EmbeddedUsergroupSchema,
+  UnauthorizedResponse,
+  RateLimitedResponse,
 } from "./schemas";
 
 // ---------------------------------------------------------------------------
@@ -169,10 +171,12 @@ const listSnippetsRoute = createRoute({
       description: "Paginated list of snippets.",
       content: { "application/json": { schema: ListSnippetsResponseSchema } },
     },
+    401: UnauthorizedResponse,
     422: {
       description: "Validation error.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 

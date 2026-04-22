@@ -1,7 +1,12 @@
 import { z } from "@hono/zod-openapi";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import type { KudosService } from "../kudos/service";
-import { EmbeddedUserWithAvatarSchema, ErrorResponseSchema } from "./schemas";
+import {
+  EmbeddedUserWithAvatarSchema,
+  ErrorResponseSchema,
+  UnauthorizedResponse,
+  RateLimitedResponse,
+} from "./schemas";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -149,10 +154,12 @@ const listKudosRoute = createRoute({
       description: "Paginated list of kudos entries.",
       content: { "application/json": { schema: ListKudosResponseSchema } },
     },
+    401: UnauthorizedResponse,
     422: {
       description: "Validation error.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 

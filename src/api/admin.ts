@@ -6,7 +6,7 @@ import { users, snippetChannels, kudosChannels } from "../db/schema";
 import type { UserService } from "../users/service";
 import type { SnippetService } from "../snippets/service";
 import type { KudosService } from "../kudos/service";
-import { ErrorResponseSchema } from "./schemas";
+import { ErrorResponseSchema, UnauthorizedResponse, RateLimitedResponse } from "./schemas";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -132,6 +132,7 @@ const listUsersRoute = createRoute({
       description: "Paginated list of users.",
       content: { "application/json": { schema: ListUsersResponseSchema } },
     },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden — admin role required.",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -140,6 +141,7 @@ const listUsersRoute = createRoute({
       description: "Validation error.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -157,6 +159,7 @@ const deactivateUserRoute = createRoute({
       description: "User deactivated.",
       content: { "application/json": { schema: DeactivateUserResponseSchema } },
     },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden — admin role required.",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -165,6 +168,7 @@ const deactivateUserRoute = createRoute({
       description: "User not found.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -183,10 +187,12 @@ const listSnippetChannelsRoute = createRoute({
         },
       },
     },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden — admin role required.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -208,6 +214,7 @@ const addSnippetChannelRoute = createRoute({
       description: "Channel created.",
       content: { "application/json": { schema: ChannelSchema } },
     },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden — admin role required.",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -216,6 +223,7 @@ const addSnippetChannelRoute = createRoute({
       description: "Validation error.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -230,6 +238,7 @@ const deleteSnippetChannelRoute = createRoute({
   },
   responses: {
     204: { description: "Channel removed." },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden — admin role required.",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -238,6 +247,7 @@ const deleteSnippetChannelRoute = createRoute({
       description: "Channel not found.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -256,10 +266,12 @@ const listKudosChannelsRoute = createRoute({
         },
       },
     },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden — admin role required.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -281,6 +293,7 @@ const addKudosChannelRoute = createRoute({
       description: "Channel created.",
       content: { "application/json": { schema: ChannelSchema } },
     },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden — admin role required.",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -289,6 +302,7 @@ const addKudosChannelRoute = createRoute({
       description: "Validation error.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 
@@ -303,6 +317,7 @@ const deleteKudosChannelRoute = createRoute({
   },
   responses: {
     204: { description: "Channel removed." },
+    401: UnauthorizedResponse,
     403: {
       description: "Forbidden — admin role required.",
       content: { "application/json": { schema: ErrorResponseSchema } },
@@ -311,6 +326,7 @@ const deleteKudosChannelRoute = createRoute({
       description: "Channel not found.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
+    429: RateLimitedResponse,
   },
 });
 

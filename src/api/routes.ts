@@ -28,6 +28,14 @@ interface ApiRouteDeps {
 export function createApiRoutes(deps: ApiRouteDeps) {
   const app = new OpenAPIHono();
 
+  // --- Security scheme ---
+  app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
+    type: "http",
+    scheme: "bearer",
+    description:
+      "API key passed as a Bearer token. Generate keys via the admin UI or API.",
+  });
+
   // --- OpenAPI spec endpoint ---
   app.doc("/doc", {
     openapi: "3.0.0",
@@ -37,6 +45,7 @@ export function createApiRoutes(deps: ApiRouteDeps) {
       description:
         "JSON API for Graphein — interact with tasks, snippets, and kudos programmatically.",
     },
+    security: [{ bearerAuth: [] }],
   });
 
   // --- Scalar API reference UI ---
