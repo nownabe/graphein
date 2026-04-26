@@ -76,41 +76,66 @@ function extractSessionId(jsonOutput: string): string | null {
 // Codex review helper
 // ---------------------------------------------------------------------------
 
-async function runCodexReview(prNumber: string, cwd: string): Promise<void> {
+type CodexReviewOutput = {
+  schema_version: string;
+  status: "approved" | "changes_requested";
+  summary: string;
+  comment_markdown: string;
+  reviewed_ref: { base: string; head: string };
+  findings: Array<{
+    title: string;
+    severity: "high" | "medium" | "low";
+    category: string;
+    description: string;
+    suggested_fix: string | null;
+    confidence: "high" | "medium" | "low";
+    location: { path: string; line: number | null; end_line: number | null };
+    snippet: string | null;
+  }>;
+};
+
+async function runCodexReview(cwd: string): Promise<CodexReviewOutput | null> {
   console.log(`\n🔍 Running Codex CLI review...`);
 
-  const codexResult = await run(["codex", "review", "--base", "main"], {
-    timeout: 300_000,
-    cwd,
-  });
+  const outputFile = `${cwd}/.codex-review-output.tmp`;
+
+  const codexResult = await run(
+    [
+      "codex",
+      "exec",
+      "--output-schema",
+      "tools/codex-review-schema.json",
+      "-s",
+      "read-only",
+      "-o",
+      outputFile,
+      "Review the code changes between main and HEAD in this git repository. Identify bugs, security issues, or regressions. Be strict: only report concrete, actionable findings.",
+    ],
+    { timeout: 300_000, cwd },
+  );
 
   if (codexResult.exitCode !== 0) {
     console.error("⚠️  Codex review failed (non-zero exit), skipping.");
-    return;
+    await run(["rm", "-f", outputFile], { cwd });
+    return null;
   }
 
-  const output = codexResult.stdout;
-  if (!output.trim()) {
-    console.log("   Codex review: no output.");
-    return;
+  try {
+    const outputText = await Bun.file(outputFile).text();
+    await run(["rm", "-f", outputFile], { cwd });
+    return JSON.parse(outputText) as CodexReviewOutput;
+  } catch {
+    console.error("⚠️  Failed to parse Codex review output, skipping.");
+    await run(["rm", "-f", outputFile], { cwd });
+    return null;
   }
+}
 
-  console.log("   Codex review: posting findings as PR comment...");
-
-  const commentBody = `## Codex CLI Review\n\n${output}`;
+async function postComment(prNumber: string, body: string, cwd: string): Promise<void> {
   const tmpFile = `${cwd}/.codex-review-comment.tmp`;
-  await Bun.write(tmpFile, commentBody);
-  const commentResult = await run(
-    ["gh", "pr", "comment", prNumber, "--body-file", tmpFile],
-    { cwd },
-  );
+  await Bun.write(tmpFile, body);
+  await run(["gh", "pr", "comment", prNumber, "--body-file", tmpFile], { cwd });
   await run(["rm", "-f", tmpFile], { cwd });
-
-  if (commentResult.exitCode === 0) {
-    console.log("   Posted Codex review comment on PR.");
-  } else {
-    console.error("⚠️  Failed to post Codex review comment.");
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -211,28 +236,72 @@ console.log(`\n✅ PR created: ${prUrl}`);
 console.log(`   Session: ${sessionId}`);
 
 // ---------------------------------------------------------------------------
-// Phase 2-3: Wait and fix loop
+// Phase 2: Codex review (before wait/fix loop)
+// ---------------------------------------------------------------------------
+
+if (enableCodexReview) {
+  const review = await runCodexReview(worktreePath);
+
+  if (review) {
+    if (review.status === "approved") {
+      console.log(`   Codex review: approved (no issues)`);
+      await postComment(prNumber, `## Codex CLI Review\n\n${review.comment_markdown}`, worktreePath);
+    } else {
+      console.log(
+        `   Codex review: ${review.findings.length} issue(s) found. Fixing...`,
+      );
+
+      const findingsJson = JSON.stringify(review.findings, null, 2);
+      const fixPrompt = `Codex CLI review found issues in PR ${prUrl}. Fix them.\n\nFindings:\n${findingsJson}\n\nSteps:\n1. Read each finding (check location.path and location.line)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit and push (git push)`;
+
+      const fixResult = await run(
+        [
+          "claude",
+          "-p",
+          fixPrompt,
+          "--resume",
+          sessionId,
+          "--permission-mode",
+          "bypassPermissions",
+          "--output-format",
+          "text",
+        ],
+        { timeout: 600_000, cwd: worktreePath },
+      );
+
+      if (fixResult.exitCode !== 0) {
+        console.error("⚠️  Codex review fix failed, continuing to wait loop.");
+      } else {
+        console.log("   Codex review fixes applied.");
+      }
+
+      // Post findings summary as PR comment
+      const findingsList = review.findings
+        .map(
+          (f) =>
+            `- **${f.severity}** (${f.category}): ${f.title} — \`${f.location.path}${f.location.line ? `:${f.location.line}` : ""}\``,
+        )
+        .join("\n");
+      const commentBody = `## Codex CLI Review\n\n${review.summary}\n\n### Findings (addressed)\n\n${findingsList}`;
+      await postComment(prNumber, commentBody, worktreePath);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3: Wait and fix loop
 // ---------------------------------------------------------------------------
 
 for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
   console.log(`\n⏳ Waiting for CI/review (round ${round}/${MAX_FIX_ROUNDS})...`);
 
   // Keep polling until an actionable status is reached (no timeout limit).
-  // Codex review runs in parallel with the first wait-pr invocation only.
   let status: any;
-  let firstPoll = true;
 
   while (true) {
-    const waitPromise = run(["bun", "run", "tools/wait-pr.ts", prNumber], {
+    const waitResult = await run(["bun", "run", "tools/wait-pr.ts", prNumber], {
       cwd: worktreePath,
     });
-
-    if (firstPoll && enableCodexReview) {
-      await runCodexReview(prNumber, worktreePath);
-      firstPoll = false;
-    }
-
-    const waitResult = await waitPromise;
 
     if (waitResult.exitCode !== 0) {
       console.error("❌ wait-pr.ts failed");
