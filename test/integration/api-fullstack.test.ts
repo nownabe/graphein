@@ -1,5 +1,4 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import type { Database } from "../../src/db/client";
 import { tasks, taskAssignees, taskOwners } from "../../src/db/schema";
 import { createTestApp, createTestUser, cleanupDb } from "./helpers";
 
@@ -11,15 +10,12 @@ import { createTestApp, createTestUser, cleanupDb } from "./helpers";
  * chain: auth → rate limit → route handler.
  */
 
-let db: Database;
-let app: ReturnType<typeof createTestApp>["app"];
-let apiKeyService: ReturnType<typeof createTestApp>["apiKeyService"];
+// Create the app (and its DB pool) once per file to avoid exhausting connections
+// when bun runs all integration test files in parallel.
+const ctx = createTestApp();
+const { db, app, apiKeyService } = ctx;
 
 beforeEach(async () => {
-  const ctx = createTestApp();
-  db = ctx.db;
-  app = ctx.app;
-  apiKeyService = ctx.apiKeyService;
   await cleanupDb(db);
 });
 
