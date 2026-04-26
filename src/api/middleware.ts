@@ -130,7 +130,7 @@ export function createApiRateLimitMiddleware(rateLimiter: ReturnType<typeof crea
       c.header("X-RateLimit-Reset", String(resetAtSeconds));
       return c.json(
         {
-          error: { code: "rate_limit_exceeded", message: "Rate limit exceeded. Try again later." },
+          error: { code: "rate_limited", message: "Rate limit exceeded. Try again later." },
         },
         429,
       );

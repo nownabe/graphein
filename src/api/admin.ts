@@ -161,8 +161,8 @@ const deactivateUserRoute = createRoute({
       description: "User deactivated.",
       content: { "application/json": { schema: DeactivateUserResponseSchema } },
     },
-    400: {
-      description: "Invalid request — cannot deactivate yourself.",
+    422: {
+      description: "Validation error — cannot deactivate yourself.",
       content: { "application/json": { schema: ErrorResponseSchema } },
     },
     401: UnauthorizedResponse,
@@ -474,8 +474,8 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
 
     if (id === apiUser.id) {
       return c.json(
-        { error: { code: "invalid_request", message: "Cannot deactivate yourself." } },
-        400,
+        { error: { code: "validation_error", message: "Cannot deactivate yourself." } },
+        422,
       );
     }
 
