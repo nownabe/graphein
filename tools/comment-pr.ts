@@ -61,10 +61,10 @@ if (bodyFile) {
 const footer = `\n\n<sub>_Posted by ${agent} (${model})_</sub>`;
 const fullBody = commentBody.trimEnd() + footer;
 
-const proc = Bun.spawn(
-  ["gh", "pr", "comment", prNumber, "--body", fullBody],
-  { stdout: "inherit", stderr: "inherit" },
-);
+const proc = Bun.spawn(["gh", "pr", "comment", prNumber, "--body", fullBody], {
+  stdout: "inherit",
+  stderr: "inherit",
+});
 
 const exitCode = await proc.exited;
 process.exit(exitCode);
