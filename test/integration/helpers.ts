@@ -1,6 +1,8 @@
 import type { Hono } from "hono";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "../../src/db/schema";
 import { createHonoApp } from "../../src/app";
-import { createDb } from "../../src/db/client";
 import type { Database } from "../../src/db/client";
 import { createUserService } from "../../src/users/service";
 import { createTaskService } from "../../src/tasks/service";
@@ -38,7 +40,9 @@ const BASE_URL = "http://localhost:3000";
 const session = createSessionHelpers(JWT_SECRET);
 
 export function createTestApp() {
-  const db = createDb(TEST_DATABASE_URL);
+  // Limit connections to avoid exceeding CI postgres max_connections
+  const queryClient = postgres(TEST_DATABASE_URL, { max: 2 });
+  const db = drizzle(queryClient, { schema });
   const userService = createUserService(db);
   const taskService = createTaskService(db);
   const usergroupService = createUsergroupService(db);
