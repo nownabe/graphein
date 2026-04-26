@@ -3,6 +3,8 @@ import { serveStatic } from "hono/bun";
 import { logger } from "hono/logger";
 import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
+import { contextStorage } from "hono/context-storage";
+import { mcpAuthRouter, StreamableHTTPTransport } from "@hono/mcp";
 import { createCsrfMiddleware } from "./auth/csrf";
 import { createAuthMiddleware } from "./auth/middleware";
 import { createAuthRoutes } from "./auth/routes.tsx";
@@ -12,9 +14,11 @@ import { createSnippetRoutes } from "./snippets/routes.tsx";
 import { createKudosRoutes } from "./kudos/routes.tsx";
 import { createApiKeyRoutes } from "./api-keys/routes.tsx";
 import { clickjackingMiddleware } from "./auth/clickjacking";
-import { createApiMiddleware } from "./api/middleware";
+import { createApiMiddleware, createRateLimiter } from "./api/middleware";
 import { createApiRoutes } from "./api/routes";
 import { GrapheinOAuthProvider } from "./mcp/auth-provider";
+import { createMcpServer } from "./mcp/server";
+import "./mcp/types"; // Side-effect import for ContextVariableMap augmentation
 import type { HonoAppConfig } from "./config";
 
 export function createHonoApp(config: HonoAppConfig) {
@@ -214,6 +218,90 @@ export function createHonoApp(config: HonoAppConfig) {
     config.devMode,
   );
   app.post("/oauth/consent", (c) => oauthProvider.handleConsent(c));
+
+  // OAuth Authorization Server endpoints (discovery, registration, token, revocation)
+  // Cast provider because @hono/mcp passes Hono Context (not express Response) to authorize()
+  // at runtime, but the SDK type declares express.Response. The cast is safe.
+  app.route(
+    "/",
+    mcpAuthRouter({
+      provider: oauthProvider as unknown as Parameters<typeof mcpAuthRouter>[0]["provider"],
+      issuerUrl: config.baseUrl,
+      resourceServerUrl: new URL(`${config.baseUrl}/mcp`),
+      scopesSupported: ["graphein"],
+      serviceDocumentationUrl: new URL(`${config.baseUrl}/api/v1/reference`),
+    }),
+  );
+
+  // MCP Streamable HTTP endpoint
+  //
+  // A new McpServer + StreamableHTTPTransport is created per request.
+  // The MCP SDK ties a single McpServer instance to one transport at a
+  // time, so sharing an instance across concurrent requests is unsafe.
+  // Since Graphein runs in stateless mode (no sessions, no subscriptions),
+  // per-request instantiation is the correct approach.
+  const mcpRateLimiter = createRateLimiter();
+  app.use("/mcp", contextStorage());
+  app.all("/mcp", async (c) => {
+    // Verify Bearer token (JWT access token)
+    const authHeader = c.req.header("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return c.json({}, 401, {
+        "WWW-Authenticate": `Bearer resource_metadata="${config.baseUrl}/.well-known/oauth-protected-resource/mcp"`,
+      });
+    }
+
+    let tokenInfo: Awaited<ReturnType<typeof oauthProvider.verifyAccessToken>>;
+    try {
+      tokenInfo = await oauthProvider.verifyAccessToken(authHeader.slice(7));
+    } catch {
+      return c.json({}, 401, {
+        "WWW-Authenticate": `Bearer resource_metadata="${config.baseUrl}/.well-known/oauth-protected-resource/mcp"`,
+      });
+    }
+
+    // Rate limiting keyed by user ID (60 req/min)
+    const userId = (tokenInfo.extra as { sub: string }).sub;
+    const { remaining, resetAt } = mcpRateLimiter.check(userId);
+    const resetAtSeconds = Math.ceil(resetAt / 1000);
+    if (remaining < 0) {
+      const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));
+      c.header("Retry-After", String(retryAfter));
+      c.header("X-RateLimit-Limit", "60");
+      c.header("X-RateLimit-Remaining", "0");
+      c.header("X-RateLimit-Reset", String(resetAtSeconds));
+      return c.json(
+        {
+          error: { code: "rate_limit_exceeded", message: "Rate limit exceeded. Try again later." },
+        },
+        429,
+      );
+    }
+    c.header("X-RateLimit-Limit", "60");
+    c.header("X-RateLimit-Remaining", String(remaining));
+    c.header("X-RateLimit-Reset", String(resetAtSeconds));
+
+    // Look up user for tool/resource handlers
+    const user = await userService.findUserById(userId);
+    if (!user) {
+      return c.json({}, 401, {
+        "WWW-Authenticate": `Bearer resource_metadata="${config.baseUrl}/.well-known/oauth-protected-resource/mcp"`,
+      });
+    }
+
+    // Set user context for tool/resource handlers (accessible via getContext())
+    c.set("mcpUser", user);
+    c.set("mcpRole", user.role);
+
+    // Per-request server + transport (stateless mode)
+    const mcpServer = createMcpServer({
+      name: "graphein",
+      version: "1.0.0",
+    });
+    const transport = new StreamableHTTPTransport();
+    await mcpServer.connect(transport);
+    return transport.handleRequest(c);
+  });
 
   // Slack events/interactions (HTTP mode only, not used in Socket Mode)
   if (config.slackReceiver) {
