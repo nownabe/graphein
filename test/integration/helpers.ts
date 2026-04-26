@@ -36,7 +36,7 @@ const BASE_URL = "http://localhost:3000";
 const session = createSessionHelpers(JWT_SECRET);
 
 export function createTestApp() {
-  const db = createDb(TEST_DATABASE_URL);
+  const db = createDb(TEST_DATABASE_URL, { max: 2 });
   const userService = createUserService(db);
   const taskService = createTaskService(db);
   const usergroupService = createUsergroupService(db);

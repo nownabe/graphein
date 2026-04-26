@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import { createAdminApiRoutes } from "../../src/api/admin";
 import { createApiAuthMiddleware } from "../../src/api/middleware";
 import { createDb } from "../../src/db/client";
-import type { Database } from "../../src/db/client";
 import { createUserService } from "../../src/users/service";
 import { createSnippetService } from "../../src/snippets/service";
 import { createKudosService } from "../../src/kudos/service";
@@ -12,10 +11,10 @@ import type { ApiKeyService } from "../../src/api-keys/service";
 import { TEST_DATABASE_URL } from "./setup";
 import { cleanupDb } from "./helpers";
 
-let db: Database;
-let userService: ReturnType<typeof createUserService>;
-let snippetService: ReturnType<typeof createSnippetService>;
-let kudosService: ReturnType<typeof createKudosService>;
+const db = createDb(TEST_DATABASE_URL, { max: 2 });
+const userService = createUserService(db);
+const snippetService = createSnippetService(db);
+const kudosService = createKudosService(db);
 
 function createMockApiKeyService(
   mockUser: typeof users.$inferSelect,
@@ -68,10 +67,6 @@ async function createUser(overrides?: Partial<typeof users.$inferInsert>) {
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
-  db = createDb(TEST_DATABASE_URL);
-  userService = createUserService(db);
-  snippetService = createSnippetService(db);
-  kudosService = createKudosService(db);
   await cleanupDb(db);
 });
 
