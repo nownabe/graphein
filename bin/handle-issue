@@ -131,11 +131,12 @@ async function runCodexReview(cwd: string): Promise<CodexReviewOutput | null> {
   }
 }
 
-async function postComment(prNumber: string, body: string, cwd: string): Promise<void> {
-  const tmpFile = `${cwd}/.codex-review-comment.tmp`;
-  await Bun.write(tmpFile, body);
-  await run(["gh", "pr", "comment", prNumber, "--body-file", tmpFile], { cwd });
-  await run(["rm", "-f", tmpFile], { cwd });
+async function postComment(prNumber: string, body: string): Promise<void> {
+  await run([
+    "bun", "run", "tools/comment-pr.ts", prNumber,
+    "--agent", "Codex",
+    "--body", body,
+  ]);
 }
 
 // ---------------------------------------------------------------------------
@@ -254,7 +255,7 @@ if (enableCodexReview) {
 
     if (review.status === "approved") {
       console.log(`   Codex review: approved (no issues)`);
-      await postComment(prNumber, `## Codex CLI Review\n\n${review.comment_markdown}`, worktreePath);
+      await postComment(prNumber, `## Codex CLI Review\n\n${review.comment_markdown}`);
       break;
     }
 
@@ -297,7 +298,7 @@ if (enableCodexReview) {
         )
         .join("\n");
       const commentBody = `## Codex CLI Review\n\n${review.summary}\n\n### Findings (not fully resolved after ${MAX_CODEX_ROUNDS} rounds)\n\n${findingsList}`;
-      await postComment(prNumber, commentBody, worktreePath);
+      await postComment(prNumber, commentBody);
     }
   }
 }
