@@ -134,8 +134,8 @@ async function runCodexReview(cwd: string): Promise<CodexReviewOutput | null> {
 async function postComment(prNumber: string, body: string): Promise<void> {
   await run([
     "bun", "run", "tools/comment-pr.ts", prNumber,
-    "--agent", "Codex CLI",
-    "--model", "codex",
+    "--agent", "Codex",
+    "--model", "o3",
     "--body", body,
   ]);
 }
