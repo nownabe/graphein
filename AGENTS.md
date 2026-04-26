@@ -150,10 +150,19 @@ All documentation, code comments, commit messages, issues, and pull requests mus
   ```
 
 - **`tools/wait-pr.ts`**: Poll a PR until CI passes and LGTM is received, or an actionable state is reached.
+
   ```bash
   bun run tools/wait-pr.ts <pr-number> [--reviewer <user>]
   ```
+
   Polls every 30s (up to ~5 min). Only reports feedback posted after the tool starts. The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, `merged`, `closed`, or `pending`. Non-zero exit only on errors.
+
+- **`tools/comment-pr.ts`**: Post a comment on a pull request with an agent/model footer.
+  ```bash
+  bun run tools/comment-pr.ts <pr-number> --agent <agent> --model <model> --body <body>
+  bun run tools/comment-pr.ts <pr-number> --agent <agent> --model <model> --body-file <path>
+  ```
+  The comment body is read from `--body` (inline string) or `--body-file` (file path). A footer is automatically appended: `<sub>_Posted by <agent> (<model>)_</sub>`.
 
 ## E2E Tests
 

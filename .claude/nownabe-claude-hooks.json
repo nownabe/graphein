@@ -4,6 +4,10 @@
       "npx *": {
         "reason": "npx is not allowed in this project",
         "suggestion": "Use bunx instead of npx"
+      },
+      "gh pr comment *": {
+        "reason": "Use tools/comment-pr.ts instead of gh pr comment directly",
+        "suggestion": "bun run tools/comment-pr.ts <pr-number> --agent <agent> --model <model> --body <body>"
       }
     }
   }
