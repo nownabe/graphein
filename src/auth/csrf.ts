@@ -3,7 +3,14 @@ import { createMiddleware } from "hono/factory";
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
 // Paths exempt from CSRF checks (verified by their own mechanisms)
-const EXEMPT_PREFIXES = ["/slack/", "/api/"];
+const EXEMPT_PREFIXES = [
+  "/slack/",
+  "/api/",
+  "/mcp",
+  "/oauth/token",
+  "/oauth/register",
+  "/oauth/revoke",
+];
 
 /**
  * CSRF protection middleware that verifies the Origin (or Referer) header
