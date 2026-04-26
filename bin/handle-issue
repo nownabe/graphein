@@ -240,49 +240,63 @@ console.log(`   Session: ${sessionId}`);
 // ---------------------------------------------------------------------------
 
 if (enableCodexReview) {
-  const review = await runCodexReview(worktreePath);
+  const MAX_CODEX_ROUNDS = 5;
 
-  if (review) {
+  for (let codexRound = 1; codexRound <= MAX_CODEX_ROUNDS; codexRound++) {
+    console.log(`\n🔍 Codex review round ${codexRound}/${MAX_CODEX_ROUNDS}...`);
+
+    const review = await runCodexReview(worktreePath);
+
+    if (!review) {
+      console.error("⚠️  Codex review failed, skipping to wait loop.");
+      break;
+    }
+
     if (review.status === "approved") {
       console.log(`   Codex review: approved (no issues)`);
       await postComment(prNumber, `## Codex CLI Review\n\n${review.comment_markdown}`, worktreePath);
-    } else {
-      console.log(
-        `   Codex review: ${review.findings.length} issue(s) found. Fixing...`,
-      );
+      break;
+    }
 
-      const findingsJson = JSON.stringify(review.findings, null, 2);
-      const fixPrompt = `Codex CLI review found issues in PR ${prUrl}. Fix them.\n\nFindings:\n${findingsJson}\n\nSteps:\n1. Read each finding (check location.path and location.line)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit and push (git push)`;
+    // changes_requested — fix and re-review
+    console.log(`   Codex review: ${review.findings.length} issue(s) found. Fixing...`);
 
-      const fixResult = await run(
-        [
-          "claude",
-          "-p",
-          fixPrompt,
-          "--resume",
-          sessionId,
-          "--permission-mode",
-          "bypassPermissions",
-          "--output-format",
-          "text",
-        ],
-        { timeout: 600_000, cwd: worktreePath },
-      );
+    const findingsJson = JSON.stringify(review.findings, null, 2);
+    const fixPrompt = `Codex CLI review found issues in PR ${prUrl}. Fix them.\n\nFindings:\n${findingsJson}\n\nSteps:\n1. Read each finding (check location.path and location.line)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit and push (git push)`;
 
-      if (fixResult.exitCode !== 0) {
-        console.error("⚠️  Codex review fix failed, continuing to wait loop.");
-      } else {
-        console.log("   Codex review fixes applied.");
-      }
+    const fixResult = await run(
+      [
+        "claude",
+        "-p",
+        fixPrompt,
+        "--resume",
+        sessionId,
+        "--permission-mode",
+        "bypassPermissions",
+        "--output-format",
+        "text",
+      ],
+      { timeout: 600_000, cwd: worktreePath },
+    );
 
-      // Post findings summary as PR comment
+    if (fixResult.exitCode !== 0) {
+      console.error("⚠️  Codex review fix failed, skipping to wait loop.");
+      break;
+    }
+
+    console.log(`   Codex review fixes applied (round ${codexRound}).`);
+
+    if (codexRound === MAX_CODEX_ROUNDS) {
+      console.error(`⚠️  Codex review did not converge after ${MAX_CODEX_ROUNDS} rounds.`);
+
+      // Post final findings summary
       const findingsList = review.findings
         .map(
           (f) =>
             `- **${f.severity}** (${f.category}): ${f.title} — \`${f.location.path}${f.location.line ? `:${f.location.line}` : ""}\``,
         )
         .join("\n");
-      const commentBody = `## Codex CLI Review\n\n${review.summary}\n\n### Findings (addressed)\n\n${findingsList}`;
+      const commentBody = `## Codex CLI Review\n\n${review.summary}\n\n### Findings (not fully resolved after ${MAX_CODEX_ROUNDS} rounds)\n\n${findingsList}`;
       await postComment(prNumber, commentBody, worktreePath);
     }
   }
