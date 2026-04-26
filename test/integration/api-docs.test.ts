@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { createTestApp, createTestUser, cleanupDb } from "./helpers";
+import { createTestApp, cleanupDb } from "./helpers";
 import type { Database } from "../../src/db/client";
 
 let db: Database;
