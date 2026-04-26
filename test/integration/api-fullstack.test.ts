@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import type { Database } from "../../src/db/client";
-import { users, tasks, taskAssignees, taskOwners } from "../../src/db/schema";
+import { tasks, taskAssignees, taskOwners } from "../../src/db/schema";
 import { createTestApp, createTestUser, cleanupDb } from "./helpers";
 
 /**
@@ -152,6 +152,23 @@ describe("admin path: GET /api/v1/admin/users", () => {
 // ---------------------------------------------------------------------------
 
 describe("rate limiting on full /api/v1 stack", () => {
+  // The rate limiter uses Date.now() to determine the current window.
+  // Pin the clock to the start of a window so tests never straddle a boundary.
+  const WINDOW_MS = 60_000;
+  let realDateNow: () => number;
+  let frozenTime: number;
+
+  beforeEach(() => {
+    realDateNow = Date.now;
+    // Pick a timestamp at the start of a window so all 61 requests fit in one.
+    frozenTime = Math.floor(realDateNow() / WINDOW_MS) * WINDOW_MS + 1_000;
+    Date.now = () => frozenTime;
+  });
+
+  afterEach(() => {
+    Date.now = realDateNow;
+  });
+
   test("rate limit headers are present on successful responses", async () => {
     const { rawKey } = await createUserWithKey();
 
