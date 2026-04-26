@@ -247,15 +247,15 @@ describe("POST /admin/users/{id}/deactivate", () => {
     expect(body2.deactivatedAt).toBe(body1.deactivatedAt);
   });
 
-  test("returns 400 when trying to deactivate yourself", async () => {
+  test("returns 422 when trying to deactivate yourself", async () => {
     const admin = await createUser({ role: "admin", displayName: "Admin" });
 
     const app = buildApp(admin);
     const res = await req(app, `/admin/users/${admin.id}/deactivate`, { method: "POST" });
-    expect(res.status).toBe(400);
+    expect(res.status).toBe(422);
 
     const body = await res.json();
-    expect(body.error.code).toBe("invalid_request");
+    expect(body.error.code).toBe("validation_error");
   });
 
   test("returns 404 for non-existent user", async () => {

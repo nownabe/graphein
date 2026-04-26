@@ -179,7 +179,7 @@ describe("rate limiting on full /api/v1 stack", () => {
     const res = await apiRequest("/tasks", rawKey);
     expect(res.status).toBe(429);
     const body = await res.json();
-    expect(body.error.code).toBe("rate_limit_exceeded");
+    expect(body.error.code).toBe("rate_limited");
     expect(res.headers.get("Retry-After")).toBeDefined();
     expect(res.headers.get("X-RateLimit-Remaining")).toBe("0");
   });

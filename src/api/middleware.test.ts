@@ -270,7 +270,7 @@ describe("API rate limiting", () => {
     });
     expect(res.status).toBe(429);
     const body = await res.json();
-    expect(body.error.code).toBe("rate_limit_exceeded");
+    expect(body.error.code).toBe("rate_limited");
     expect(res.headers.get("Retry-After")).toBeTruthy();
     expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0);
     expect(res.headers.get("X-RateLimit-Remaining")).toBe("0");
@@ -383,7 +383,7 @@ describe("Composed middleware with path exclusion (mirrors app.ts)", () => {
     });
     expect(res.status).toBe(429);
     const body = await res.json();
-    expect(body.error.code).toBe("rate_limit_exceeded");
+    expect(body.error.code).toBe("rate_limited");
   });
 
   test("skips auth for excluded paths", async () => {
