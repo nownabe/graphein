@@ -82,7 +82,7 @@ async function addAssignee(taskId: string, userId: string, done = false) {
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
-  db = createDb(TEST_DATABASE_URL);
+  db = createDb(TEST_DATABASE_URL, { max: 1 });
   taskService = createTaskService(db);
   await cleanupDb(db);
 });

@@ -100,7 +100,7 @@ async function addMentionedUsergroup(snippetId: string, usergroupId: string) {
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
-  db = createDb(TEST_DATABASE_URL);
+  db = createDb(TEST_DATABASE_URL, { max: 1 });
   await cleanupDb(db);
 });
 

@@ -90,7 +90,7 @@ async function createKudosEntry(opts: {
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
-  db = createDb(TEST_DATABASE_URL);
+  db = createDb(TEST_DATABASE_URL, { max: 1 });
   kudosService = createKudosService(db);
   await cleanupDb(db);
 });

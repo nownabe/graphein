@@ -7,6 +7,6 @@ export const TEST_DATABASE_URL =
   "postgres://graphein_test:graphein_test@localhost:15433/graphein_test";
 
 beforeAll(async () => {
-  const db = createDb(TEST_DATABASE_URL);
+  const db = createDb(TEST_DATABASE_URL, { max: 1 });
   await migrate(db, { migrationsFolder: "./drizzle" });
 });
