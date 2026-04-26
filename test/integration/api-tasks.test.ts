@@ -3,15 +3,14 @@ import { Hono } from "hono";
 import { createTaskApiRoutes } from "../../src/api/tasks";
 import { createApiAuthMiddleware } from "../../src/api/middleware";
 import { createDb } from "../../src/db/client";
-import type { Database } from "../../src/db/client";
 import { createTaskService } from "../../src/tasks/service";
 import { users, tasks, taskAssignees, taskOwners } from "../../src/db/schema";
 import type { ApiKeyService } from "../../src/api-keys/service";
 import { TEST_DATABASE_URL } from "./setup";
 import { cleanupDb } from "./helpers";
 
-let db: Database;
-let taskService: ReturnType<typeof createTaskService>;
+const db = createDb(TEST_DATABASE_URL, { max: 2 });
+const taskService = createTaskService(db);
 
 function createMockApiKeyService(
   mockUser: typeof users.$inferSelect,
@@ -82,8 +81,6 @@ async function addAssignee(taskId: string, userId: string, done = false) {
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
-  db = createDb(TEST_DATABASE_URL);
-  taskService = createTaskService(db);
   await cleanupDb(db);
 });
 

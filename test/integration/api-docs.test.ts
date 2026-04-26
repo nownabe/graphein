@@ -1,15 +1,7 @@
-import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import { describe, test, expect, afterEach } from "bun:test";
 import { createTestApp, cleanupDb } from "./helpers";
-import type { Database } from "../../src/db/client";
 
-let db: Database;
-let app: ReturnType<typeof createTestApp>["app"];
-
-beforeEach(async () => {
-  const ctx = createTestApp();
-  app = ctx.app;
-  db = ctx.db;
-});
+const { app, db } = createTestApp();
 
 afterEach(async () => {
   await cleanupDb(db);
