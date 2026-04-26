@@ -3,14 +3,13 @@ import { Hono } from "hono";
 import { createKudosApiRoutes } from "../../src/api/kudos";
 import { createApiAuthMiddleware } from "../../src/api/middleware";
 import { createDb } from "../../src/db/client";
-import type { Database } from "../../src/db/client";
 import { createKudosService } from "../../src/kudos/service";
 import { users, kudos, kudosEntries, kudosEntryMentionedUsers } from "../../src/db/schema";
 import type { ApiKeyService } from "../../src/api-keys/service";
 import { TEST_DATABASE_URL } from "./setup";
 import { cleanupDb } from "./helpers";
 
-let db: Database;
+const db = createDb(TEST_DATABASE_URL, { max: 1 });
 let kudosService: ReturnType<typeof createKudosService>;
 
 function createMockApiKeyService(mockUser: typeof users.$inferSelect): ApiKeyService {
@@ -90,7 +89,6 @@ async function createKudosEntry(opts: {
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
-  db = createDb(TEST_DATABASE_URL, { max: 1 });
   kudosService = createKudosService(db);
   await cleanupDb(db);
 });

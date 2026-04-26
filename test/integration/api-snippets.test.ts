@@ -3,7 +3,6 @@ import { Hono } from "hono";
 import { createSnippetApiRoutes } from "../../src/api/snippets";
 import { createApiAuthMiddleware } from "../../src/api/middleware";
 import { createDb } from "../../src/db/client";
-import type { Database } from "../../src/db/client";
 import {
   users,
   snippets,
@@ -15,7 +14,7 @@ import type { ApiKeyService } from "../../src/api-keys/service";
 import { TEST_DATABASE_URL } from "./setup";
 import { cleanupDb } from "./helpers";
 
-let db: Database;
+const db = createDb(TEST_DATABASE_URL, { max: 1 });
 
 function createMockApiKeyService(
   mockUser: typeof users.$inferSelect,
@@ -100,7 +99,6 @@ async function addMentionedUsergroup(snippetId: string, usergroupId: string) {
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
-  db = createDb(TEST_DATABASE_URL, { max: 1 });
   await cleanupDb(db);
 });
 
