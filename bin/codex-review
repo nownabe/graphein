@@ -14,7 +14,7 @@
  *   6. Post `codex approved` and exit when no actionable findings remain
  */
 
-import { mkdtemp, rm, unlink } from "node:fs/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import os from "node:os";
 import { join } from "node:path";
 import { parseArgs } from "node:util";
@@ -250,21 +250,16 @@ async function runCodexReview(pr: PullRequest, worktreePath: string): Promise<Re
   return parseReviewOutput(output);
 }
 
-async function postPrComment(prNumber: string, comment: string, cwd: string): Promise<void> {
-  const tempFile = join(cwd, `.codex-review-comment-${Date.now()}.md`);
-  await Bun.write(tempFile, comment);
-
-  try {
-    ensureSuccess(
-      await run(["gh", "pr", "comment", prNumber, "--body-file", tempFile], {
-        cwd,
-        timeout: 60_000,
-      }),
-      `Failed to post PR comment to #${prNumber}`,
-    );
-  } finally {
-    await unlink(tempFile).catch(() => undefined);
-  }
+async function postPrComment(prNumber: string, comment: string): Promise<void> {
+  ensureSuccess(
+    await run([
+      "bun", "run", "tools/comment-pr.ts", prNumber,
+      "--agent", "Codex CLI",
+      "--model", "codex",
+      "--body", comment,
+    ], { timeout: 60_000 }),
+    `Failed to post PR comment to #${prNumber}`,
+  );
 }
 
 async function waitForNewHead(pr: PullRequest, reviewedHeadOid: string): Promise<PullRequest> {
@@ -331,12 +326,12 @@ try {
     }
 
     if (review.status === "approved") {
-      await postPrComment(pr.number, CODEX_APPROVED_COMMENT, worktree.worktreePath);
+      await postPrComment(pr.number, CODEX_APPROVED_COMMENT);
       console.log(`Posted "${CODEX_APPROVED_COMMENT}" to PR #${pr.number}.`);
       break;
     }
 
-    await postPrComment(pr.number, review.comment, worktree.worktreePath);
+    await postPrComment(pr.number, review.comment);
     console.log(`Posted review findings for ${reviewedHeadOid.slice(0, 7)}.`);
 
     pr = await waitForNewHead(pr, reviewedHeadOid);
