@@ -124,6 +124,7 @@ const listUsersRoute = createRoute({
   method: "get",
   path: "/admin/users",
   tags: ["Admin"],
+  security: [{ bearerAuth: [] }],
   summary: "List users",
   description: "Returns all users. Requires admin role.",
   request: { query: ListUsersQuerySchema },
@@ -149,6 +150,7 @@ const deactivateUserRoute = createRoute({
   method: "post",
   path: "/admin/users/{id}/deactivate",
   tags: ["Admin"],
+  security: [{ bearerAuth: [] }],
   summary: "Deactivate user",
   description: "Sets deactivatedAt on a user. Idempotent. Requires admin role.",
   request: {
@@ -180,6 +182,7 @@ const listSnippetChannelsRoute = createRoute({
   method: "get",
   path: "/admin/snippetChannels",
   tags: ["Admin"],
+  security: [{ bearerAuth: [] }],
   summary: "List snippet channels",
   description: "Returns all snippet-monitored channels. Requires admin role.",
   responses: {
@@ -204,6 +207,7 @@ const addSnippetChannelRoute = createRoute({
   method: "post",
   path: "/admin/snippetChannels",
   tags: ["Admin"],
+  security: [{ bearerAuth: [] }],
   summary: "Add snippet channel",
   description: "Adds a snippet-monitored channel. Idempotent. Requires admin role.",
   request: {
@@ -235,6 +239,7 @@ const deleteSnippetChannelRoute = createRoute({
   method: "delete",
   path: "/admin/snippetChannels/{id}",
   tags: ["Admin"],
+  security: [{ bearerAuth: [] }],
   summary: "Remove snippet channel",
   description: "Removes a snippet-monitored channel. Requires admin role.",
   request: {
@@ -259,6 +264,7 @@ const listKudosChannelsRoute = createRoute({
   method: "get",
   path: "/admin/kudosChannels",
   tags: ["Admin"],
+  security: [{ bearerAuth: [] }],
   summary: "List kudos channels",
   description: "Returns all kudos-monitored channels. Requires admin role.",
   responses: {
@@ -283,6 +289,7 @@ const addKudosChannelRoute = createRoute({
   method: "post",
   path: "/admin/kudosChannels",
   tags: ["Admin"],
+  security: [{ bearerAuth: [] }],
   summary: "Add kudos channel",
   description: "Adds a kudos-monitored channel. Idempotent. Requires admin role.",
   request: {
@@ -314,6 +321,7 @@ const deleteKudosChannelRoute = createRoute({
   method: "delete",
   path: "/admin/kudosChannels/{id}",
   tags: ["Admin"],
+  security: [{ bearerAuth: [] }],
   summary: "Remove kudos channel",
   description: "Removes a kudos-monitored channel. Requires admin role.",
   request: {

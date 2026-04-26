@@ -8,6 +8,10 @@
       "gh pr comment *": {
         "reason": "Use tools/comment-pr.ts instead of gh pr comment directly",
         "suggestion": "bun run tools/comment-pr.ts <pr-number> --agent <agent> --model <model> --body <body>"
+      },
+      "gh api */pulls/*/reviews*": {
+        "reason": "Use @nownabe/claude-tools instead of gh api for PR reviews",
+        "suggestion": "bunx @nownabe/claude-tools gh get-pr-reviews <pr-number>"
       }
     }
   }

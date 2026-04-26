@@ -10,7 +10,7 @@ import { TEST_DATABASE_URL } from "./setup";
 import { cleanupDb } from "./helpers";
 
 const db = createDb(TEST_DATABASE_URL, { max: 1 });
-let kudosService: ReturnType<typeof createKudosService>;
+const kudosService = createKudosService(db);
 
 function createMockApiKeyService(mockUser: typeof users.$inferSelect): ApiKeyService {
   return {
@@ -89,7 +89,6 @@ async function createKudosEntry(opts: {
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
-  kudosService = createKudosService(db);
   await cleanupDb(db);
 });
 

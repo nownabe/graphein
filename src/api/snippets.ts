@@ -162,6 +162,7 @@ const listSnippetsRoute = createRoute({
   method: "get",
   path: "/snippets",
   tags: ["Snippets"],
+  security: [{ bearerAuth: [] }],
   summary: "List snippets",
   description:
     "Returns snippets accessible to all authenticated users. Supports filtering by poster, mentioned users/usergroups, and time period.",

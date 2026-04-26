@@ -10,7 +10,7 @@ import { TEST_DATABASE_URL } from "./setup";
 import { cleanupDb } from "./helpers";
 
 const db = createDb(TEST_DATABASE_URL, { max: 1 });
-let taskService: ReturnType<typeof createTaskService>;
+const taskService = createTaskService(db);
 
 function createMockApiKeyService(
   mockUser: typeof users.$inferSelect,
@@ -81,7 +81,6 @@ async function addAssignee(taskId: string, userId: string, done = false) {
 // ---------------------------------------------------------------------------
 
 beforeEach(async () => {
-  taskService = createTaskService(db);
   await cleanupDb(db);
 });
 
