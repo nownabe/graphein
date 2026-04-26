@@ -24,7 +24,7 @@ declare module "hono" {
 // Bearer token extraction
 // ---------------------------------------------------------------------------
 
-function extractBearerToken(header: string | undefined): string | null {
+export function extractBearerToken(header: string | undefined): string | null {
   if (!header) return null;
   if (header.length < 8) return null; // "Bearer " + at least 1 char
   const scheme = header.slice(0, 7);

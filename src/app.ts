@@ -14,7 +14,7 @@ import { createSnippetRoutes } from "./snippets/routes.tsx";
 import { createKudosRoutes } from "./kudos/routes.tsx";
 import { createApiKeyRoutes } from "./api-keys/routes.tsx";
 import { clickjackingMiddleware } from "./auth/clickjacking";
-import { createApiMiddleware, createRateLimiter } from "./api/middleware";
+import { createApiMiddleware, createRateLimiter, extractBearerToken } from "./api/middleware";
 import { createApiRoutes } from "./api/routes";
 import { GrapheinOAuthProvider } from "./mcp/auth-provider";
 import { createMcpServer } from "./mcp/server";
@@ -242,10 +242,11 @@ export function createHonoApp(config: HonoAppConfig) {
   // per-request instantiation is the correct approach.
   const mcpRateLimiter = createRateLimiter();
   app.use("/mcp", contextStorage());
+  const mcpResourceUrl = `${config.baseUrl}/mcp`;
   app.all("/mcp", async (c) => {
-    // Verify Bearer token (JWT access token)
-    const authHeader = c.req.header("Authorization");
-    if (!authHeader?.startsWith("Bearer ")) {
+    // Verify Bearer token (JWT access token) — case-insensitive scheme per RFC 9110 §11.1
+    const token = extractBearerToken(c.req.header("Authorization"));
+    if (!token) {
       return c.json({}, 401, {
         "WWW-Authenticate": `Bearer resource_metadata="${config.baseUrl}/.well-known/oauth-protected-resource/mcp"`,
       });
@@ -253,8 +254,15 @@ export function createHonoApp(config: HonoAppConfig) {
 
     let tokenInfo: Awaited<ReturnType<typeof oauthProvider.verifyAccessToken>>;
     try {
-      tokenInfo = await oauthProvider.verifyAccessToken(authHeader.slice(7));
+      tokenInfo = await oauthProvider.verifyAccessToken(token);
     } catch {
+      return c.json({}, 401, {
+        "WWW-Authenticate": `Bearer resource_metadata="${config.baseUrl}/.well-known/oauth-protected-resource/mcp"`,
+      });
+    }
+
+    // Validate audience — reject tokens minted for a different resource
+    if (tokenInfo.resource?.toString() !== mcpResourceUrl) {
       return c.json({}, 401, {
         "WWW-Authenticate": `Bearer resource_metadata="${config.baseUrl}/.well-known/oauth-protected-resource/mcp"`,
       });

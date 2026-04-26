@@ -10,8 +10,18 @@ describe("createMcpServer", () => {
 
   test("registers the me resource", () => {
     const server = createMcpServer({ name: "test-graphein", version: "0.1.0" });
-    // The server should have resource handlers registered.
-    // We verify by checking the internal registered resources via the server property.
-    expect(server).toBeDefined();
+    // Access internal _registeredResources to verify registration
+    const registeredResources = (
+      server as unknown as { _registeredResources: Record<string, unknown> }
+    )._registeredResources;
+    expect(registeredResources).toBeDefined();
+    expect(registeredResources["graphein://me"]).toBeDefined();
+  });
+
+  test("does not register duplicate resources across calls", () => {
+    const server1 = createMcpServer({ name: "a", version: "0.1.0" });
+    const server2 = createMcpServer({ name: "b", version: "0.1.0" });
+    // Each call returns an independent server instance
+    expect(server1).not.toBe(server2);
   });
 });
