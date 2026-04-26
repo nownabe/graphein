@@ -135,7 +135,6 @@ async function postComment(prNumber: string, body: string): Promise<void> {
   await run([
     "bun", "run", "tools/comment-pr.ts", prNumber,
     "--agent", "Codex",
-    "--model", "o3",
     "--body", body,
   ]);
 }

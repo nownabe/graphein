@@ -1,14 +1,15 @@
 #!/usr/bin/env bun
 /**
- * comment-pr: Post a comment on a pull request with an agent/model footer.
+ * comment-pr: Post a comment on a pull request with an agent footer.
  *
  * Usage:
- *   bun run tools/comment-pr.ts <pr-number> --agent <agent> --model <model> --body <body>
+ *   bun run tools/comment-pr.ts <pr-number> --agent <agent> --body <body>
  *   bun run tools/comment-pr.ts <pr-number> --agent <agent> --model <model> --body-file <path>
  *
  * The comment body is read from --body (inline string) or --body-file (file path).
  * A footer line is automatically appended:
- *   <sub>_Posted by <agent> (<model>)_</sub>
+ *   With --model:    <sub>_Posted by <agent> (<model>)_</sub>
+ *   Without --model: <sub>_Posted by <agent>_</sub>
  */
 
 import { parseArgs } from "util";
@@ -30,17 +31,19 @@ const model = values.model;
 const bodyInline = values.body;
 const bodyFile = values["body-file"];
 
-if (!prNumber || !agent || !model || (!bodyInline && !bodyFile)) {
+if (!prNumber || !agent || (!bodyInline && !bodyFile)) {
   console.error(`Usage:
-  bun run tools/comment-pr.ts <pr-number> --agent <agent> --model <model> --body <body>
-  bun run tools/comment-pr.ts <pr-number> --agent <agent> --model <model> --body-file <path>
+  bun run tools/comment-pr.ts <pr-number> --agent <agent> [--model <model>] --body <body>
+  bun run tools/comment-pr.ts <pr-number> --agent <agent> [--model <model>] --body-file <path>
 
 Required:
   <pr-number>    Pull request number
   --agent        Agent name (e.g. "Claude Code")
-  --model        Model name (e.g. "Opus 4.6")
   --body         Comment body (inline)
   --body-file    Path to a file containing the comment body
+
+Optional:
+  --model        Model name (e.g. "Opus 4.6")
 
 One of --body or --body-file must be provided.`);
   process.exit(1);
@@ -58,7 +61,9 @@ if (bodyFile) {
   commentBody = bodyInline!;
 }
 
-const footer = `\n\n<sub>_Posted by ${agent} (${model})_</sub>`;
+const footer = model
+  ? `\n\n<sub>_Posted by ${agent} (${model})_</sub>`
+  : `\n\n<sub>_Posted by ${agent}_</sub>`;
 const fullBody = commentBody.trimEnd() + footer;
 
 const proc = Bun.spawn(["gh", "pr", "comment", prNumber, "--body", fullBody], {

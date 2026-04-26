@@ -255,7 +255,6 @@ async function postPrComment(prNumber: string, comment: string): Promise<void> {
     await run([
       "bun", "run", "tools/comment-pr.ts", prNumber,
       "--agent", "Codex",
-      "--model", "o3",
       "--body", comment,
     ], { timeout: 60_000 }),
     `Failed to post PR comment to #${prNumber}`,
