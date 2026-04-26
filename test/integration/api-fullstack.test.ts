@@ -70,10 +70,7 @@ describe("full-stack auth", () => {
   test("returns 200 with a valid user key", async () => {
     const { rawKey, user } = await createUserWithKey();
     // Ensure the user has at least one assigned task so the list isn't empty
-    const [task] = await db
-      .insert(tasks)
-      .values({ title: "T", createdById: user.id })
-      .returning();
+    const [task] = await db.insert(tasks).values({ title: "T", createdById: user.id }).returning();
     await db.insert(taskOwners).values({ taskId: task.id, userId: user.id });
     await db.insert(taskAssignees).values({ taskId: task.id, userId: user.id });
 
@@ -123,10 +120,7 @@ describe("non-admin path: GET /api/v1/tasks", () => {
 
 describe("admin path: GET /api/v1/admin/users", () => {
   test("admin key can access admin endpoints", async () => {
-    const { rawKey } = await createUserWithKey(
-      { role: "admin", displayName: "Admin" },
-      "admin",
-    );
+    const { rawKey } = await createUserWithKey({ role: "admin", displayName: "Admin" }, "admin");
 
     const res = await apiRequest("/admin/users", rawKey);
     expect(res.status).toBe(200);
@@ -135,10 +129,7 @@ describe("admin path: GET /api/v1/admin/users", () => {
   });
 
   test("user key is rejected from admin endpoints", async () => {
-    const { rawKey } = await createUserWithKey(
-      { displayName: "Regular" },
-      "user",
-    );
+    const { rawKey } = await createUserWithKey({ displayName: "Regular" }, "user");
 
     const res = await apiRequest("/admin/users", rawKey);
     expect(res.status).toBe(403);
