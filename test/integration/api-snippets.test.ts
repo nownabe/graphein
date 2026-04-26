@@ -14,7 +14,7 @@ import type { ApiKeyService } from "../../src/api-keys/service";
 import { TEST_DATABASE_URL } from "./setup";
 import { cleanupDb } from "./helpers";
 
-const db = createDb(TEST_DATABASE_URL, { max: 2 });
+const db = createDb(TEST_DATABASE_URL, { max: 1 });
 
 function createMockApiKeyService(
   mockUser: typeof users.$inferSelect,

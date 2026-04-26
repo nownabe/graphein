@@ -9,6 +9,7 @@ import { createUsergroupService } from "../../src/usergroups/service";
 import { createSettingsService } from "../../src/settings/service";
 import { createApiKeyService } from "../../src/api-keys/service";
 import { createKudosService } from "../../src/kudos/service";
+import { createOAuthService } from "../../src/oauth/service";
 import { createSessionHelpers } from "../../src/auth/session";
 import {
   users,
@@ -31,12 +32,13 @@ import {
 import { TEST_DATABASE_URL } from "./setup";
 
 const JWT_SECRET = "test-secret";
+const MCP_JWT_SECRET = "test-mcp-secret";
 const BASE_URL = "http://localhost:3000";
 
 const session = createSessionHelpers(JWT_SECRET);
 
 export function createTestApp() {
-  const db = createDb(TEST_DATABASE_URL, { max: 2 });
+  const db = createDb(TEST_DATABASE_URL, { max: 1 });
   const userService = createUserService(db);
   const taskService = createTaskService(db);
   const usergroupService = createUsergroupService(db);
@@ -44,6 +46,7 @@ export function createTestApp() {
   const settingsService = createSettingsService(db);
   const apiKeyService = createApiKeyService(db);
   const kudosService = createKudosService(db);
+  const oauthService = createOAuthService(db);
 
   const app = createHonoApp({
     db,
@@ -60,6 +63,8 @@ export function createTestApp() {
     kudosService,
     settingsService,
     apiKeyService,
+    oauthService,
+    mcpJwtSecret: MCP_JWT_SECRET,
     buildMrkdwnLabels: async () => ({ users: {}, channels: {}, usergroups: {} }),
     resolveChannelName: async () => undefined,
     timezone: "Asia/Tokyo",
