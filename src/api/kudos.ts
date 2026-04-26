@@ -145,6 +145,7 @@ const listKudosRoute = createRoute({
   method: "get",
   path: "/kudos",
   tags: ["Kudos"],
+  security: [{ bearerAuth: [] }],
   summary: "List kudos",
   description:
     "Returns kudos entries. All authenticated users can see all kudos. Supports filtering by sender, recipient, and time period.",
