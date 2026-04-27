@@ -108,7 +108,6 @@ If CI failed or review feedback was received:
    ```
 
 3. **If `SendMessage` fails or the agent does not respond**, re-spawn a new agent in the **same worktree** to apply fixes. Use the `Agent` tool with:
-
    - `subagent_type`: `"issue-handler"`
    - `isolation`: `"worktree"`
    - `prompt`: Include the full fix instructions (same as the `SendMessage` content above), plus:
