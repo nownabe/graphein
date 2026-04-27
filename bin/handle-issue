@@ -92,8 +92,12 @@ async function run(
   // Write detailed output to the specific log type
   if (logType !== "orchestrator") {
     const header = `${"=".repeat(72)}\n[${new Date().toISOString()}] $ ${cmdStr}\nexit=${exitCode}\n${"=".repeat(72)}\n`;
-    if (stdout) await writeLog(logType, `${header}--- stdout ---\n${stdout}\n`);
-    if (stderr) await writeLog(logType, `--- stderr ---\n${stderr}\n`);
+    if (stdout || stderr) {
+      let entry = header;
+      if (stdout) entry += `--- stdout ---\n${stdout}\n`;
+      if (stderr) entry += `--- stderr ---\n${stderr}\n`;
+      await writeLog(logType, entry);
+    }
   } else {
     // Short commands: inline into orchestrator
     if (stdout) logLine("orchestrator", `stdout: ${stdout.slice(0, 500)}`);
