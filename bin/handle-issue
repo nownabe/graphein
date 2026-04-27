@@ -13,10 +13,14 @@
  *   5. Repeat 3-4 until approved or max retries
  *   6. Clean up the worktree
  *
+ * Logs are written to logs/issue-<issue>/<log-type>.log
+ *
  * The claude CLI uses all existing project assets (CLAUDE.md, hooks, skills, etc).
  */
 
 import { parseArgs } from "util";
+import { mkdirSync } from "fs";
+import { resolve } from "path";
 
 const MAX_FIX_ROUNDS = 5;
 
@@ -37,21 +41,70 @@ if (!issueRef) {
 }
 
 // ---------------------------------------------------------------------------
+// Logging
+// ---------------------------------------------------------------------------
+
+const projectRoot = resolve(import.meta.dirname, "..");
+const issueSlug = issueRef.replace(/[^a-zA-Z0-9-]/g, "-");
+const logDir = resolve(projectRoot, "logs", `issue-${issueSlug}`);
+mkdirSync(logDir, { recursive: true });
+
+/** Append to logs/issue-<N>/<type>.log */
+async function writeLog(type: string, content: string) {
+  const file = resolve(logDir, `${type}.log`);
+  await Bun.write(file, content, { append: true });
+}
+
+function logLine(type: string, message: string) {
+  const line = `[${new Date().toISOString()}] ${message}\n`;
+  writeLog(type, line);
+}
+
+console.log(`📝 Logs: ${logDir}/`);
+
+// ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
 
 async function run(
   cmd: string[],
-  opts?: { timeout?: number; cwd?: string },
-): Promise<{ stdout: string; exitCode: number }> {
+  opts?: { timeout?: number; cwd?: string; logType?: string },
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  const cmdStr = cmd.join(" ");
+  const logType = opts?.logType ?? "orchestrator";
+
+  logLine("orchestrator", `$ ${cmdStr}${opts?.cwd ? ` (cwd: ${opts.cwd})` : ""}`);
+
   const proc = Bun.spawn(cmd, {
     stdout: "pipe",
-    stderr: "inherit",
+    stderr: "pipe",
     cwd: opts?.cwd,
     timeout: opts?.timeout,
   });
-  const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
-  return { stdout: stdout.trim(), exitCode };
+  const [stdout, stderr, exitCode] = await Promise.all([
+    new Response(proc.stdout).text(),
+    new Response(proc.stderr).text(),
+    proc.exited,
+  ]);
+
+  logLine("orchestrator", `exit=${exitCode} stdout=${stdout.length}B stderr=${stderr.length}B`);
+
+  // Write detailed output to the specific log type
+  if (logType !== "orchestrator") {
+    const header = `${"=".repeat(72)}\n[${new Date().toISOString()}] $ ${cmdStr}\nexit=${exitCode}\n${"=".repeat(72)}\n`;
+    if (stdout || stderr) {
+      let entry = header;
+      if (stdout) entry += `--- stdout ---\n${stdout}\n`;
+      if (stderr) entry += `--- stderr ---\n${stderr}\n`;
+      await writeLog(logType, entry);
+    }
+  } else {
+    // Short commands: inline into orchestrator
+    if (stdout) logLine("orchestrator", `stdout: ${stdout.slice(0, 500)}`);
+    if (stderr) logLine("orchestrator", `stderr: ${stderr.slice(0, 500)}`);
+  }
+
+  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
 }
 
 function extractPrUrl(text: string): string | null {
@@ -94,7 +147,7 @@ type CodexReviewOutput = {
   }>;
 };
 
-async function runCodexReview(cwd: string): Promise<CodexReviewOutput | null> {
+async function runCodexReview(cwd: string, round: number): Promise<CodexReviewOutput | null> {
   console.log(`\n🔍 Running Codex CLI review...`);
 
   const outputFile = `${cwd}/.codex-review-output.tmp`;
@@ -111,7 +164,7 @@ async function runCodexReview(cwd: string): Promise<CodexReviewOutput | null> {
       outputFile,
       "Review the code changes between main and HEAD in this git repository. Identify bugs, security issues, or regressions. Be strict: only report concrete, actionable findings.",
     ],
-    { timeout: 300_000, cwd },
+    { timeout: 300_000, cwd, logType: `codex-review-${round}` },
   );
 
   if (codexResult.exitCode !== 0) {
@@ -159,7 +212,7 @@ const addResult = await run([
   "origin/main",
 ]);
 if (addResult.exitCode !== 0) {
-  console.error("❌ Failed to create worktree");
+  console.error(`❌ Failed to create worktree (see ${logDir}/orchestrator.log)`);
   process.exit(1);
 }
 
@@ -171,7 +224,7 @@ const worktreePath = (await run(["git", "worktree", "list", "--porcelain"])).std
   .find((path) => path.includes(worktreeName));
 
 if (!worktreePath) {
-  console.error("❌ Could not resolve worktree path");
+  console.error(`❌ Could not resolve worktree path (see ${logDir}/orchestrator.log)`);
   process.exit(1);
 }
 
@@ -200,11 +253,12 @@ const implementResult = await run(
     "--output-format",
     "json",
   ],
-  { timeout: 600_000, cwd: worktreePath },
+  { timeout: 600_000, cwd: worktreePath, logType: "implement" },
 );
 
 if (implementResult.exitCode !== 0) {
-  console.error("❌ Implementation failed");
+  console.error(`❌ Implementation failed (exit code: ${implementResult.exitCode})`);
+  console.error(`   See: ${logDir}/implement.log`);
   await cleanup();
   process.exit(1);
 }
@@ -212,6 +266,7 @@ if (implementResult.exitCode !== 0) {
 const sessionId = extractSessionId(implementResult.stdout);
 if (!sessionId) {
   console.error("❌ Could not extract session ID from output");
+  console.error(`   See: ${logDir}/implement.log`);
   await cleanup();
   process.exit(1);
 }
@@ -227,7 +282,7 @@ try {
 const prUrl = extractPrUrl(resultText);
 if (!prUrl) {
   console.error("❌ Could not find PR URL in output");
-  console.error("Output (last 500 chars):", resultText.slice(-500));
+  console.error(`   See: ${logDir}/implement.log`);
   await cleanup();
   process.exit(1);
 }
@@ -246,10 +301,10 @@ if (enableCodexReview) {
   for (let codexRound = 1; codexRound <= MAX_CODEX_ROUNDS; codexRound++) {
     console.log(`\n🔍 Codex review round ${codexRound}/${MAX_CODEX_ROUNDS}...`);
 
-    const review = await runCodexReview(worktreePath);
+    const review = await runCodexReview(worktreePath, codexRound);
 
     if (!review) {
-      console.error("⚠️  Codex review failed, skipping to wait loop.");
+      console.error(`⚠️  Codex review failed, skipping to wait loop. See: ${logDir}/codex-review-${codexRound}.log`);
       break;
     }
 
@@ -277,11 +332,11 @@ if (enableCodexReview) {
         "--output-format",
         "text",
       ],
-      { timeout: 600_000, cwd: worktreePath },
+      { timeout: 600_000, cwd: worktreePath, logType: `codex-fix-${codexRound}` },
     );
 
     if (fixResult.exitCode !== 0) {
-      console.error("⚠️  Codex review fix failed, skipping to wait loop.");
+      console.error(`⚠️  Codex review fix failed, skipping to wait loop. See: ${logDir}/codex-fix-${codexRound}.log`);
       break;
     }
 
@@ -314,12 +369,13 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
   let status: any;
 
   while (true) {
-    const waitResult = await run(["bun", "run", "tools/wait-pr.ts", prNumber], {
-      cwd: worktreePath,
-    });
+    const waitResult = await run(
+      ["bun", "run", "tools/wait-pr.ts", prNumber],
+      { cwd: worktreePath, logType: "wait-pr" },
+    );
 
     if (waitResult.exitCode !== 0) {
-      console.error("❌ wait-pr.ts failed");
+      console.error(`❌ wait-pr.ts failed. See: ${logDir}/wait-pr.log`);
       await cleanup();
       process.exit(1);
     }
@@ -327,7 +383,7 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
     try {
       status = JSON.parse(waitResult.stdout);
     } catch {
-      console.error("❌ Failed to parse wait-pr.ts output");
+      console.error(`❌ Failed to parse wait-pr.ts output. See: ${logDir}/wait-pr.log`);
       await cleanup();
       process.exit(1);
     }
@@ -384,11 +440,11 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
       "--output-format",
       "text",
     ],
-    { timeout: 600_000, cwd: worktreePath },
+    { timeout: 600_000, cwd: worktreePath, logType: `fix-${round}` },
   );
 
   if (fixResult.exitCode !== 0) {
-    console.error(`❌ Fix round ${round} failed`);
+    console.error(`❌ Fix round ${round} failed. See: ${logDir}/fix-${round}.log`);
     await cleanup();
     process.exit(1);
   }
@@ -400,5 +456,6 @@ console.error(
   `\n⚠️  Did not converge after ${MAX_FIX_ROUNDS} fix rounds. Manual intervention needed.`,
 );
 console.error(`   PR: ${prUrl}`);
+console.error(`   Logs: ${logDir}/`);
 await cleanup();
 process.exit(1);
