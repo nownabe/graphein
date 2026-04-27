@@ -7,12 +7,13 @@ disable-model-invocation: false
 allowed-tools:
   - Agent
   - SendMessage
+  - Bash
 argument-hint: "<issue number or URL>"
 ---
 
 # Handle Issue — Multi-Phase Orchestrator
 
-This skill orchestrates handling a GitHub issue across multiple phases, providing visibility to the user between long-running steps. A single named subagent handles all work in the same worktree, resumed via `SendMessage` between phases.
+This skill orchestrates handling a GitHub issue across multiple phases, providing visibility to the user between long-running steps. A subagent handles implementation in an isolated worktree. The orchestrator runs `wait-pr.ts` directly (no worktree needed) and only delegates back to the subagent for code fixes.
 
 ## Phase 1: Implement and Create PR
 
@@ -48,19 +49,20 @@ After the agent returns:
    Waiting for CI checks and review...
    ```
 
-3. **Resume the same agent** to run the wait loop. Use `SendMessage`:
+3. **Run `wait-pr.ts` directly** from the orchestrator using the `Bash` tool (set timeout to 600000ms):
 
-   ```
-   to: "issue-handler"
-   message: "Run `bun run tools/wait-pr.ts <pr-number>` (timeout 600000ms) and return the JSON output."
+   ```bash
+   bun run tools/wait-pr.ts <pr-number>
    ```
 
-4. **Handle the result** based on the `status` field in the JSON the agent returns:
+   This does NOT require worktree access, so run it directly — do not delegate to the subagent.
+
+4. **Handle the result** based on the `status` field in the JSON output:
    - **`approved`**: Notify user "PR approved!" with the URL. Done.
    - **`merged`**: Notify user "PR merged!" with the URL. Done.
    - **`closed`**: Notify user "PR was closed." Done.
    - **`ci_failed`** or **`has_feedback`**: Proceed to Phase 3.
-   - **`pending`**: Notify user "Still waiting for CI/review..." and send the wait message again (repeat this step).
+   - **`pending`**: Notify user "Still waiting for CI/review..." and run `wait-pr.ts` again (repeat this step).
 
 ## Phase 3: Fix Issues
 
@@ -70,7 +72,7 @@ If CI failed or review feedback was received:
    - For `ci_failed`: "CI failed on PR #N. Fixing..."
    - For `has_feedback`: "Review feedback received on PR #N. Addressing..."
 
-2. **Resume the same agent** via `SendMessage` with fix instructions:
+2. **Send fix instructions to the subagent** via `SendMessage`:
 
    For CI failures:
 
@@ -105,11 +107,27 @@ If CI failed or review feedback was received:
    4. Commit and push (git push)"
    ```
 
-3. After the agent responds, **go back to Phase 2** (notify user and wait again).
+3. **If `SendMessage` fails or the agent does not respond**, re-spawn a new agent in the **same worktree** to apply fixes. Use the `Agent` tool with:
+
+   - `subagent_type`: `"issue-handler"`
+   - `isolation`: `"worktree"`
+   - `prompt`: Include the full fix instructions (same as the `SendMessage` content above), plus:
+
+     ```
+     The previous agent became unresponsive. You are resuming work in an
+     existing worktree. The branch is already checked out and the PR already
+     exists. Your job is ONLY to fix the issues described below, run
+     bun run check:all, commit, and push.
+     ```
+
+   - `description`: `"Fix CI/review issues for PR #<number>"`
+
+4. After the agent responds (via either path), **go back to Phase 2** (run `wait-pr.ts` again).
 
 ## Important Notes
 
+- **Run `wait-pr.ts` directly** from the orchestrator (via `Bash`), not via the subagent. It only calls GitHub APIs and does not need worktree access.
 - Always notify the user BEFORE sending a message to the agent, so they know what's happening.
-- The same agent is used throughout — it retains full context and the worktree.
-- Repeat Phase 2 ↔ Phase 3 until the PR reaches `approved`, `merged`, or `closed` status.
+- Use `SendMessage` first to resume the existing agent; only re-spawn if it fails or times out.
+- Repeat Phase 2 <-> Phase 3 until the PR reaches `approved`, `merged`, or `closed` status.
 - If the loop does not converge after 5 iterations of Phase 3, STOP and inform the user.
