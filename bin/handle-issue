@@ -55,9 +55,9 @@ async function writeLog(type: string, content: string) {
   await Bun.write(file, content, { append: true });
 }
 
-function logLine(type: string, message: string) {
+async function logLine(type: string, message: string) {
   const line = `[${new Date().toISOString()}] ${message}\n`;
-  writeLog(type, line);
+  await writeLog(type, line);
 }
 
 console.log(`📝 Logs: ${logDir}/`);
@@ -73,7 +73,7 @@ async function run(
   const cmdStr = cmd.join(" ");
   const logType = opts?.logType ?? "orchestrator";
 
-  logLine("orchestrator", `$ ${cmdStr}${opts?.cwd ? ` (cwd: ${opts.cwd})` : ""}`);
+  await logLine("orchestrator", `$ ${cmdStr}${opts?.cwd ? ` (cwd: ${opts.cwd})` : ""}`);
 
   const proc = Bun.spawn(cmd, {
     stdout: "pipe",
@@ -87,21 +87,19 @@ async function run(
     proc.exited,
   ]);
 
-  logLine("orchestrator", `exit=${exitCode} stdout=${stdout.length}B stderr=${stderr.length}B`);
+  await logLine("orchestrator", `exit=${exitCode} stdout=${stdout.length}B stderr=${stderr.length}B`);
 
   // Write detailed output to the specific log type
   if (logType !== "orchestrator") {
     const header = `${"=".repeat(72)}\n[${new Date().toISOString()}] $ ${cmdStr}\nexit=${exitCode}\n${"=".repeat(72)}\n`;
-    if (stdout || stderr) {
-      let entry = header;
-      if (stdout) entry += `--- stdout ---\n${stdout}\n`;
-      if (stderr) entry += `--- stderr ---\n${stderr}\n`;
-      await writeLog(logType, entry);
-    }
+    let entry = header;
+    if (stdout) entry += `--- stdout ---\n${stdout}\n`;
+    if (stderr) entry += `--- stderr ---\n${stderr}\n`;
+    await writeLog(logType, entry);
   } else {
     // Short commands: inline into orchestrator
-    if (stdout) logLine("orchestrator", `stdout: ${stdout.slice(0, 500)}`);
-    if (stderr) logLine("orchestrator", `stderr: ${stderr.slice(0, 500)}`);
+    if (stdout) await logLine("orchestrator", `stdout: ${stdout.slice(0, 500)}`);
+    if (stderr) await logLine("orchestrator", `stderr: ${stderr.slice(0, 500)}`);
   }
 
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
@@ -253,7 +251,7 @@ const implementResult = await run(
     "--output-format",
     "json",
   ],
-  { timeout: 600_000, cwd: worktreePath, logType: "implement" },
+  { timeout: 1_800_000, cwd: worktreePath, logType: "implement" },
 );
 
 if (implementResult.exitCode !== 0) {
