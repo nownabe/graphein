@@ -1,54 +1,14 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { Hono } from "hono";
-import { createKudosApiRoutes } from "../../src/api/kudos";
-import { createApiAuthMiddleware } from "../../src/api/middleware";
-import { createDb } from "../../src/db/client";
-import { createKudosService } from "../../src/kudos/service";
-import { users, kudos, kudosEntries, kudosEntryMentionedUsers } from "../../src/db/schema";
-import type { ApiKeyService } from "../../src/api-keys/service";
-import { TEST_DATABASE_URL } from "./setup";
-import { cleanupDb } from "./helpers";
+import { createKudosApiRoutes } from "../../../src/api/kudos";
+import { createKudosService } from "../../../src/kudos/service";
+import { kudos, kudosEntries, kudosEntryMentionedUsers } from "../../../src/db/schema";
+import { db, createUser, buildApiApp, apiRequest, cleanupDb } from "../helpers/api";
 
-const db = createDb(TEST_DATABASE_URL, { max: 1 });
 const kudosService = createKudosService(db);
 
-function createMockApiKeyService(mockUser: typeof users.$inferSelect): ApiKeyService {
-  return {
-    createApiKey: async () => ({ ok: false as const, error: "key_limit_exceeded" as const }),
-    listApiKeys: async () => [],
-    revokeApiKey: async () => null,
-    verifyApiKey: async () => ({ user: mockUser as never, role: "user" as const }),
-  };
-}
-
-function buildApp(mockUser: typeof users.$inferSelect) {
-  const apiKeyService = createMockApiKeyService(mockUser);
-  const authMiddleware = createApiAuthMiddleware(apiKeyService);
+function buildApp(mockUser: Awaited<ReturnType<typeof createUser>>) {
   const kudosRoutes = createKudosApiRoutes({ kudosService });
-
-  const app = new Hono();
-  app.use("/*", authMiddleware);
-  app.route("/", kudosRoutes);
-  return app;
-}
-
-async function req(app: Hono, path: string) {
-  return app.request(path, {
-    headers: { Authorization: "Bearer gph_testkey" },
-  });
-}
-
-async function createUser(overrides?: Partial<typeof users.$inferInsert>) {
-  const [user] = await db
-    .insert(users)
-    .values({
-      slackUserId: `U${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-      email: "test@example.com",
-      displayName: "Test User",
-      ...overrides,
-    })
-    .returning();
-  return user;
+  return buildApiApp(mockUser, "user", kudosRoutes);
 }
 
 async function createKudosEntry(opts: {
@@ -113,7 +73,7 @@ describe("GET /kudos", () => {
     });
 
     const app = buildApp(poster);
-    const res = await req(app, "/kudos");
+    const res = await apiRequest(app, "/kudos");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -142,7 +102,7 @@ describe("GET /kudos", () => {
     });
 
     const app = buildApp(alice);
-    const res = await req(app, `/kudos?postedBy=${alice.id}`);
+    const res = await apiRequest(app, `/kudos?postedBy=${alice.id}`);
     const body = await res.json();
     expect(body.kudos).toHaveLength(1);
     expect(body.kudos[0].message).toBe("From Alice");
@@ -167,7 +127,7 @@ describe("GET /kudos", () => {
     });
 
     const app = buildApp(poster);
-    const res = await req(app, `/kudos?user=${bob.id}`);
+    const res = await apiRequest(app, `/kudos?user=${bob.id}`);
     const body = await res.json();
     expect(body.kudos).toHaveLength(1);
     expect(body.kudos[0].message).toBe("For Bob");
@@ -193,7 +153,7 @@ describe("GET /kudos", () => {
     });
 
     const app = buildApp(alice);
-    const res = await req(app, `/kudos?user=${alice.id}`);
+    const res = await apiRequest(app, `/kudos?user=${alice.id}`);
     const body = await res.json();
     expect(body.kudos).toHaveLength(1);
     expect(body.kudos[0].message).toBe("From Bob to Alice");
@@ -223,7 +183,7 @@ describe("GET /kudos", () => {
     });
 
     const app = buildApp(poster);
-    const res = await req(
+    const res = await apiRequest(
       app,
       "/kudos?periodStart=2026-04-10T00:00:00Z&periodEnd=2026-04-20T00:00:00Z",
     );
@@ -249,14 +209,14 @@ describe("GET /kudos", () => {
     const app = buildApp(poster);
 
     // Page 1
-    const res1 = await req(app, "/kudos?pageSize=2");
+    const res1 = await apiRequest(app, "/kudos?pageSize=2");
     const body1 = await res1.json();
     expect(body1.kudos).toHaveLength(2);
     expect(body1.nextPageToken).not.toBe("");
     expect(body1.totalSize).toBe(3);
 
     // Page 2
-    const res2 = await req(app, `/kudos?pageSize=2&pageToken=${body1.nextPageToken}`);
+    const res2 = await apiRequest(app, `/kudos?pageSize=2&pageToken=${body1.nextPageToken}`);
     const body2 = await res2.json();
     expect(body2.kudos).toHaveLength(1);
     expect(body2.nextPageToken).toBe("");
@@ -283,7 +243,7 @@ describe("GET /kudos", () => {
     let pageToken = "";
     for (let page = 0; page < 10; page++) {
       const url = pageToken ? `/kudos?pageSize=2&pageToken=${pageToken}` : "/kudos?pageSize=2";
-      const res = await req(app, url);
+      const res = await apiRequest(app, url);
       const body = await res.json();
       for (const k of body.kudos) {
         allIds.push(k.id);
@@ -318,7 +278,7 @@ describe("GET /kudos", () => {
     let pageToken = "";
     for (let page = 0; page < 10; page++) {
       const url = pageToken ? `/kudos?pageSize=1&pageToken=${pageToken}` : "/kudos?pageSize=1";
-      const res = await req(app, url);
+      const res = await apiRequest(app, url);
       const body = await res.json();
       for (const k of body.kudos) {
         allIds.push(k.id);
@@ -353,12 +313,15 @@ describe("GET /kudos", () => {
     const app = buildApp(poster);
 
     // Get a valid token without filters
-    const res1 = await req(app, "/kudos?pageSize=1");
+    const res1 = await apiRequest(app, "/kudos?pageSize=1");
     const body1 = await res1.json();
     expect(body1.nextPageToken).not.toBe("");
 
     // Use the token with different filters — should fail
-    const res2 = await req(app, `/kudos?postedBy=${poster.id}&pageToken=${body1.nextPageToken}`);
+    const res2 = await apiRequest(
+      app,
+      `/kudos?postedBy=${poster.id}&pageToken=${body1.nextPageToken}`,
+    );
     expect(res2.status).toBe(422);
   });
 
@@ -380,7 +343,7 @@ describe("GET /kudos", () => {
     });
 
     const app = buildApp(poster);
-    const res = await req(app, "/kudos");
+    const res = await apiRequest(app, "/kudos");
     const body = await res.json();
     expect(body.kudos[0].message).toBe("Newer");
     expect(body.kudos[1].message).toBe("Older");
@@ -402,7 +365,7 @@ describe("GET /kudos", () => {
     });
 
     const app = buildApp(poster);
-    const res = await req(app, "/kudos");
+    const res = await apiRequest(app, "/kudos");
     const body = await res.json();
     const entry = body.kudos[0];
 

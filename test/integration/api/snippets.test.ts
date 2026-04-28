@@ -1,61 +1,16 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { Hono } from "hono";
-import { createSnippetApiRoutes } from "../../src/api/snippets";
-import { createApiAuthMiddleware } from "../../src/api/middleware";
-import { createDb } from "../../src/db/client";
+import { createSnippetApiRoutes } from "../../../src/api/snippets";
 import {
-  users,
   snippets,
   snippetMentionedUsers,
   snippetMentionedUsergroups,
   usergroups,
-} from "../../src/db/schema";
-import type { ApiKeyService } from "../../src/api-keys/service";
-import { TEST_DATABASE_URL } from "./setup";
-import { cleanupDb } from "./helpers";
+} from "../../../src/db/schema";
+import { db, createUser, buildApiApp, apiRequest, cleanupDb } from "../helpers/api";
 
-const db = createDb(TEST_DATABASE_URL, { max: 1 });
-
-function createMockApiKeyService(
-  mockUser: typeof users.$inferSelect,
-  role: "user" | "admin" = "user",
-): ApiKeyService {
-  return {
-    createApiKey: async () => ({ ok: false as const, error: "key_limit_exceeded" as const }),
-    listApiKeys: async () => [],
-    revokeApiKey: async () => null,
-    verifyApiKey: async () => ({ user: mockUser as never, role }),
-  };
-}
-
-function buildApp(mockUser: typeof users.$inferSelect) {
-  const apiKeyService = createMockApiKeyService(mockUser);
-  const authMiddleware = createApiAuthMiddleware(apiKeyService);
+function buildApp(mockUser: Awaited<ReturnType<typeof createUser>>) {
   const snippetRoutes = createSnippetApiRoutes({ db });
-
-  const app = new Hono();
-  app.use("/*", authMiddleware);
-  app.route("/", snippetRoutes);
-  return app;
-}
-
-async function req(app: Hono, path: string) {
-  return app.request(path, {
-    headers: { Authorization: "Bearer gph_testkey" },
-  });
-}
-
-async function createUser(overrides?: Partial<typeof users.$inferInsert>) {
-  const [user] = await db
-    .insert(users)
-    .values({
-      slackUserId: `U${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-      email: "test@example.com",
-      displayName: "Test User",
-      ...overrides,
-    })
-    .returning();
-  return user;
+  return buildApiApp(mockUser, "user", snippetRoutes);
 }
 
 async function createUsergroup(overrides?: Partial<typeof usergroups.$inferInsert>) {
@@ -116,7 +71,7 @@ describe("GET /snippets", () => {
     await createSnippet(user.id, { content: "Hello world" });
 
     const app = buildApp(user);
-    const res = await req(app, "/snippets");
+    const res = await apiRequest(app, "/snippets");
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.snippets).toHaveLength(1);
@@ -130,7 +85,7 @@ describe("GET /snippets", () => {
     await createSnippet(user.id);
 
     const app = buildApp(user);
-    const res = await req(app, "/snippets");
+    const res = await apiRequest(app, "/snippets");
     const body = await res.json();
     expect(body.snippets[0].postedBy.displayName).toBe("Alice");
     expect(body.snippets[0].postedBy.avatarUrl).toBe("https://example.com/a.png");
@@ -146,7 +101,7 @@ describe("GET /snippets", () => {
     await addMentionedUsergroup(snippet.id, group.id);
 
     const app = buildApp(poster);
-    const res = await req(app, "/snippets");
+    const res = await apiRequest(app, "/snippets");
     const body = await res.json();
     expect(body.snippets[0].mentionedUsers).toHaveLength(1);
     expect(body.snippets[0].mentionedUsers[0].displayName).toBe("Bob");
@@ -163,7 +118,7 @@ describe("GET /snippets", () => {
     await addMentionedUsergroup(snippet.id, group.id);
 
     const app = buildApp(poster);
-    const res = await req(app, "/snippets");
+    const res = await apiRequest(app, "/snippets");
     const body = await res.json();
     expect(body.snippets[0].mentionedUsergroups[0].handle).toBeNull();
   });
@@ -175,7 +130,7 @@ describe("GET /snippets", () => {
     await createSnippet(user2.id, { content: "From user 2" });
 
     const app = buildApp(user1);
-    const res = await req(app, "/snippets");
+    const res = await apiRequest(app, "/snippets");
     const body = await res.json();
     expect(body.snippets).toHaveLength(2);
     expect(body.totalSize).toBe(2);
@@ -194,7 +149,7 @@ describe("GET /snippets?postedBy", () => {
     await createSnippet(user2.id, { content: "Bob snippet" });
 
     const app = buildApp(user1);
-    const res = await req(app, `/snippets?postedBy=${user1.id}`);
+    const res = await apiRequest(app, `/snippets?postedBy=${user1.id}`);
     const body = await res.json();
     expect(body.snippets).toHaveLength(1);
     expect(body.snippets[0].content).toBe("Alice snippet");
@@ -216,7 +171,7 @@ describe("GET /snippets?mentionedUser", () => {
     await createSnippet(poster.id, { content: "No mentions" });
 
     const app = buildApp(poster);
-    const res = await req(app, `/snippets?mentionedUser=${mentioned.id}`);
+    const res = await apiRequest(app, `/snippets?mentionedUser=${mentioned.id}`);
     const body = await res.json();
     expect(body.snippets).toHaveLength(1);
     expect(body.snippets[0].content).toBe("Mentions user");
@@ -237,7 +192,7 @@ describe("GET /snippets?mentionedUsergroup", () => {
     await createSnippet(poster.id, { content: "No group mention" });
 
     const app = buildApp(poster);
-    const res = await req(app, `/snippets?mentionedUsergroup=${group.id}`);
+    const res = await apiRequest(app, `/snippets?mentionedUsergroup=${group.id}`);
     const body = await res.json();
     expect(body.snippets).toHaveLength(1);
     expect(body.snippets[0].content).toBe("Mentions group");
@@ -266,7 +221,7 @@ describe("GET /snippets?mentionedUser&mentionedUsergroup (OR)", () => {
     await createSnippet(poster.id, { content: "No mentions" });
 
     const app = buildApp(poster);
-    const res = await req(
+    const res = await apiRequest(
       app,
       `/snippets?mentionedUser=${mentioned.id}&mentionedUsergroup=${group.id}`,
     );
@@ -295,7 +250,7 @@ describe("GET /snippets?periodStart&periodEnd", () => {
     });
 
     const app = buildApp(user);
-    const res = await req(app, "/snippets?periodStart=2026-04-01T00:00:00Z");
+    const res = await apiRequest(app, "/snippets?periodStart=2026-04-01T00:00:00Z");
     const body = await res.json();
     expect(body.snippets).toHaveLength(1);
     expect(body.snippets[0].content).toBe("New");
@@ -313,7 +268,7 @@ describe("GET /snippets?periodStart&periodEnd", () => {
     });
 
     const app = buildApp(user);
-    const res = await req(app, "/snippets?periodEnd=2026-04-01T00:00:00Z");
+    const res = await apiRequest(app, "/snippets?periodEnd=2026-04-01T00:00:00Z");
     const body = await res.json();
     expect(body.snippets).toHaveLength(1);
     expect(body.snippets[0].content).toBe("Before");
@@ -335,7 +290,7 @@ describe("GET /snippets?periodStart&periodEnd", () => {
     });
 
     const app = buildApp(user);
-    const res = await req(
+    const res = await apiRequest(
       app,
       "/snippets?periodStart=2026-04-01T00:00:00Z&periodEnd=2026-04-30T00:00:00Z",
     );
@@ -362,20 +317,20 @@ describe("GET /snippets — pagination", () => {
     const app = buildApp(user);
 
     // Page 1
-    const res1 = await req(app, "/snippets?pageSize=2");
+    const res1 = await apiRequest(app, "/snippets?pageSize=2");
     const body1 = await res1.json();
     expect(body1.snippets).toHaveLength(2);
     expect(body1.totalSize).toBe(5);
     expect(body1.nextPageToken).not.toBe("");
 
     // Page 2
-    const res2 = await req(app, `/snippets?pageSize=2&pageToken=${body1.nextPageToken}`);
+    const res2 = await apiRequest(app, `/snippets?pageSize=2&pageToken=${body1.nextPageToken}`);
     const body2 = await res2.json();
     expect(body2.snippets).toHaveLength(2);
     expect(body2.nextPageToken).not.toBe("");
 
     // Page 3
-    const res3 = await req(app, `/snippets?pageSize=2&pageToken=${body2.nextPageToken}`);
+    const res3 = await apiRequest(app, `/snippets?pageSize=2&pageToken=${body2.nextPageToken}`);
     const body3 = await res3.json();
     expect(body3.snippets).toHaveLength(1);
     expect(body3.nextPageToken).toBe("");
@@ -397,7 +352,7 @@ describe("GET /snippets — pagination", () => {
     });
 
     const app = buildApp(user);
-    const res = await req(app, "/snippets");
+    const res = await apiRequest(app, "/snippets");
     const body = await res.json();
     expect(body.snippets[0].content).toBe("Newest");
     expect(body.snippets[1].content).toBe("Middle");
@@ -416,12 +371,15 @@ describe("GET /snippets — pagination", () => {
     const app = buildApp(user);
 
     // Get a valid token without any filters
-    const res1 = await req(app, "/snippets?pageSize=1");
+    const res1 = await apiRequest(app, "/snippets?pageSize=1");
     const body1 = await res1.json();
     expect(body1.nextPageToken).not.toBe("");
 
     // Use it with a different filter — should 422
-    const res2 = await req(app, `/snippets?postedBy=${user.id}&pageToken=${body1.nextPageToken}`);
+    const res2 = await apiRequest(
+      app,
+      `/snippets?postedBy=${user.id}&pageToken=${body1.nextPageToken}`,
+    );
     expect(res2.status).toBe(422);
     const body2 = await res2.json();
     expect(body2.error.code).toBe("validation_error");
@@ -430,7 +388,7 @@ describe("GET /snippets — pagination", () => {
   test("returns 422 for invalid pageToken", async () => {
     const user = await createUser();
     const app = buildApp(user);
-    const res = await req(app, "/snippets?pageToken=not-valid-base64-token");
+    const res = await apiRequest(app, "/snippets?pageToken=not-valid-base64-token");
     expect(res.status).toBe(422);
   });
 });
