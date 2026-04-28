@@ -197,10 +197,7 @@ describe("GET /tasks", () => {
     expect(body1.nextPageToken).not.toBe("");
 
     // Use the token with different filters
-    const res2 = await apiRequest(
-      app,
-      `/tasks?status=archived&pageToken=${body1.nextPageToken}`,
-    );
+    const res2 = await apiRequest(app, `/tasks?status=archived&pageToken=${body1.nextPageToken}`);
     expect(res2.status).toBe(422);
   });
 
@@ -322,7 +319,10 @@ describe("GET /tasks/owned/:id/assignees", () => {
   test("returns 404 for non-existent task", async () => {
     const user = await createUser();
     const app = buildApp(user, "user");
-    const res = await apiRequest(app, `/tasks/owned/550e8400-e29b-41d4-a716-446655440000/assignees`);
+    const res = await apiRequest(
+      app,
+      `/tasks/owned/550e8400-e29b-41d4-a716-446655440000/assignees`,
+    );
     expect(res.status).toBe(404);
   });
 
