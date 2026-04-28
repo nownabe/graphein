@@ -1,61 +1,17 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { Hono } from "hono";
-import { createTaskApiRoutes } from "../../src/api/tasks";
-import { createApiAuthMiddleware } from "../../src/api/middleware";
-import { createDb } from "../../src/db/client";
-import { createTaskService } from "../../src/tasks/service";
-import { users, tasks, taskAssignees, taskOwners } from "../../src/db/schema";
-import type { ApiKeyService } from "../../src/api-keys/service";
-import { TEST_DATABASE_URL } from "./setup";
-import { cleanupDb } from "./helpers";
+import { createTaskApiRoutes } from "../../../src/api/tasks";
+import { createTaskService } from "../../../src/tasks/service";
+import { tasks, taskAssignees, taskOwners } from "../../../src/db/schema";
+import { db, createUser, buildApiApp, apiRequest, cleanupDb } from "../helpers/api";
 
-const db = createDb(TEST_DATABASE_URL, { max: 1 });
 const taskService = createTaskService(db);
 
-function createMockApiKeyService(
-  mockUser: typeof users.$inferSelect,
+function buildApp(
+  mockUser: Awaited<ReturnType<typeof createUser>>,
   role: "user" | "admin" = "user",
-): ApiKeyService {
-  return {
-    createApiKey: async () => ({ ok: false as const, error: "key_limit_exceeded" as const }),
-    listApiKeys: async () => [],
-    revokeApiKey: async () => null,
-    verifyApiKey: async () => ({ user: mockUser as never, role }),
-  };
-}
-
-function buildApp(mockUser: typeof users.$inferSelect, role: "user" | "admin" = "user") {
-  const apiKeyService = createMockApiKeyService(mockUser, role);
-  const authMiddleware = createApiAuthMiddleware(apiKeyService);
+) {
   const taskRoutes = createTaskApiRoutes({ taskService, db });
-
-  const app = new Hono();
-  app.use("/*", authMiddleware);
-  app.route("/", taskRoutes);
-  return app;
-}
-
-async function req(app: Hono, path: string, init?: RequestInit) {
-  return app.request(path, {
-    ...init,
-    headers: {
-      Authorization: "Bearer gph_testkey",
-      ...init?.headers,
-    },
-  });
-}
-
-async function createUser(overrides?: Partial<typeof users.$inferInsert>) {
-  const [user] = await db
-    .insert(users)
-    .values({
-      slackUserId: `U${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-      email: "test@example.com",
-      displayName: "Test User",
-      ...overrides,
-    })
-    .returning();
-  return user;
+  return buildApiApp(mockUser, role, taskRoutes);
 }
 
 async function createTask(createdById: string, overrides?: Partial<typeof tasks.$inferInsert>) {
@@ -106,7 +62,7 @@ describe("GET /tasks", () => {
     await addAssignee(task3.id, other.id);
 
     const app = buildApp(user);
-    const res = await req(app, "/tasks");
+    const res = await apiRequest(app, "/tasks");
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.tasks).toHaveLength(2);
@@ -120,7 +76,7 @@ describe("GET /tasks", () => {
     await addAssignee(task.id, user.id, true);
 
     const app = buildApp(user);
-    const res = await req(app, "/tasks");
+    const res = await apiRequest(app, "/tasks");
     const body = await res.json();
     expect(body.tasks[0].done).toBe(true);
   });
@@ -135,12 +91,12 @@ describe("GET /tasks", () => {
 
     const app = buildApp(user);
 
-    const res1 = await req(app, "/tasks?done=true");
+    const res1 = await apiRequest(app, "/tasks?done=true");
     const body1 = await res1.json();
     expect(body1.tasks).toHaveLength(1);
     expect(body1.tasks[0].done).toBe(true);
 
-    const res2 = await req(app, "/tasks?done=false");
+    const res2 = await apiRequest(app, "/tasks?done=false");
     const body2 = await res2.json();
     expect(body2.tasks).toHaveLength(1);
     expect(body2.tasks[0].done).toBe(false);
@@ -156,12 +112,12 @@ describe("GET /tasks", () => {
 
     const app = buildApp(user);
 
-    const res1 = await req(app, "/tasks?status=active");
+    const res1 = await apiRequest(app, "/tasks?status=active");
     const body1 = await res1.json();
     expect(body1.tasks).toHaveLength(1);
     expect(body1.tasks[0].title).toBe("Active");
 
-    const res2 = await req(app, "/tasks?status=archived");
+    const res2 = await apiRequest(app, "/tasks?status=archived");
     const body2 = await res2.json();
     expect(body2.tasks).toHaveLength(1);
     expect(body2.tasks[0].title).toBe("Archived");
@@ -188,7 +144,7 @@ describe("GET /tasks", () => {
 
     const app = buildApp(user);
 
-    const res = await req(
+    const res = await apiRequest(
       app,
       "/tasks?deadlineAfter=2026-04-15T00:00:00Z&deadlineBefore=2026-04-25T00:00:00Z",
     );
@@ -210,14 +166,14 @@ describe("GET /tasks", () => {
     const app = buildApp(user);
 
     // Page 1
-    const res1 = await req(app, "/tasks?pageSize=2");
+    const res1 = await apiRequest(app, "/tasks?pageSize=2");
     const body1 = await res1.json();
     expect(body1.tasks).toHaveLength(2);
     expect(body1.nextPageToken).not.toBe("");
     expect(body1.totalSize).toBe(3);
 
     // Page 2
-    const res2 = await req(app, `/tasks?pageSize=2&pageToken=${body1.nextPageToken}`);
+    const res2 = await apiRequest(app, `/tasks?pageSize=2&pageToken=${body1.nextPageToken}`);
     const body2 = await res2.json();
     expect(body2.tasks).toHaveLength(1);
     expect(body2.nextPageToken).toBe("");
@@ -236,12 +192,12 @@ describe("GET /tasks", () => {
     const app = buildApp(user);
 
     // Get a valid token with status=active
-    const res1 = await req(app, "/tasks?pageSize=1");
+    const res1 = await apiRequest(app, "/tasks?pageSize=1");
     const body1 = await res1.json();
     expect(body1.nextPageToken).not.toBe("");
 
     // Use the token with different filters
-    const res2 = await req(app, `/tasks?status=archived&pageToken=${body1.nextPageToken}`);
+    const res2 = await apiRequest(app, `/tasks?status=archived&pageToken=${body1.nextPageToken}`);
     expect(res2.status).toBe(422);
   });
 
@@ -255,7 +211,7 @@ describe("GET /tasks", () => {
     await addAssignee(t.id, user.id);
 
     const app = buildApp(user);
-    const res = await req(app, "/tasks");
+    const res = await apiRequest(app, "/tasks");
     const body = await res.json();
     expect(body.tasks[0].createdBy.displayName).toBe("Creator Bob");
   });
@@ -274,7 +230,7 @@ describe("GET /tasks/owned", () => {
     await createTask(other.id, { title: "Other Task" });
 
     const app = buildApp(user, "user");
-    const res = await req(app, "/tasks/owned");
+    const res = await apiRequest(app, "/tasks/owned");
     const body = await res.json();
     expect(body.tasks).toHaveLength(1);
     expect(body.tasks[0].title).toBe("My Task");
@@ -288,7 +244,7 @@ describe("GET /tasks/owned", () => {
     await createTask(other.id, { title: "Other Task" });
 
     const app = buildApp(admin, "admin");
-    const res = await req(app, "/tasks/owned");
+    const res = await apiRequest(app, "/tasks/owned");
     const body = await res.json();
     expect(body.tasks).toHaveLength(2);
   });
@@ -303,7 +259,7 @@ describe("GET /tasks/owned", () => {
     await addAssignee(t.id, a2.id, false);
 
     const app = buildApp(user, "user");
-    const res = await req(app, "/tasks/owned");
+    const res = await apiRequest(app, "/tasks/owned");
     const body = await res.json();
     expect(body.tasks[0].progress).toEqual({ total: 2, done: 1 });
   });
@@ -320,7 +276,7 @@ describe("GET /tasks/owned", () => {
     });
 
     const app = buildApp(user, "user");
-    const res = await req(app, "/tasks/owned?deadlineAfter=2026-04-15T00:00:00Z");
+    const res = await apiRequest(app, "/tasks/owned?deadlineAfter=2026-04-15T00:00:00Z");
     const body = await res.json();
     expect(body.tasks).toHaveLength(1);
     expect(body.tasks[0].title).toBe("Mid");
@@ -342,7 +298,7 @@ describe("GET /tasks/owned/:id/assignees", () => {
     await addAssignee(t.id, a2.id, false);
 
     const app = buildApp(user, "user");
-    const res = await req(app, `/tasks/owned/${t.id}/assignees`);
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/assignees`);
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.taskId).toBe(t.id);
@@ -356,14 +312,17 @@ describe("GET /tasks/owned/:id/assignees", () => {
     const t = await createTask(owner.id);
 
     const app = buildApp(nonOwner, "user");
-    const res = await req(app, `/tasks/owned/${t.id}/assignees`);
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/assignees`);
     expect(res.status).toBe(403);
   });
 
   test("returns 404 for non-existent task", async () => {
     const user = await createUser();
     const app = buildApp(user, "user");
-    const res = await req(app, `/tasks/owned/550e8400-e29b-41d4-a716-446655440000/assignees`);
+    const res = await apiRequest(
+      app,
+      `/tasks/owned/550e8400-e29b-41d4-a716-446655440000/assignees`,
+    );
     expect(res.status).toBe(404);
   });
 
@@ -374,7 +333,7 @@ describe("GET /tasks/owned/:id/assignees", () => {
     await addAssignee(t.id, admin.id);
 
     const app = buildApp(admin, "admin");
-    const res = await req(app, `/tasks/owned/${t.id}/assignees`);
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/assignees`);
     expect(res.status).toBe(200);
   });
 
@@ -388,7 +347,7 @@ describe("GET /tasks/owned/:id/assignees", () => {
     await addAssignee(t.id, a2.id, false);
 
     const app = buildApp(user, "user");
-    const res = await req(app, `/tasks/owned/${t.id}/assignees?done=true`);
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/assignees?done=true`);
     const body = await res.json();
     expect(body.assignees).toHaveLength(1);
     expect(body.assignees[0].done).toBe(true);
@@ -405,7 +364,7 @@ describe("POST /tasks/owned/:id/archive", () => {
     const t = await createTask(user.id, { archived: false });
 
     const app = buildApp(user, "user");
-    const res = await req(app, `/tasks/owned/${t.id}/archive`, { method: "POST" });
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/archive`, { method: "POST" });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.archived).toBe(true);
@@ -416,7 +375,7 @@ describe("POST /tasks/owned/:id/archive", () => {
     const t = await createTask(user.id, { archived: true });
 
     const app = buildApp(user, "user");
-    const res = await req(app, `/tasks/owned/${t.id}/archive`, { method: "POST" });
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/archive`, { method: "POST" });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.archived).toBe(true);
@@ -428,14 +387,14 @@ describe("POST /tasks/owned/:id/archive", () => {
     const t = await createTask(owner.id);
 
     const app = buildApp(nonOwner, "user");
-    const res = await req(app, `/tasks/owned/${t.id}/archive`, { method: "POST" });
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/archive`, { method: "POST" });
     expect(res.status).toBe(403);
   });
 
   test("returns 404 for non-existent task", async () => {
     const user = await createUser();
     const app = buildApp(user, "user");
-    const res = await req(app, `/tasks/owned/550e8400-e29b-41d4-a716-446655440000/archive`, {
+    const res = await apiRequest(app, `/tasks/owned/550e8400-e29b-41d4-a716-446655440000/archive`, {
       method: "POST",
     });
     expect(res.status).toBe(404);
@@ -447,7 +406,7 @@ describe("POST /tasks/owned/:id/archive", () => {
     const t = await createTask(owner.id, { archived: false });
 
     const app = buildApp(admin, "admin");
-    const res = await req(app, `/tasks/owned/${t.id}/archive`, { method: "POST" });
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/archive`, { method: "POST" });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.archived).toBe(true);
@@ -464,7 +423,7 @@ describe("POST /tasks/owned/:id/unarchive", () => {
     const t = await createTask(user.id, { archived: true });
 
     const app = buildApp(user, "user");
-    const res = await req(app, `/tasks/owned/${t.id}/unarchive`, { method: "POST" });
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/unarchive`, { method: "POST" });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.archived).toBe(false);
@@ -475,7 +434,7 @@ describe("POST /tasks/owned/:id/unarchive", () => {
     const t = await createTask(user.id, { archived: false });
 
     const app = buildApp(user, "user");
-    const res = await req(app, `/tasks/owned/${t.id}/unarchive`, { method: "POST" });
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/unarchive`, { method: "POST" });
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.archived).toBe(false);
@@ -487,16 +446,20 @@ describe("POST /tasks/owned/:id/unarchive", () => {
     const t = await createTask(owner.id, { archived: true });
 
     const app = buildApp(nonOwner, "user");
-    const res = await req(app, `/tasks/owned/${t.id}/unarchive`, { method: "POST" });
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/unarchive`, { method: "POST" });
     expect(res.status).toBe(403);
   });
 
   test("returns 404 for non-existent task", async () => {
     const user = await createUser();
     const app = buildApp(user, "user");
-    const res = await req(app, `/tasks/owned/550e8400-e29b-41d4-a716-446655440000/unarchive`, {
-      method: "POST",
-    });
+    const res = await apiRequest(
+      app,
+      `/tasks/owned/550e8400-e29b-41d4-a716-446655440000/unarchive`,
+      {
+        method: "POST",
+      },
+    );
     expect(res.status).toBe(404);
   });
 });

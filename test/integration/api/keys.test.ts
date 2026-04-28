@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { tasks, taskAssignees, taskOwners } from "../../src/db/schema";
-import { createTestApp, createTestUser, cleanupDb } from "./helpers";
+import { tasks, taskAssignees, taskOwners } from "../../../src/db/schema";
+import { createTestApp } from "../helpers/app";
+import { createTestUser, cleanupDb } from "../helpers/db";
 
 /**
  * Full-stack integration tests for /api/v1 endpoints.

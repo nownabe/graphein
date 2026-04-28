@@ -1,65 +1,25 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { Hono } from "hono";
-import { createAdminApiRoutes } from "../../src/api/admin";
-import { createApiAuthMiddleware } from "../../src/api/middleware";
-import { createDb } from "../../src/db/client";
-import { createUserService } from "../../src/users/service";
-import { createSnippetService } from "../../src/snippets/service";
-import { createKudosService } from "../../src/kudos/service";
-import { users, snippetChannels, kudosChannels } from "../../src/db/schema";
-import type { ApiKeyService } from "../../src/api-keys/service";
-import { TEST_DATABASE_URL } from "./setup";
-import { cleanupDb } from "./helpers";
+import { createDb } from "../../../src/db/client";
+import { createAdminApiRoutes } from "../../../src/api/admin";
+import { createUserService } from "../../../src/users/service";
+import { createSnippetService } from "../../../src/snippets/service";
+import { createKudosService } from "../../../src/kudos/service";
+import { snippetChannels, kudosChannels } from "../../../src/db/schema";
+import { TEST_DATABASE_URL } from "../helpers/setup";
+import { cleanupDb } from "../helpers/db";
+import { createUser, buildApiApp, apiRequest } from "../helpers/api";
 
 const db = createDb(TEST_DATABASE_URL, { max: 2 });
 const userService = createUserService(db);
 const snippetService = createSnippetService(db);
 const kudosService = createKudosService(db);
 
-function createMockApiKeyService(
-  mockUser: typeof users.$inferSelect,
+function buildApp(
+  mockUser: Awaited<ReturnType<typeof createUser>>,
   role: "user" | "admin" = "admin",
-): ApiKeyService {
-  return {
-    createApiKey: async () => ({ ok: false as const, error: "key_limit_exceeded" as const }),
-    listApiKeys: async () => [],
-    revokeApiKey: async () => null,
-    verifyApiKey: async () => ({ user: mockUser as never, role }),
-  };
-}
-
-function buildApp(mockUser: typeof users.$inferSelect, role: "user" | "admin" = "admin") {
-  const apiKeyService = createMockApiKeyService(mockUser, role);
-  const authMiddleware = createApiAuthMiddleware(apiKeyService);
+) {
   const adminRoutes = createAdminApiRoutes({ userService, snippetService, kudosService, db });
-
-  const app = new Hono();
-  app.use("/*", authMiddleware);
-  app.route("/", adminRoutes);
-  return app;
-}
-
-async function req(app: Hono, path: string, init?: RequestInit) {
-  return app.request(path, {
-    ...init,
-    headers: {
-      Authorization: "Bearer gph_testkey",
-      ...init?.headers,
-    },
-  });
-}
-
-async function createUser(overrides?: Partial<typeof users.$inferInsert>) {
-  const [user] = await db
-    .insert(users)
-    .values({
-      slackUserId: `U${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-      email: "test@example.com",
-      displayName: "Test User",
-      ...overrides,
-    })
-    .returning();
-  return user;
+  return buildApiApp(mockUser, role, adminRoutes);
 }
 
 // ---------------------------------------------------------------------------
@@ -85,7 +45,7 @@ describe("GET /admin/users", () => {
     await createUser({ displayName: "Bob", email: "bob@example.com" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/users");
+    const res = await apiRequest(app, "/admin/users");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -99,7 +59,7 @@ describe("GET /admin/users", () => {
     await createUser({ displayName: "Bob", email: "bob@example.com" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/users?query=alice");
+    const res = await apiRequest(app, "/admin/users?query=alice");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -114,7 +74,7 @@ describe("GET /admin/users", () => {
     await createUser({ displayName: "Bob", email: "bob@test.com" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/users?query=test.com");
+    const res = await apiRequest(app, "/admin/users?query=test.com");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -132,7 +92,7 @@ describe("GET /admin/users", () => {
     const app = buildApp(admin);
 
     // First page
-    const res1 = await req(app, "/admin/users?pageSize=2");
+    const res1 = await apiRequest(app, "/admin/users?pageSize=2");
     expect(res1.status).toBe(200);
     const body1 = await res1.json();
     expect(body1.users).toHaveLength(2);
@@ -140,7 +100,7 @@ describe("GET /admin/users", () => {
     expect(body1.nextPageToken).not.toBe("");
 
     // Second page
-    const res2 = await req(app, `/admin/users?pageSize=2&pageToken=${body1.nextPageToken}`);
+    const res2 = await apiRequest(app, `/admin/users?pageSize=2&pageToken=${body1.nextPageToken}`);
     expect(res2.status).toBe(200);
     const body2 = await res2.json();
     expect(body2.users).toHaveLength(2);
@@ -157,7 +117,7 @@ describe("GET /admin/users", () => {
     const admin = await createUser({ role: "admin", displayName: "Admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/users?pageSize=50");
+    const res = await apiRequest(app, "/admin/users?pageSize=50");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -168,7 +128,7 @@ describe("GET /admin/users", () => {
     const admin = await createUser({ role: "admin", displayName: "Admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/users?pageToken=invalidtoken");
+    const res = await apiRequest(app, "/admin/users?pageToken=invalidtoken");
     expect(res.status).toBe(422);
 
     const body = await res.json();
@@ -179,7 +139,7 @@ describe("GET /admin/users", () => {
     const admin = await createUser({ role: "admin", displayName: "Admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/users?pageSize=-1");
+    const res = await apiRequest(app, "/admin/users?pageSize=-1");
     expect(res.status).toBe(422);
   });
 
@@ -187,7 +147,7 @@ describe("GET /admin/users", () => {
     const user = await createUser({ role: "user" });
 
     const app = buildApp(user, "user");
-    const res = await req(app, "/admin/users");
+    const res = await apiRequest(app, "/admin/users");
     expect(res.status).toBe(403);
 
     const body = await res.json();
@@ -200,7 +160,7 @@ describe("GET /admin/users", () => {
     await createUser({ displayName: "Middle", email: "m@example.com" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/users");
+    const res = await apiRequest(app, "/admin/users");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -219,7 +179,7 @@ describe("POST /admin/users/{id}/deactivate", () => {
     const target = await createUser({ displayName: "Target", email: "target@example.com" });
 
     const app = buildApp(admin);
-    const res = await req(app, `/admin/users/${target.id}/deactivate`, { method: "POST" });
+    const res = await apiRequest(app, `/admin/users/${target.id}/deactivate`, { method: "POST" });
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -235,12 +195,12 @@ describe("POST /admin/users/{id}/deactivate", () => {
     const app = buildApp(admin);
 
     // First deactivation
-    const res1 = await req(app, `/admin/users/${target.id}/deactivate`, { method: "POST" });
+    const res1 = await apiRequest(app, `/admin/users/${target.id}/deactivate`, { method: "POST" });
     expect(res1.status).toBe(200);
     const body1 = await res1.json();
 
     // Second deactivation — idempotent
-    const res2 = await req(app, `/admin/users/${target.id}/deactivate`, { method: "POST" });
+    const res2 = await apiRequest(app, `/admin/users/${target.id}/deactivate`, { method: "POST" });
     expect(res2.status).toBe(200);
     const body2 = await res2.json();
 
@@ -251,7 +211,7 @@ describe("POST /admin/users/{id}/deactivate", () => {
     const admin = await createUser({ role: "admin", displayName: "Admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, `/admin/users/${admin.id}/deactivate`, { method: "POST" });
+    const res = await apiRequest(app, `/admin/users/${admin.id}/deactivate`, { method: "POST" });
     expect(res.status).toBe(422);
 
     const body = await res.json();
@@ -263,7 +223,7 @@ describe("POST /admin/users/{id}/deactivate", () => {
 
     const app = buildApp(admin);
     const fakeId = "00000000-0000-0000-0000-000000000000";
-    const res = await req(app, `/admin/users/${fakeId}/deactivate`, { method: "POST" });
+    const res = await apiRequest(app, `/admin/users/${fakeId}/deactivate`, { method: "POST" });
     expect(res.status).toBe(404);
 
     const body = await res.json();
@@ -275,7 +235,7 @@ describe("POST /admin/users/{id}/deactivate", () => {
     const target = await createUser({ displayName: "Target", email: "target@example.com" });
 
     const app = buildApp(user, "user");
-    const res = await req(app, `/admin/users/${target.id}/deactivate`, { method: "POST" });
+    const res = await apiRequest(app, `/admin/users/${target.id}/deactivate`, { method: "POST" });
     expect(res.status).toBe(403);
 
     const body = await res.json();
@@ -286,7 +246,7 @@ describe("POST /admin/users/{id}/deactivate", () => {
     const admin = await createUser({ role: "admin", displayName: "Admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/users/not-a-uuid/deactivate", { method: "POST" });
+    const res = await apiRequest(app, "/admin/users/not-a-uuid/deactivate", { method: "POST" });
     expect(res.status).toBe(422);
   });
 });
@@ -302,7 +262,7 @@ describe("GET /admin/snippetChannels", () => {
     await db.insert(snippetChannels).values({ slackChannelId: "C_SNIP2" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/snippetChannels");
+    const res = await apiRequest(app, "/admin/snippetChannels");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -316,7 +276,7 @@ describe("GET /admin/snippetChannels", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/snippetChannels");
+    const res = await apiRequest(app, "/admin/snippetChannels");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -327,7 +287,7 @@ describe("GET /admin/snippetChannels", () => {
     const user = await createUser({ role: "user" });
 
     const app = buildApp(user, "user");
-    const res = await req(app, "/admin/snippetChannels");
+    const res = await apiRequest(app, "/admin/snippetChannels");
     expect(res.status).toBe(403);
   });
 });
@@ -341,7 +301,7 @@ describe("POST /admin/snippetChannels", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/snippetChannels", {
+    const res = await apiRequest(app, "/admin/snippetChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slackChannelId: "C_NEW_SNIP" }),
@@ -359,7 +319,7 @@ describe("POST /admin/snippetChannels", () => {
     await db.insert(snippetChannels).values({ slackChannelId: "C_EXISTING" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/snippetChannels", {
+    const res = await apiRequest(app, "/admin/snippetChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slackChannelId: "C_EXISTING" }),
@@ -374,7 +334,7 @@ describe("POST /admin/snippetChannels", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/snippetChannels", {
+    const res = await apiRequest(app, "/admin/snippetChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -389,7 +349,7 @@ describe("POST /admin/snippetChannels", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/snippetChannels", {
+    const res = await apiRequest(app, "/admin/snippetChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slackChannelId: "" }),
@@ -401,7 +361,7 @@ describe("POST /admin/snippetChannels", () => {
     const user = await createUser({ role: "user" });
 
     const app = buildApp(user, "user");
-    const res = await req(app, "/admin/snippetChannels", {
+    const res = await apiRequest(app, "/admin/snippetChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slackChannelId: "C_SNIP" }),
@@ -423,11 +383,11 @@ describe("DELETE /admin/snippetChannels/{id}", () => {
       .returning();
 
     const app = buildApp(admin);
-    const res = await req(app, `/admin/snippetChannels/${channel.id}`, { method: "DELETE" });
+    const res = await apiRequest(app, `/admin/snippetChannels/${channel.id}`, { method: "DELETE" });
     expect(res.status).toBe(204);
 
     // Verify it's gone
-    const listRes = await req(app, "/admin/snippetChannels");
+    const listRes = await apiRequest(app, "/admin/snippetChannels");
     const body = await listRes.json();
     expect(body.snippetChannels).toHaveLength(0);
   });
@@ -437,7 +397,7 @@ describe("DELETE /admin/snippetChannels/{id}", () => {
 
     const app = buildApp(admin);
     const fakeId = "00000000-0000-0000-0000-000000000000";
-    const res = await req(app, `/admin/snippetChannels/${fakeId}`, { method: "DELETE" });
+    const res = await apiRequest(app, `/admin/snippetChannels/${fakeId}`, { method: "DELETE" });
     expect(res.status).toBe(404);
 
     const body = await res.json();
@@ -452,7 +412,7 @@ describe("DELETE /admin/snippetChannels/{id}", () => {
       .returning();
 
     const app = buildApp(user, "user");
-    const res = await req(app, `/admin/snippetChannels/${channel.id}`, { method: "DELETE" });
+    const res = await apiRequest(app, `/admin/snippetChannels/${channel.id}`, { method: "DELETE" });
     expect(res.status).toBe(403);
   });
 
@@ -460,7 +420,7 @@ describe("DELETE /admin/snippetChannels/{id}", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/snippetChannels/not-a-uuid", { method: "DELETE" });
+    const res = await apiRequest(app, "/admin/snippetChannels/not-a-uuid", { method: "DELETE" });
     expect(res.status).toBe(422);
   });
 });
@@ -476,7 +436,7 @@ describe("GET /admin/kudosChannels", () => {
     await db.insert(kudosChannels).values({ slackChannelId: "C_KUDOS2" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/kudosChannels");
+    const res = await apiRequest(app, "/admin/kudosChannels");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -490,7 +450,7 @@ describe("GET /admin/kudosChannels", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/kudosChannels");
+    const res = await apiRequest(app, "/admin/kudosChannels");
     expect(res.status).toBe(200);
 
     const body = await res.json();
@@ -501,7 +461,7 @@ describe("GET /admin/kudosChannels", () => {
     const user = await createUser({ role: "user" });
 
     const app = buildApp(user, "user");
-    const res = await req(app, "/admin/kudosChannels");
+    const res = await apiRequest(app, "/admin/kudosChannels");
     expect(res.status).toBe(403);
   });
 });
@@ -515,7 +475,7 @@ describe("POST /admin/kudosChannels", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/kudosChannels", {
+    const res = await apiRequest(app, "/admin/kudosChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slackChannelId: "C_NEW_KUDOS" }),
@@ -533,7 +493,7 @@ describe("POST /admin/kudosChannels", () => {
     await db.insert(kudosChannels).values({ slackChannelId: "C_EXISTING_K" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/kudosChannels", {
+    const res = await apiRequest(app, "/admin/kudosChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slackChannelId: "C_EXISTING_K" }),
@@ -548,7 +508,7 @@ describe("POST /admin/kudosChannels", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/kudosChannels", {
+    const res = await apiRequest(app, "/admin/kudosChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
@@ -563,7 +523,7 @@ describe("POST /admin/kudosChannels", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/kudosChannels", {
+    const res = await apiRequest(app, "/admin/kudosChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slackChannelId: "" }),
@@ -575,7 +535,7 @@ describe("POST /admin/kudosChannels", () => {
     const user = await createUser({ role: "user" });
 
     const app = buildApp(user, "user");
-    const res = await req(app, "/admin/kudosChannels", {
+    const res = await apiRequest(app, "/admin/kudosChannels", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ slackChannelId: "C_KUDOS" }),
@@ -597,11 +557,11 @@ describe("DELETE /admin/kudosChannels/{id}", () => {
       .returning();
 
     const app = buildApp(admin);
-    const res = await req(app, `/admin/kudosChannels/${channel.id}`, { method: "DELETE" });
+    const res = await apiRequest(app, `/admin/kudosChannels/${channel.id}`, { method: "DELETE" });
     expect(res.status).toBe(204);
 
     // Verify it's gone
-    const listRes = await req(app, "/admin/kudosChannels");
+    const listRes = await apiRequest(app, "/admin/kudosChannels");
     const body = await listRes.json();
     expect(body.kudosChannels).toHaveLength(0);
   });
@@ -611,7 +571,7 @@ describe("DELETE /admin/kudosChannels/{id}", () => {
 
     const app = buildApp(admin);
     const fakeId = "00000000-0000-0000-0000-000000000000";
-    const res = await req(app, `/admin/kudosChannels/${fakeId}`, { method: "DELETE" });
+    const res = await apiRequest(app, `/admin/kudosChannels/${fakeId}`, { method: "DELETE" });
     expect(res.status).toBe(404);
 
     const body = await res.json();
@@ -626,7 +586,7 @@ describe("DELETE /admin/kudosChannels/{id}", () => {
       .returning();
 
     const app = buildApp(user, "user");
-    const res = await req(app, `/admin/kudosChannels/${channel.id}`, { method: "DELETE" });
+    const res = await apiRequest(app, `/admin/kudosChannels/${channel.id}`, { method: "DELETE" });
     expect(res.status).toBe(403);
   });
 
@@ -634,7 +594,7 @@ describe("DELETE /admin/kudosChannels/{id}", () => {
     const admin = await createUser({ role: "admin" });
 
     const app = buildApp(admin);
-    const res = await req(app, "/admin/kudosChannels/not-a-uuid", { method: "DELETE" });
+    const res = await apiRequest(app, "/admin/kudosChannels/not-a-uuid", { method: "DELETE" });
     expect(res.status).toBe(422);
   });
 });

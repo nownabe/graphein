@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { createTestApp, createTestUser, authRequest, cleanupDb } from "./helpers";
+import { createTestApp, authRequest } from "../helpers/app";
+import { createTestUser, cleanupDb } from "../helpers/db";
 
 const { app, db, apiKeyService } = createTestApp();
 
@@ -271,7 +272,7 @@ describe("verifyApiKey", () => {
     const result = await apiKeyService.createApiKey(user.id, "Admin Key", "admin");
     if (!result.ok) return;
 
-    const { users } = await import("../../src/db/schema");
+    const { users } = await import("../../../src/db/schema");
     const { eq } = await import("drizzle-orm");
     await db.update(users).set({ role: "user" }).where(eq(users.id, user.id));
 
