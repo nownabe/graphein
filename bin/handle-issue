@@ -278,6 +278,7 @@ console.log(`   Session: ${sessionId}`);
 
 if (enableCodexReview) {
   const MAX_CODEX_ROUNDS = 5;
+  let codexApproved = false;
 
   for (let codexRound = 1; codexRound <= MAX_CODEX_ROUNDS; codexRound++) {
     console.log(`\n🔍 Codex review round ${codexRound}/${MAX_CODEX_ROUNDS}...`);
@@ -292,10 +293,15 @@ if (enableCodexReview) {
 
     if (review.status === "approved") {
       console.log(`   Codex review: approved (no issues)`);
+      codexApproved = true;
       break;
     }
 
-    // changes_requested — fix and re-review
+    // changes_requested — fix and re-review (unless this is the last round)
+    if (codexRound === MAX_CODEX_ROUNDS) {
+      break;
+    }
+
     console.log(`   Codex review: ${review.findings.length} issue(s) found. Fixing...`);
 
     const findingsJson = JSON.stringify(review.findings, null, 2);
@@ -323,12 +329,12 @@ if (enableCodexReview) {
     }
 
     console.log(`   Codex review fixes applied (round ${codexRound}).`);
+  }
 
-    if (codexRound === MAX_CODEX_ROUNDS) {
-      console.error(`❌ Codex review did not converge after ${MAX_CODEX_ROUNDS} rounds. Aborting.`);
-      await cleanup();
-      process.exit(1);
-    }
+  if (!codexApproved) {
+    console.error(`❌ Codex review did not converge after ${MAX_CODEX_ROUNDS} rounds. Aborting.`);
+    await cleanup();
+    process.exit(1);
   }
 }
 
@@ -337,6 +343,17 @@ if (enableCodexReview) {
 // ---------------------------------------------------------------------------
 
 console.log(`\n📦 Creating PR...`);
+
+// Ensure the branch is pushed with upstream tracking before PR creation
+const pushResult = await run(
+  ["git", "push", "--set-upstream", "origin", "HEAD"],
+  { cwd: worktreePath },
+);
+if (pushResult.exitCode !== 0) {
+  console.error(`❌ Failed to push branch. See: ${logDir}/orchestrator.log`);
+  await cleanup();
+  process.exit(1);
+}
 
 const createPrResult = await run(
   [
