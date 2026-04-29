@@ -162,7 +162,7 @@ async function runCodexReview(cwd: string, round: number): Promise<CodexReviewOu
       "read-only",
       "-o",
       outputFile,
-      "Review the code changes between main and HEAD in this git repository. Identify bugs, security issues, or regressions. Be strict: only report concrete, actionable findings.",
+      "Review the code changes between origin/main and HEAD in this git repository. Identify bugs, security issues, or regressions. Be strict: only report concrete, actionable findings.",
     ],
     { timeout: 300_000, cwd, logType: `codex-review-${round}` },
   );
@@ -285,8 +285,9 @@ if (enableCodexReview) {
     const review = await runCodexReview(worktreePath, codexRound);
 
     if (!review) {
-      console.error(`⚠️  Codex review failed, skipping to PR creation. See: ${logDir}/codex-review-${codexRound}.log`);
-      break;
+      console.error(`❌ Codex review failed. See: ${logDir}/codex-review-${codexRound}.log`);
+      await cleanup();
+      process.exit(1);
     }
 
     if (review.status === "approved") {
@@ -316,14 +317,17 @@ if (enableCodexReview) {
     );
 
     if (fixResult.exitCode !== 0) {
-      console.error(`⚠️  Codex review fix failed, skipping to PR creation. See: ${logDir}/codex-fix-${codexRound}.log`);
-      break;
+      console.error(`❌ Codex review fix failed. See: ${logDir}/codex-fix-${codexRound}.log`);
+      await cleanup();
+      process.exit(1);
     }
 
     console.log(`   Codex review fixes applied (round ${codexRound}).`);
 
     if (codexRound === MAX_CODEX_ROUNDS) {
-      console.error(`⚠️  Codex review did not converge after ${MAX_CODEX_ROUNDS} rounds.`);
+      console.error(`❌ Codex review did not converge after ${MAX_CODEX_ROUNDS} rounds. Aborting.`);
+      await cleanup();
+      process.exit(1);
     }
   }
 }
