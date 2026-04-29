@@ -287,7 +287,7 @@ if (enableCodexReview) {
 
     if (!review) {
       console.error(`❌ Codex review failed. See: ${logDir}/codex-review-${codexRound}.log`);
-      await cleanup();
+      console.error(`   Worktree preserved for manual recovery: ${worktreePath}`);
       process.exit(1);
     }
 
@@ -324,7 +324,7 @@ if (enableCodexReview) {
 
     if (fixResult.exitCode !== 0) {
       console.error(`❌ Codex review fix failed. See: ${logDir}/codex-fix-${codexRound}.log`);
-      await cleanup();
+      console.error(`   Worktree preserved for manual recovery: ${worktreePath}`);
       process.exit(1);
     }
 
@@ -333,7 +333,7 @@ if (enableCodexReview) {
 
   if (!codexApproved) {
     console.error(`❌ Codex review did not converge after ${MAX_CODEX_ROUNDS} rounds. Aborting.`);
-    await cleanup();
+    console.error(`   Worktree preserved for manual recovery: ${worktreePath}`);
     process.exit(1);
   }
 }
@@ -343,6 +343,24 @@ if (enableCodexReview) {
 // ---------------------------------------------------------------------------
 
 console.log(`\n📦 Creating PR...`);
+
+// Verify the implementation produced commits and the worktree is clean
+const statusResult = await run(["git", "status", "--porcelain"], { cwd: worktreePath });
+if (statusResult.stdout.length > 0) {
+  console.error("❌ Worktree has uncommitted changes after implementation. Aborting.");
+  console.error(`   Worktree preserved for manual recovery: ${worktreePath}`);
+  process.exit(1);
+}
+
+const commitCount = await run(
+  ["git", "rev-list", "--count", "origin/main..HEAD"],
+  { cwd: worktreePath },
+);
+if (commitCount.stdout === "0") {
+  console.error("❌ No commits were created during implementation. Aborting.");
+  console.error(`   Worktree preserved for manual recovery: ${worktreePath}`);
+  process.exit(1);
+}
 
 // Ensure the branch is pushed with upstream tracking before PR creation
 const pushResult = await run(
