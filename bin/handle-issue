@@ -21,6 +21,7 @@
 import { parseArgs } from "util";
 import { mkdirSync } from "fs";
 import { resolve } from "path";
+import { waitPr, type WaitPrResult } from "../tools/lib/wait-pr";
 
 const MAX_FIX_ROUNDS = 5;
 
@@ -286,6 +287,7 @@ if (!prUrl) {
 }
 
 const prNumber = extractPrNumber(prUrl);
+const prCreatedAt = new Date().toISOString();
 console.log(`\n✅ PR created: ${prUrl}`);
 console.log(`   Session: ${sessionId}`);
 
@@ -360,31 +362,17 @@ if (enableCodexReview) {
 // Phase 3: Wait and fix loop
 // ---------------------------------------------------------------------------
 
+let waitSince = new Date(prCreatedAt);
+
 for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
   console.log(`\n⏳ Waiting for CI/review (round ${round}/${MAX_FIX_ROUNDS})...`);
 
   // Keep polling until an actionable status is reached (no timeout limit).
-  let status: any;
+  let status: WaitPrResult;
 
   while (true) {
-    const waitResult = await run(
-      ["bun", "run", "tools/wait-pr.ts", prNumber],
-      { cwd: worktreePath, logType: "wait-pr" },
-    );
-
-    if (waitResult.exitCode !== 0) {
-      console.error(`❌ wait-pr.ts failed. See: ${logDir}/wait-pr.log`);
-      await cleanup();
-      process.exit(1);
-    }
-
-    try {
-      status = JSON.parse(waitResult.stdout);
-    } catch {
-      console.error(`❌ Failed to parse wait-pr.ts output. See: ${logDir}/wait-pr.log`);
-      await cleanup();
-      process.exit(1);
-    }
+    status = await waitPr({ prNumber, since: waitSince, cwd: worktreePath });
+    await logLine("wait-pr", `status=${status.status} lgtm=${status.lgtm} ci=${status.ci.state} feedback=${status.feedback.length}`);
 
     console.log(`   Status: ${status.status}`);
 
@@ -446,6 +434,9 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
     await cleanup();
     process.exit(1);
   }
+
+  // Advance baseline so already-addressed feedback is not re-reported
+  waitSince = new Date();
 
   console.log(`   Fix round ${round} complete. Re-checking...`);
 }
