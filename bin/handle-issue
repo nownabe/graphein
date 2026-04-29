@@ -369,7 +369,7 @@ const pushResult = await run(
 );
 if (pushResult.exitCode !== 0) {
   console.error(`❌ Failed to push branch. See: ${logDir}/orchestrator.log`);
-  await cleanup();
+  console.error(`   Worktree preserved for manual recovery: ${worktreePath}`);
   process.exit(1);
 }
 
