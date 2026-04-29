@@ -1,14 +1,5 @@
 import { z } from "zod";
-import {
-  type SQL,
-  and,
-  eq,
-  or,
-  asc,
-  ilike,
-  sql,
-  count as drizzleCount,
-} from "drizzle-orm";
+import { type SQL, and, eq, or, asc, ilike, sql, count as drizzleCount } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Database } from "../../db/client";
 import { users, snippetChannels, kudosChannels } from "../../db/schema";
