@@ -1,10 +1,12 @@
 import { describe, test, expect } from "bun:test";
 import { createMcpServer, type McpServerConfig } from "./server";
 import type { Database } from "../db/client";
+import type { KudosService } from "../kudos/service";
 import type { TaskService } from "../tasks/service";
 
 const mockDb = {} as Database;
 const mockTaskService = {} as TaskService;
+const mockKudosService = {} as KudosService;
 
 function createTestConfig(overrides?: Partial<McpServerConfig>): McpServerConfig {
   return {
@@ -12,6 +14,7 @@ function createTestConfig(overrides?: Partial<McpServerConfig>): McpServerConfig
     version: "0.1.0",
     db: mockDb,
     taskService: mockTaskService,
+    kudosService: mockKudosService,
     ...overrides,
   };
 }
