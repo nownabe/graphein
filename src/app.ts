@@ -314,6 +314,8 @@ export function createHonoApp(config: HonoAppConfig) {
       version: "1.0.0",
       db: config.db,
       taskService,
+      userService,
+      snippetService,
       kudosService,
     });
     const transport = new StreamableHTTPTransport();
