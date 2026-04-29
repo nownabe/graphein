@@ -35,9 +35,8 @@ describe("createMcpServer", () => {
 
   test("registers task tools", () => {
     const server = createMcpServer(createTestConfig());
-    const registeredTools = (
-      server as unknown as { _registeredTools: Record<string, unknown> }
-    )._registeredTools;
+    const registeredTools = (server as unknown as { _registeredTools: Record<string, unknown> })
+      ._registeredTools;
     expect(registeredTools).toBeDefined();
     expect(registeredTools["list_assigned_tasks"]).toBeDefined();
     expect(registeredTools["list_owned_tasks"]).toBeDefined();

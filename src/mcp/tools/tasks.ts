@@ -268,8 +268,7 @@ export function registerTaskTools(server: McpServer, deps: TaskToolsDeps): void 
   server.registerTool(
     "list_owned_tasks",
     {
-      description:
-        "List tasks owned by the authenticated user (or all tasks for admin).",
+      description: "List tasks owned by the authenticated user (or all tasks for admin).",
       inputSchema: {
         status: z.enum(["active", "archived"]).default("active").describe("Task archive status."),
         deadlineBefore: z
