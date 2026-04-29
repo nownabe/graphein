@@ -12,6 +12,8 @@ const mockUser: McpUser = {
   locale: "en",
   slackUserId: "U12345",
   avatarUrl: "https://example.com/avatar.png",
+  theme: "dark",
+  deactivatedAt: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };
@@ -47,7 +49,11 @@ describe("registerMeResource", () => {
       server as unknown as {
         _registeredResources: Record<
           string,
-          { readCallback: (uri: URL) => Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }> }
+          {
+            readCallback: (
+              uri: URL,
+            ) => Promise<{ contents: Array<{ uri: string; mimeType: string; text: string }> }>;
+          }
         >;
       }
     )._registeredResources;
