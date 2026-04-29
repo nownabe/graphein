@@ -311,7 +311,13 @@ if (!enableCodexReview) {
 // Phase 2: Codex review (before PR creation)
 // ---------------------------------------------------------------------------
 
-let lastCodexReview: CodexReviewOutput | null = null;
+type CodexReviewRound = {
+  round: number;
+  review: CodexReviewOutput;
+  fixed: boolean;
+};
+
+const codexReviewRounds: CodexReviewRound[] = [];
 
 if (enableCodexReview) {
   const MAX_CODEX_ROUNDS = 5;
@@ -326,10 +332,9 @@ if (enableCodexReview) {
       break;
     }
 
-    lastCodexReview = review;
-
     if (review.status === "approved") {
       console.log(`   Codex review: approved (no issues)`);
+      codexReviewRounds.push({ round: codexRound, review, fixed: false });
       break;
     }
 
@@ -356,9 +361,11 @@ if (enableCodexReview) {
 
     if (fixResult.exitCode !== 0) {
       console.error(`⚠️  Codex review fix failed, skipping. See: ${logDir}/codex-fix-${codexRound}.log`);
+      codexReviewRounds.push({ round: codexRound, review, fixed: false });
       break;
     }
 
+    codexReviewRounds.push({ round: codexRound, review, fixed: true });
     console.log(`   Codex review fixes applied (round ${codexRound}).`);
 
     if (codexRound === MAX_CODEX_ROUNDS) {
@@ -416,20 +423,43 @@ if (enableCodexReview) {
   console.log(`\n✅ PR created: ${prUrl}`);
   console.log(`   Session: ${sessionId}`);
 
-  // Post codex review comment to the PR
-  if (lastCodexReview) {
-    if (lastCodexReview.status === "approved") {
-      await postComment(prNumber, `## Codex CLI Review\n\n${lastCodexReview.comment_markdown}`);
+  // Post consolidated codex review comment to the PR
+  if (codexReviewRounds.length > 0) {
+    const lastRound = codexReviewRounds[codexReviewRounds.length - 1];
+    const approved = lastRound.review.status === "approved";
+
+    let commentBody = `## Codex CLI Review\n\n`;
+
+    if (approved && codexReviewRounds.length === 1) {
+      // Approved on first round — simple message
+      commentBody += lastRound.review.comment_markdown;
     } else {
-      const findingsList = lastCodexReview.findings
-        .map(
-          (f) =>
-            `- **${f.severity}** (${f.category}): ${f.title} — \`${f.location.path}${f.location.line ? `:${f.location.line}` : ""}\``,
-        )
-        .join("\n");
-      const commentBody = `## Codex CLI Review\n\n${lastCodexReview.summary}\n\n### Findings (not fully resolved after review)\n\n${findingsList}`;
-      await postComment(prNumber, commentBody);
+      // Multiple rounds or not fully resolved — show per-round details
+      commentBody += approved
+        ? `Approved after ${codexReviewRounds.length} round(s).\n`
+        : `Not fully resolved after ${codexReviewRounds.length} round(s).\n`;
+
+      for (const entry of codexReviewRounds) {
+        commentBody += `\n### Round ${entry.round}`;
+
+        if (entry.review.status === "approved") {
+          commentBody += ` — ✅ Approved\n\n${entry.review.comment_markdown}\n`;
+        } else {
+          const status = entry.fixed ? "🔧 Fixed" : "⚠️ Not fixed";
+          commentBody += ` — ${status}\n\n`;
+          commentBody += `${entry.review.summary}\n\n`;
+          commentBody += entry.review.findings
+            .map(
+              (f) =>
+                `- **${f.severity}** (${f.category}): ${f.title} — \`${f.location.path}${f.location.line ? `:${f.location.line}` : ""}\``,
+            )
+            .join("\n");
+          commentBody += "\n";
+        }
+      }
     }
+
+    await postComment(prNumber, commentBody);
   }
 }
 
