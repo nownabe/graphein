@@ -305,6 +305,8 @@ export function createHonoApp(config: HonoAppConfig) {
     const mcpServer = createMcpServer({
       name: "graphein",
       version: "1.0.0",
+      db: config.db,
+      taskService,
     });
     const transport = new StreamableHTTPTransport();
     await mcpServer.connect(transport);
