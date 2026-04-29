@@ -268,6 +268,13 @@ export function createHonoApp(config: HonoAppConfig) {
       });
     }
 
+    // Validate scope — require the "graphein" scope
+    if (!tokenInfo.scopes.includes("graphein")) {
+      return c.json({}, 403, {
+        "WWW-Authenticate": `Bearer error="insufficient_scope", scope="graphein"`,
+      });
+    }
+
     // Rate limiting keyed by user ID (60 req/min)
     const userId = (tokenInfo.extra as { sub: string }).sub;
     const { remaining, resetAt } = mcpRateLimiter.check(userId);
