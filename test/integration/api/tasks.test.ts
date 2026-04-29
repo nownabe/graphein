@@ -462,4 +462,16 @@ describe("POST /tasks/owned/:id/unarchive", () => {
     );
     expect(res.status).toBe(404);
   });
+
+  test("admin can unarchive any task", async () => {
+    const admin = await createUser({ role: "admin" });
+    const owner = await createUser({ slackUserId: "U_OWNER", displayName: "Owner" });
+    const t = await createTask(owner.id, { archived: true });
+
+    const app = buildApp(admin, "admin");
+    const res = await apiRequest(app, `/tasks/owned/${t.id}/unarchive`, { method: "POST" });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.archived).toBe(false);
+  });
 });

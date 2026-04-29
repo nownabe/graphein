@@ -64,11 +64,22 @@ describe("GET /api/v1/doc", () => {
     const spec = await res.json();
 
     const paths = Object.keys(spec.paths);
+    // Task endpoints
     expect(paths).toContain("/tasks");
     expect(paths).toContain("/tasks/owned");
+    expect(paths).toContain("/tasks/owned/{id}/assignees");
+    expect(paths).toContain("/tasks/owned/{id}/archive");
+    expect(paths).toContain("/tasks/owned/{id}/unarchive");
+    // Snippet & kudos endpoints
     expect(paths).toContain("/snippets");
     expect(paths).toContain("/kudos");
+    // Admin endpoints
     expect(paths).toContain("/admin/users");
+    expect(paths).toContain("/admin/users/{id}/deactivate");
+    expect(paths).toContain("/admin/snippetChannels");
+    expect(paths).toContain("/admin/snippetChannels/{id}");
+    expect(paths).toContain("/admin/kudosChannels");
+    expect(paths).toContain("/admin/kudosChannels/{id}");
   });
 });
 
