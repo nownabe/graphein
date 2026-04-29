@@ -7,11 +7,13 @@
  *
  * This script controls the workflow deterministically:
  *   1. Create a git worktree for isolated development
- *   2. Spawn claude CLI to implement the issue and create a PR
- *   3. Wait for CI/review (tools/wait-pr.ts)
- *   4. If fixes needed, resume the same claude session to fix
- *   5. Repeat 3-4 until approved or max retries
- *   6. Clean up the worktree
+ *   2. Spawn claude CLI to implement the issue (commit + push, no PR)
+ *   3. If --codex-review: run Codex CLI review loop, fix issues before PR
+ *   4. Resume claude session to create the PR
+ *   5. Wait for CI/review (tools/wait-pr.ts)
+ *   6. If fixes needed, resume the same claude session to fix
+ *   7. Repeat 5-6 until approved or max retries
+ *   8. Clean up the worktree
  *
  * Logs are written to logs/issue-<issue>/<log-type>.log
  *
@@ -174,20 +176,18 @@ async function runCodexReview(cwd: string, round: number): Promise<CodexReviewOu
   try {
     const outputText = await Bun.file(outputFile).text();
     await run(["rm", "-f", outputFile], { cwd });
+
+    // Save review JSON to log directory for debugging/auditing
+    const reviewLogFile = resolve(logDir, `codex-review-${round}.json`);
+    await Bun.write(reviewLogFile, outputText);
+    console.log(`   Saved review output: ${reviewLogFile}`);
+
     return JSON.parse(outputText) as CodexReviewOutput;
   } catch {
     console.error("⚠️  Failed to parse Codex review output, skipping.");
     await run(["rm", "-f", outputFile], { cwd });
     return null;
   }
-}
-
-async function postComment(prNumber: string, body: string): Promise<void> {
-  await run([
-    "bun", "run", "tools/comment-pr.ts", prNumber,
-    "--agent", "Codex",
-    "--body", body,
-  ]);
 }
 
 // ---------------------------------------------------------------------------
@@ -236,7 +236,7 @@ async function cleanup() {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 1: Implement and create PR
+// Phase 1: Implement (no PR yet)
 // ---------------------------------------------------------------------------
 
 console.log(`\n📋 Implementing issue: ${issueRef}`);
@@ -245,7 +245,7 @@ const implementResult = await run(
   [
     "claude",
     "-p",
-    `Handle issue ${issueRef}\n\nIMPORTANT: When creating the PR (step 5 of /pr skill), use subagent mode:\nonly run \`gh pr create\`, do NOT run wait-pr.ts. Return the PR URL at the end of your response.`,
+    `Handle issue ${issueRef}\n\nIMPORTANT: Do NOT create a pull request. Only implement the changes, commit them, and push the branch. Do NOT run the /pr skill. Return a summary of what you implemented at the end of your response.`,
     "--permission-mode",
     "bypassPermissions",
     "--output-format",
@@ -269,28 +269,11 @@ if (!sessionId) {
   process.exit(1);
 }
 
-// Extract PR URL from the result field in JSON output
-let resultText: string;
-try {
-  resultText = JSON.parse(implementResult.stdout).result ?? "";
-} catch {
-  resultText = implementResult.stdout;
-}
-
-const prUrl = extractPrUrl(resultText);
-if (!prUrl) {
-  console.error("❌ Could not find PR URL in output");
-  console.error(`   See: ${logDir}/implement.log`);
-  await cleanup();
-  process.exit(1);
-}
-
-const prNumber = extractPrNumber(prUrl);
-console.log(`\n✅ PR created: ${prUrl}`);
+console.log(`\n✅ Implementation complete.`);
 console.log(`   Session: ${sessionId}`);
 
 // ---------------------------------------------------------------------------
-// Phase 2: Codex review (before wait/fix loop)
+// Phase 2: Codex review (before PR creation)
 // ---------------------------------------------------------------------------
 
 if (enableCodexReview) {
@@ -302,13 +285,12 @@ if (enableCodexReview) {
     const review = await runCodexReview(worktreePath, codexRound);
 
     if (!review) {
-      console.error(`⚠️  Codex review failed, skipping to wait loop. See: ${logDir}/codex-review-${codexRound}.log`);
+      console.error(`⚠️  Codex review failed, skipping to PR creation. See: ${logDir}/codex-review-${codexRound}.log`);
       break;
     }
 
     if (review.status === "approved") {
       console.log(`   Codex review: approved (no issues)`);
-      await postComment(prNumber, `## Codex CLI Review\n\n${review.comment_markdown}`);
       break;
     }
 
@@ -316,7 +298,7 @@ if (enableCodexReview) {
     console.log(`   Codex review: ${review.findings.length} issue(s) found. Fixing...`);
 
     const findingsJson = JSON.stringify(review.findings, null, 2);
-    const fixPrompt = `Codex CLI review found issues in PR ${prUrl}. Fix them.\n\nFindings:\n${findingsJson}\n\nSteps:\n1. Read each finding (check location.path and location.line)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit and push (git push)`;
+    const fixPrompt = `Codex CLI review found issues in the code changes. Fix them.\n\nFindings:\n${findingsJson}\n\nSteps:\n1. Read each finding (check location.path and location.line)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit and push (git push)`;
 
     const fixResult = await run(
       [
@@ -334,7 +316,7 @@ if (enableCodexReview) {
     );
 
     if (fixResult.exitCode !== 0) {
-      console.error(`⚠️  Codex review fix failed, skipping to wait loop. See: ${logDir}/codex-fix-${codexRound}.log`);
+      console.error(`⚠️  Codex review fix failed, skipping to PR creation. See: ${logDir}/codex-fix-${codexRound}.log`);
       break;
     }
 
@@ -342,22 +324,59 @@ if (enableCodexReview) {
 
     if (codexRound === MAX_CODEX_ROUNDS) {
       console.error(`⚠️  Codex review did not converge after ${MAX_CODEX_ROUNDS} rounds.`);
-
-      // Post final findings summary
-      const findingsList = review.findings
-        .map(
-          (f) =>
-            `- **${f.severity}** (${f.category}): ${f.title} — \`${f.location.path}${f.location.line ? `:${f.location.line}` : ""}\``,
-        )
-        .join("\n");
-      const commentBody = `## Codex CLI Review\n\n${review.summary}\n\n### Findings (not fully resolved after ${MAX_CODEX_ROUNDS} rounds)\n\n${findingsList}`;
-      await postComment(prNumber, commentBody);
     }
   }
 }
 
 // ---------------------------------------------------------------------------
-// Phase 3: Wait and fix loop
+// Phase 3: Create PR
+// ---------------------------------------------------------------------------
+
+console.log(`\n📦 Creating PR...`);
+
+const createPrResult = await run(
+  [
+    "claude",
+    "-p",
+    `Create a pull request for issue ${issueRef}.\n\nIMPORTANT: When creating the PR (step 5 of /pr skill), use subagent mode:\nonly run \`gh pr create\`, do NOT run wait-pr.ts. Return the PR URL at the end of your response.`,
+    "--resume",
+    sessionId,
+    "--permission-mode",
+    "bypassPermissions",
+    "--output-format",
+    "json",
+  ],
+  { timeout: 600_000, cwd: worktreePath, logType: "create-pr" },
+);
+
+if (createPrResult.exitCode !== 0) {
+  console.error(`❌ PR creation failed (exit code: ${createPrResult.exitCode})`);
+  console.error(`   See: ${logDir}/create-pr.log`);
+  await cleanup();
+  process.exit(1);
+}
+
+// Extract PR URL from the result field in JSON output
+let resultText: string;
+try {
+  resultText = JSON.parse(createPrResult.stdout).result ?? "";
+} catch {
+  resultText = createPrResult.stdout;
+}
+
+const prUrl = extractPrUrl(resultText);
+if (!prUrl) {
+  console.error("❌ Could not find PR URL in output");
+  console.error(`   See: ${logDir}/create-pr.log`);
+  await cleanup();
+  process.exit(1);
+}
+
+const prNumber = extractPrNumber(prUrl);
+console.log(`\n✅ PR created: ${prUrl}`);
+
+// ---------------------------------------------------------------------------
+// Phase 4: Wait and fix loop
 // ---------------------------------------------------------------------------
 
 for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
