@@ -362,7 +362,7 @@ if (enableCodexReview) {
 // Phase 3: Wait and fix loop
 // ---------------------------------------------------------------------------
 
-const prCreatedSince = new Date(prCreatedAt);
+let waitSince = new Date(prCreatedAt);
 
 for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
   console.log(`\n⏳ Waiting for CI/review (round ${round}/${MAX_FIX_ROUNDS})...`);
@@ -371,7 +371,7 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
   let status: WaitPrResult;
 
   while (true) {
-    status = await waitPr({ prNumber, since: prCreatedSince });
+    status = await waitPr({ prNumber, since: waitSince, cwd: worktreePath });
     await logLine("wait-pr", `status=${status.status} lgtm=${status.lgtm} ci=${status.ci.state} feedback=${status.feedback.length}`);
 
     console.log(`   Status: ${status.status}`);
@@ -434,6 +434,9 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
     await cleanup();
     process.exit(1);
   }
+
+  // Advance baseline so already-addressed feedback is not re-reported
+  waitSince = new Date();
 
   console.log(`   Fix round ${round} complete. Re-checking...`);
 }

@@ -20,11 +20,13 @@ const SETTLE_DELAY_SEC = 5;
 // ---------------------------------------------------------------------------
 
 async function gh(
-  ...args: string[]
+  args: string[],
+  cwd?: string,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const proc = Bun.spawn(["gh", ...args], {
     stdout: "pipe",
     stderr: "pipe",
+    cwd,
   });
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(proc.stdout).text(),
@@ -72,6 +74,8 @@ export type WaitPrOptions = {
   since?: Date;
   pollIntervalSec?: number;
   maxPolls?: number;
+  /** Working directory for gh CLI commands (must be inside the target repo). */
+  cwd?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -87,13 +91,13 @@ type Snapshot = {
   reviewCommentCount: number;
 };
 
-async function takeSnapshot(prNumber: string, since: Date): Promise<Snapshot> {
+async function takeSnapshot(prNumber: string, since: Date, cwd?: string): Promise<Snapshot> {
   const [prViewRes, checksRes, commentsRes, reviewsRes, reviewCommentsRes] = await Promise.all([
-    gh("pr", "view", prNumber, "--json", "state", "--jq", ".state"),
-    gh("pr", "checks", prNumber, "--json", "state"),
-    gh("api", `repos/{owner}/{repo}/issues/${prNumber}/comments`),
-    gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/reviews`),
-    gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/comments`),
+    gh(["pr", "view", prNumber, "--json", "state", "--jq", ".state"], cwd),
+    gh(["pr", "checks", prNumber, "--json", "state"], cwd),
+    gh(["api", `repos/{owner}/{repo}/issues/${prNumber}/comments`], cwd),
+    gh(["api", `repos/{owner}/{repo}/pulls/${prNumber}/reviews`], cwd),
+    gh(["api", `repos/{owner}/{repo}/pulls/${prNumber}/comments`], cwd),
   ]);
 
   const prState = prViewRes.exitCode === 0 ? prViewRes.stdout : "OPEN";
@@ -151,13 +155,14 @@ async function collectResult(
   prNumber: string,
   reviewer: string,
   since: Date,
+  cwd?: string,
 ): Promise<WaitPrResult> {
   const [checksRes, commentsRes, reviewsRes, reviewCommentsRes, prViewRes] = await Promise.all([
-    gh("pr", "checks", prNumber, "--json", "name,state,link"),
-    gh("api", `repos/{owner}/{repo}/issues/${prNumber}/comments`),
-    gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/reviews`),
-    gh("api", `repos/{owner}/{repo}/pulls/${prNumber}/comments`),
-    gh("pr", "view", prNumber, "--json", "url,state"),
+    gh(["pr", "checks", prNumber, "--json", "name,state,link"], cwd),
+    gh(["api", `repos/{owner}/{repo}/issues/${prNumber}/comments`], cwd),
+    gh(["api", `repos/{owner}/{repo}/pulls/${prNumber}/reviews`], cwd),
+    gh(["api", `repos/{owner}/{repo}/pulls/${prNumber}/comments`], cwd),
+    gh(["pr", "view", prNumber, "--json", "url,state"], cwd),
   ]);
 
   let prUrl = "";
@@ -293,22 +298,23 @@ export async function waitPr(options: WaitPrOptions): Promise<WaitPrResult> {
     since = new Date(),
     pollIntervalSec = DEFAULT_POLL_INTERVAL_SEC,
     maxPolls = DEFAULT_MAX_POLLS,
+    cwd,
   } = options;
 
   // Take initial snapshot as baseline
-  let baseline = await takeSnapshot(prNumber, since);
+  let baseline = await takeSnapshot(prNumber, since, cwd);
 
   for (let i = 0; i < maxPolls; i++) {
     await Bun.sleep(pollIntervalSec * 1000);
 
-    const current = await takeSnapshot(prNumber, since);
+    const current = await takeSnapshot(prNumber, since, cwd);
 
     if (snapshotChanged(baseline, current)) {
       // Change detected — wait for related data to settle before collecting
       console.error("Change detected, waiting for data to settle...");
       await Bun.sleep(SETTLE_DELAY_SEC * 1000);
 
-      const result = await collectResult(prNumber, reviewer, since);
+      const result = await collectResult(prNumber, reviewer, since, cwd);
 
       if (result.status === "pending") {
         // Not actionable yet (e.g., LGTM received but CI still running).
@@ -322,5 +328,5 @@ export async function waitPr(options: WaitPrOptions): Promise<WaitPrResult> {
   }
 
   // Timed out — collect final result anyway
-  return collectResult(prNumber, reviewer, since);
+  return collectResult(prNumber, reviewer, since, cwd);
 }
