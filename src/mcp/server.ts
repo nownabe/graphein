@@ -1,10 +1,15 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getContext } from "hono/context-storage";
+import type { Database } from "../db/client";
+import type { TaskService } from "../tasks/service";
+import { registerTaskTools } from "./tools/tasks";
 import type { McpContext } from "./types";
 
 export interface McpServerConfig {
   name: string;
   version: string;
+  db: Database;
+  taskService: TaskService;
 }
 
 /**
@@ -20,6 +25,13 @@ export function createMcpServer(config: McpServerConfig): McpServer {
     { name: config.name, version: config.version },
     { capabilities: { tools: {}, resources: {} } },
   );
+
+  // --- Tools ---
+  registerTaskTools(server, {
+    db: config.db,
+    taskService: config.taskService,
+    getMcpContext,
+  });
 
   // --- Resources ---
   registerMeResource(server);
