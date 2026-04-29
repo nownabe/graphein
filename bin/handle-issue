@@ -245,7 +245,7 @@ const implementResult = await run(
   [
     "claude",
     "-p",
-    `Handle issue ${issueRef}\n\nIMPORTANT: Do NOT create a pull request. Only implement the changes, commit them, and push the branch. Do NOT run the /pr skill. Return a summary of what you implemented at the end of your response.`,
+    `Handle issue ${issueRef}\n\nIMPORTANT: Do NOT create a pull request and do NOT push. Only implement the changes and commit them locally. Do NOT run the /pr skill or git push. Return a summary of what you implemented at the end of your response.`,
     "--permission-mode",
     "bypassPermissions",
     "--output-format",
@@ -305,7 +305,7 @@ if (enableCodexReview) {
     console.log(`   Codex review: ${review.findings.length} issue(s) found. Fixing...`);
 
     const findingsJson = JSON.stringify(review.findings, null, 2);
-    const fixPrompt = `Codex CLI review found issues in the code changes. Fix them.\n\nFindings:\n${findingsJson}\n\nSteps:\n1. Read each finding (check location.path and location.line)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit and push (git push)`;
+    const fixPrompt = `Codex CLI review found issues in the code changes. Fix them.\n\nFindings:\n${findingsJson}\n\nSteps:\n1. Read each finding (check location.path and location.line)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit locally (do NOT push)`;
 
     const fixResult = await run(
       [
