@@ -1,15 +1,5 @@
 import { z } from "zod";
-import {
-  type SQL,
-  and,
-  eq,
-  lt,
-  gte,
-  or,
-  desc,
-  inArray,
-  count as drizzleCount,
-} from "drizzle-orm";
+import { type SQL, and, eq, lt, gte, or, desc, inArray, count as drizzleCount } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Database } from "../../db/client";
 import {
@@ -121,10 +111,7 @@ export function registerSnippetTools(server: McpServer, deps: SnippetToolsDeps):
           .string()
           .optional()
           .describe("Snippets posted at or after this ISO 8601 datetime."),
-        periodEnd: z
-          .string()
-          .optional()
-          .describe("Snippets posted before this ISO 8601 datetime."),
+        periodEnd: z.string().optional().describe("Snippets posted before this ISO 8601 datetime."),
         pageSize: z
           .number()
           .int()

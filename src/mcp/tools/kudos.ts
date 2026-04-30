@@ -88,10 +88,7 @@ export function registerKudosTools(server: McpServer, deps: KudosToolsDeps): voi
           .string()
           .optional()
           .describe("Kudos posted at or after this ISO 8601 datetime."),
-        periodEnd: z
-          .string()
-          .optional()
-          .describe("Kudos posted before this ISO 8601 datetime."),
+        periodEnd: z.string().optional().describe("Kudos posted before this ISO 8601 datetime."),
         pageSize: z
           .number()
           .int()
