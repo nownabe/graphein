@@ -237,6 +237,37 @@ export async function mcpRequest(
   });
 }
 
+/**
+ * Parse a JSON-RPC response that may be returned as `application/json`
+ * or as `text/event-stream` (SSE). StreamableHTTPTransport defaults to
+ * SSE, so we extract the last `data:` line from a `message` event.
+ */
+export async function parseJsonRpcResponse(
+  res: Response,
+): Promise<{ id: number; jsonrpc: string; result?: unknown; error?: unknown }> {
+  const contentType = res.headers.get("Content-Type") ?? "";
+
+  if (contentType.includes("text/event-stream")) {
+    const text = await res.text();
+    // SSE format: "event: message\ndata: {json}\n\n"
+    // There may be multiple events; we want the last `data:` payload
+    // that belongs to a `message` event.
+    const lines = text.split("\n");
+    let lastData: string | null = null;
+    for (const line of lines) {
+      if (line.startsWith("data:")) {
+        lastData = line.slice("data:".length).trim();
+      }
+    }
+    if (!lastData) {
+      throw new Error(`No data payload found in SSE response: ${text}`);
+    }
+    return JSON.parse(lastData);
+  }
+
+  return res.json();
+}
+
 /** Call an MCP tool and return the parsed JSON-RPC result. */
 export async function mcpToolCall(
   accessToken: string,
@@ -250,7 +281,7 @@ export async function mcpToolCall(
   if (!res.ok) {
     throw new Error(`MCP request failed: ${res.status} ${await res.text()}`);
   }
-  return res.json();
+  return parseJsonRpcResponse(res);
 }
 
 /** Read an MCP resource and return the parsed JSON-RPC result. */
@@ -262,7 +293,7 @@ export async function mcpResourceRead(
   if (!res.ok) {
     throw new Error(`MCP resource read failed: ${res.status} ${await res.text()}`);
   }
-  return res.json();
+  return parseJsonRpcResponse(res);
 }
 
 /** Create an MCP access token directly by signing a JWT (bypasses OAuth flow). */

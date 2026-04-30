@@ -11,6 +11,7 @@ import {
   mcpToolCall,
   mcpResourceRead,
   createMcpAccessToken,
+  parseJsonRpcResponse,
 } from "./helpers/mcp";
 
 // ---------------------------------------------------------------------------
@@ -154,7 +155,7 @@ test.describe("MCP tools", () => {
   test("tools/list returns available tools", async () => {
     const res = await mcpRequest(accessToken, "tools/list");
     expect(res.ok).toBe(true);
-    const body = await res.json();
+    const body = await parseJsonRpcResponse(res);
     expect(body.result).toBeDefined();
     const toolNames = body.result.tools.map((t: { name: string }) => t.name);
     expect(toolNames).toContain("list_assigned_tasks");
