@@ -188,6 +188,7 @@ Set these in `.envrc` (direnv) or your shell before running E2E tests:
 | `E2E_KUDOS_CHANNEL_ID`     | Kudos-monitored channel ID                              |
 | `E2E_DATABASE_URL`         | E2E database connection string                          |
 | `E2E_JWT_SECRET`           | JWT signing secret for E2E test auth                    |
+| `E2E_MCP_JWT_SECRET`       | MCP JWT signing secret (falls back to `MCP_JWT_SECRET`) |
 
 ### Running
 
