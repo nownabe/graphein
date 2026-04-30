@@ -2,8 +2,19 @@ import { describe, test, expect, beforeEach } from "bun:test";
 import { createTestApp, authRequest } from "../helpers/app";
 import { createTestUser, cleanupDb } from "../helpers/db";
 
-// Format today as YYYY-MM-DD for use as explicit date param
-const today = new Date().toISOString().split("T")[0];
+// Format today as YYYY-MM-DD in Asia/Tokyo (the timezone used by the test app).
+// Using UTC would cause failures when the JST date differs from the UTC date
+// (i.e., between 15:00–23:59 UTC).
+const today = (() => {
+  const fmt = new Intl.DateTimeFormat("en", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const parts = Object.fromEntries(fmt.formatToParts(new Date()).map((p) => [p.type, p.value]));
+  return `${parts.year}-${parts.month}-${parts.day}`;
+})();
 
 const { app, db, snippetService } = createTestApp();
 
