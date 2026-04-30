@@ -11,6 +11,7 @@
  *   E2E_KUDOS_CHANNEL_ID      — Kudos-monitored channel ID
  *   E2E_DATABASE_URL          — E2E database connection string
  *   E2E_JWT_SECRET            — JWT signing secret for auth
+ *   E2E_MCP_JWT_SECRET        — MCP JWT signing secret for OAuth access tokens
  */
 
 function requireEnv(name: string): string {
@@ -51,5 +52,8 @@ export const env = {
   },
   get jwtSecret() {
     return requireEnv("E2E_JWT_SECRET");
+  },
+  get mcpJwtSecret() {
+    return requireEnv("E2E_MCP_JWT_SECRET");
   },
 };
