@@ -1,10 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { McpContext } from "../types";
 
-export function registerMeResource(
-  server: McpServer,
-  getMcpContext: () => McpContext,
-): void {
+export function registerMeResource(server: McpServer, getMcpContext: () => McpContext): void {
   server.registerResource(
     "me",
     "graphein://me",
