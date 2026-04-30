@@ -2,6 +2,7 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getContext } from "hono/context-storage";
 import type { Database } from "../db/client";
 import type { TaskService } from "../tasks/service";
+import { registerMeResource } from "./resources/me";
 import { registerTaskTools } from "./tools/tasks";
 import type { McpContext } from "./types";
 
@@ -34,7 +35,7 @@ export function createMcpServer(config: McpServerConfig): McpServer {
   });
 
   // --- Resources ---
-  registerMeResource(server);
+  registerMeResource(server, getMcpContext);
 
   return server;
 }
@@ -49,34 +50,4 @@ function getMcpContext(): McpContext {
     user: c.get("mcpUser"),
     role: c.get("mcpRole"),
   };
-}
-
-// ---------------------------------------------------------------------------
-// Resources
-// ---------------------------------------------------------------------------
-
-function registerMeResource(server: McpServer): void {
-  server.registerResource(
-    "me",
-    "graphein://me",
-    { description: "Authenticated user profile" },
-    () => {
-      const { user } = getMcpContext();
-      return {
-        contents: [
-          {
-            uri: "graphein://me",
-            mimeType: "application/json",
-            text: JSON.stringify({
-              id: user.id,
-              displayName: user.displayName,
-              email: user.email,
-              role: user.role,
-              locale: user.locale,
-            }),
-          },
-        ],
-      };
-    },
-  );
 }
