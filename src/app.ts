@@ -314,6 +314,7 @@ export function createHonoApp(config: HonoAppConfig) {
       version: "1.0.0",
       db: config.db,
       taskService,
+      kudosService,
     });
     const transport = new StreamableHTTPTransport();
     await mcpServer.connect(transport);

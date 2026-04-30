@@ -1,8 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { getContext } from "hono/context-storage";
 import type { Database } from "../db/client";
+import type { KudosService } from "../kudos/service";
 import type { TaskService } from "../tasks/service";
 import { registerMeResource } from "./resources/me";
+import { registerKudosTools } from "./tools/kudos";
+import { registerSnippetTools } from "./tools/snippets";
 import { registerTaskTools } from "./tools/tasks";
 import type { McpContext } from "./types";
 
@@ -11,6 +14,7 @@ export interface McpServerConfig {
   version: string;
   db: Database;
   taskService: TaskService;
+  kudosService: KudosService;
 }
 
 /**
@@ -31,6 +35,14 @@ export function createMcpServer(config: McpServerConfig): McpServer {
   registerTaskTools(server, {
     db: config.db,
     taskService: config.taskService,
+    getMcpContext,
+  });
+  registerSnippetTools(server, {
+    db: config.db,
+    getMcpContext,
+  });
+  registerKudosTools(server, {
+    kudosService: config.kudosService,
     getMcpContext,
   });
 
