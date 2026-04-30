@@ -133,12 +133,22 @@ test.describe("MCP OAuth flow", () => {
 test.describe("MCP tools", () => {
   let accessToken: string;
   let userId: string;
+  let originalRole: string;
 
   test.beforeAll(async () => {
     const user = await findUserBySlackId(env.slackUserId);
     if (!user) throw new Error("E2E test user not found");
     userId = user.id as string;
+    originalRole = user.role as string;
+
+    // Ensure user has non-admin role for these tests
+    await query("UPDATE users SET role = 'user' WHERE id = $1", [userId]);
     accessToken = await createMcpAccessToken(userId);
+  });
+
+  test.afterAll(async () => {
+    // Restore original role
+    await query("UPDATE users SET role = $1 WHERE id = $2", [originalRole, userId]);
   });
 
   test("tools/list returns available tools", async () => {

@@ -176,6 +176,7 @@ export async function refreshAccessToken(
     grant_type: "refresh_token",
     refresh_token: refreshToken,
     client_id: clientId,
+    resource: `${env.grapheinUrl}/mcp`,
   });
 
   const res = await fetch(`${env.grapheinUrl}/oauth/token`, {
