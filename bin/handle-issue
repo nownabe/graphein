@@ -202,7 +202,7 @@ async function postComment(prNumber: string, body: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 const worktreeName = `handle-issue-${issueRef.replace(/[^a-zA-Z0-9-]/g, "-")}`;
-const worktreeBase = `../${worktreeName}`;
+const worktreeBase = `.agents/worktrees/${worktreeName}`;
 
 console.log(`\n🌳 Creating worktree: ${worktreeName}`);
 
