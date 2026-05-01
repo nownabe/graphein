@@ -36,6 +36,7 @@ async function globalSetup() {
       PORT: String(E2E_SERVER_PORT),
       DATABASE_URL: env.databaseUrl,
       JWT_SECRET: env.jwtSecret,
+      MCP_JWT_SECRET: env.mcpJwtSecret,
       SLACK_SOCKET_MODE: "false",
       BASE_URL: `http://localhost:${E2E_SERVER_PORT}`,
     },
