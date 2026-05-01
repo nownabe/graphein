@@ -27,5 +27,8 @@ playwright-report/
 # Claude Code worktrees
 .claude/worktrees/
 
+# Agent worktrees
+.agents/worktrees/
+
 # handle-issue logs
 logs/
