@@ -36,8 +36,10 @@ export function createAuthRoutes(
       maxAge: 600, // 10 minutes
     });
 
-    // Persist return_to so the callback can resume the original flow
+    // Persist return_to so the callback can resume the original flow.
+    // Always clear any stale cookie from a previous abandoned login first.
     const returnTo = c.req.query("return_to");
+    let returnToSet = false;
     if (returnTo) {
       try {
         const url = new URL(returnTo, config.baseUrl);
@@ -49,10 +51,14 @@ export function createAuthRoutes(
             path: "/auth/slack/callback",
             maxAge: 600,
           });
+          returnToSet = true;
         }
       } catch {
         // Invalid URL — ignore
       }
+    }
+    if (!returnToSet) {
+      deleteCookie(c, "return_to", { path: "/auth/slack/callback" });
     }
 
     const params = new URLSearchParams({

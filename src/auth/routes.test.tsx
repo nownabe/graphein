@@ -114,18 +114,39 @@ describe("auth routes — return_to", () => {
 
       expect(res.status).toBe(302);
       const cookies = res.headers.getSetCookie();
-      const returnToCookie = cookies.find((c) => c.startsWith("return_to="));
-      expect(returnToCookie).toBeUndefined();
+      const activeReturnTo = cookies.find(
+        (c) => c.startsWith("return_to=") && !c.includes("Max-Age=0"),
+      );
+      expect(activeReturnTo).toBeUndefined();
     });
 
-    test("does not set return_to cookie when parameter is absent", async () => {
+    test("does not set an active return_to cookie when parameter is absent", async () => {
       const app = buildApp();
       const res = await app.request("/auth/slack", { redirect: "manual" });
 
       expect(res.status).toBe(302);
       const cookies = res.headers.getSetCookie();
-      const returnToCookie = cookies.find((c) => c.startsWith("return_to="));
-      expect(returnToCookie).toBeUndefined();
+      const activeReturnTo = cookies.find(
+        (c) => c.startsWith("return_to=") && !c.includes("Max-Age=0"),
+      );
+      expect(activeReturnTo).toBeUndefined();
+    });
+
+    test("clears stale return_to cookie when starting a new login without return_to", async () => {
+      const app = buildApp();
+      // Simulate a stale return_to cookie from a previous abandoned OAuth login
+      const res = await app.request("/auth/slack", {
+        headers: { Cookie: "return_to=%2Foauth%2Fauthorize%3Fclient_id%3Dold" },
+        redirect: "manual",
+      });
+
+      expect(res.status).toBe(302);
+      const cookies = res.headers.getSetCookie();
+      // Should delete the stale cookie (Max-Age=0) and not set a new one
+      const deletion = cookies.find((c) => c.startsWith("return_to=") && c.includes("Max-Age=0"));
+      expect(deletion).toBeDefined();
+      const newSet = cookies.find((c) => c.startsWith("return_to=") && !c.includes("Max-Age=0"));
+      expect(newSet).toBeUndefined();
     });
   });
 
