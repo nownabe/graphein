@@ -419,7 +419,6 @@ if (enableCodexReview) {
   }
   prUrl = url;
   prNumber = extractPrNumber(prUrl);
-  prCreatedAt = new Date().toISOString();
   console.log(`\n✅ PR created: ${prUrl}`);
   console.log(`   Session: ${sessionId}`);
 
@@ -461,6 +460,10 @@ if (enableCodexReview) {
 
     await postComment(prNumber, commentBody);
   }
+
+  // Set prCreatedAt after posting codex review comment so the wait-pr loop
+  // does not pick it up as actionable feedback.
+  prCreatedAt = new Date().toISOString();
 }
 
 // ---------------------------------------------------------------------------
