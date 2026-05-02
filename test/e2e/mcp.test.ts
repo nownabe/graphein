@@ -661,7 +661,7 @@ test.describe("MCP snippet tool behavior", () => {
     const data = parseToolResult(result.result);
     expect(data).toHaveProperty("snippets");
     expect(data).toHaveProperty("totalSize");
-    expect((data.totalSize as number)).toBeGreaterThan(0);
+    expect(data.totalSize as number).toBeGreaterThan(0);
 
     const found = (data.snippets as { id: string }[]).find((s) => s.id === snippetId);
     expect(found).toBeDefined();
@@ -814,7 +814,7 @@ test.describe("MCP kudos tool behavior", () => {
     const data = parseToolResult(result.result);
     expect(data).toHaveProperty("kudos");
     expect(data).toHaveProperty("totalSize");
-    expect((data.totalSize as number)).toBeGreaterThan(0);
+    expect(data.totalSize as number).toBeGreaterThan(0);
 
     const found = (data.kudos as { id: string }[]).find((k) => k.id === entryId);
     expect(found).toBeDefined();
@@ -990,7 +990,7 @@ test.describe("MCP admin tool behavior", () => {
   test("list_users query filter searches by display name", async () => {
     const result = await mcpToolCall(adminToken, "list_users", { query: "MCP Deactivate" });
     const data = parseToolResult(result.result);
-    expect((data.totalSize as number)).toBeGreaterThanOrEqual(1);
+    expect(data.totalSize as number).toBeGreaterThanOrEqual(1);
     const users = data.users as { id: string; displayName: string }[];
     const found = users.find((u) => u.id === targetUserId);
     expect(found).toBeDefined();
