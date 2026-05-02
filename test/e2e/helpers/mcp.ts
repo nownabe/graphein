@@ -44,6 +44,7 @@ export async function registerOAuthClient(name = "E2E Test Client"): Promise<OAu
       redirect_uris: ["http://localhost:19999/callback"],
       grant_types: ["authorization_code", "refresh_token"],
       token_endpoint_auth_method: "none",
+      scope: "graphein",
     }),
   });
   if (!res.ok) {
@@ -196,15 +197,10 @@ export async function refreshAccessToken(
  * Revoke a token (refresh token).
  */
 export async function revokeToken(clientId: string, token: string): Promise<Response> {
-  const body = new URLSearchParams({
-    token,
-    client_id: clientId,
-  });
-
   return fetch(`${env.grapheinUrl}/oauth/revoke`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: body.toString(),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, client_id: clientId }),
   });
 }
 

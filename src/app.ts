@@ -5,6 +5,7 @@ import { getCookie, setCookie } from "hono/cookie";
 import { streamSSE } from "hono/streaming";
 import { contextStorage } from "hono/context-storage";
 import { mcpAuthRouter, StreamableHTTPTransport } from "@hono/mcp";
+import { wellKnownRouter } from "@hono/mcp/auth";
 import { createCsrfMiddleware } from "./auth/csrf";
 import { createAuthMiddleware } from "./auth/middleware";
 import { createAuthRoutes } from "./auth/routes.tsx";
@@ -220,13 +221,43 @@ export function createHonoApp(config: HonoAppConfig) {
   app.post("/oauth/consent", (c) => oauthProvider.handleConsent(c));
 
   // OAuth Authorization Server endpoints (discovery, registration, token, revocation)
-  // Cast provider because @hono/mcp passes Hono Context (not express Response) to authorize()
-  // at runtime, but the SDK type declares express.Response. The cast is safe.
+  // mcpAuthRouter is mounted at /oauth so endpoints are /oauth/authorize, /oauth/token, etc.
+  // as defined in the design doc. The .well-known discovery routes are mounted separately
+  // at / because they must be at /.well-known/* (not /oauth/.well-known/*).
+  //
+  // Cast provider because @hono/mcp passes Hono Context (not express Response) to
+  // authorize() at runtime, but the SDK type declares express.Response. The cast is safe.
   app.route(
-    "/",
+    "/oauth",
     mcpAuthRouter({
       provider: oauthProvider as unknown as Parameters<typeof mcpAuthRouter>[0]["provider"],
       issuerUrl: config.baseUrl,
+      resourceServerUrl: new URL(`${config.baseUrl}/mcp`),
+      scopesSupported: ["graphein"],
+      serviceDocumentationUrl: new URL(`${config.baseUrl}/api/v1/reference`),
+    }),
+  );
+
+  // OAuth discovery endpoints (RFC 8414 / RFC 9728)
+  // Mounted separately at / so they live at /.well-known/* (not /oauth/.well-known/*).
+  // Metadata URLs use /oauth/* prefix to match the actual route paths above.
+  const oauthMetadata = {
+    issuer: config.baseUrl,
+    authorization_endpoint: `${config.baseUrl}/oauth/authorize`,
+    token_endpoint: `${config.baseUrl}/oauth/token`,
+    registration_endpoint: `${config.baseUrl}/oauth/register`,
+    revocation_endpoint: `${config.baseUrl}/oauth/revoke`,
+    response_types_supported: ["code"],
+    grant_types_supported: ["authorization_code", "refresh_token"],
+    token_endpoint_auth_methods_supported: ["client_secret_post", "none"],
+    code_challenge_methods_supported: ["S256"],
+    scopes_supported: ["graphein"],
+    service_documentation: `${config.baseUrl}/api/v1/reference`,
+  };
+  app.route(
+    "/",
+    wellKnownRouter({
+      oauthMetadata,
       resourceServerUrl: new URL(`${config.baseUrl}/mcp`),
       scopesSupported: ["graphein"],
       serviceDocumentationUrl: new URL(`${config.baseUrl}/api/v1/reference`),
