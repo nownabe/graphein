@@ -352,10 +352,12 @@ test.describe("MCP task tool behavior", () => {
   let otherToken: string;
   let otherId: string;
   let originalOwnerRole: string;
+  // Two tasks seeded so that pagination tests are deterministic
   let taskId: string;
+  let taskId2: string;
 
   test.beforeAll(async () => {
-    // Primary user (owner of the test task)
+    // Primary user (owner of the test tasks)
     const owner = await findUserBySlackId(env.slackUserId);
     if (!owner) throw new Error("E2E test user not found");
     ownerId = owner.id as string;
@@ -372,7 +374,7 @@ test.describe("MCP task tool behavior", () => {
     await query("UPDATE users SET role = 'user' WHERE id = $1", [otherId]);
     otherToken = await createMcpAccessToken(otherId);
 
-    // Create a task owned and assigned to the primary user
+    // Create first task owned and assigned to the primary user
     const [task] = await query<{ id: string }>(
       `INSERT INTO tasks (title, description, created_by_id, deadline)
        VALUES ('MCP archive test', 'Test task for archive/unarchive', $1, $2)
@@ -393,16 +395,36 @@ test.describe("MCP task tool behavior", () => {
       "INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
       [taskId, otherId],
     );
+
+    // Create second task for pagination coverage
+    const [task2] = await query<{ id: string }>(
+      `INSERT INTO tasks (title, description, created_by_id, deadline)
+       VALUES ('MCP pagination test', 'Second task for pagination', $1, $2)
+       RETURNING id`,
+      [ownerId, new Date("2026-07-01T00:00:00Z").toISOString()],
+    );
+    taskId2 = task2.id;
+
+    await query(
+      "INSERT INTO task_owners (task_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+      [taskId2, ownerId],
+    );
+    await query(
+      "INSERT INTO task_assignees (task_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
+      [taskId2, ownerId],
+    );
   });
 
   test.afterAll(async () => {
-    await query("DELETE FROM tasks WHERE id = $1", [taskId]);
+    await query("DELETE FROM tasks WHERE id = ANY($1::uuid[])", [[taskId, taskId2]]);
     await query("UPDATE users SET role = $1 WHERE id = $2", [originalOwnerRole, ownerId]);
   });
 
   // -- archive_task --
 
   test("archive_task succeeds for task owner", async () => {
+    // Ensure task starts as active
+    await query("UPDATE tasks SET archived = false WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "archive_task", { taskId });
     const data = parseToolResult(result.result);
     expect(data.id).toBe(taskId);
@@ -411,7 +433,8 @@ test.describe("MCP task tool behavior", () => {
   });
 
   test("archive_task is idempotent", async () => {
-    // Task already archived from previous test
+    // Ensure task is already archived
+    await query("UPDATE tasks SET archived = true WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "archive_task", { taskId });
     const data = parseToolResult(result.result);
     expect(data.id).toBe(taskId);
@@ -419,6 +442,7 @@ test.describe("MCP task tool behavior", () => {
   });
 
   test("list_assigned_tasks with status=archived returns archived task", async () => {
+    await query("UPDATE tasks SET archived = true WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "list_assigned_tasks", { status: "archived" });
     const data = parseToolResult(result.result);
     const found = (data.tasks as { id: string }[]).find((t) => t.id === taskId);
@@ -426,6 +450,7 @@ test.describe("MCP task tool behavior", () => {
   });
 
   test("list_assigned_tasks with status=active excludes archived task", async () => {
+    await query("UPDATE tasks SET archived = true WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "list_assigned_tasks", { status: "active" });
     const data = parseToolResult(result.result);
     const found = (data.tasks as { id: string }[]).find((t) => t.id === taskId);
@@ -435,6 +460,8 @@ test.describe("MCP task tool behavior", () => {
   // -- unarchive_task --
 
   test("unarchive_task succeeds for task owner", async () => {
+    // Ensure task is archived first
+    await query("UPDATE tasks SET archived = true WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "unarchive_task", { taskId });
     const data = parseToolResult(result.result);
     expect(data.id).toBe(taskId);
@@ -442,6 +469,8 @@ test.describe("MCP task tool behavior", () => {
   });
 
   test("unarchive_task is idempotent", async () => {
+    // Ensure task is already active
+    await query("UPDATE tasks SET archived = false WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "unarchive_task", { taskId });
     const data = parseToolResult(result.result);
     expect(data.archived).toBe(false);
@@ -505,6 +534,7 @@ test.describe("MCP task tool behavior", () => {
   // -- deadline filters --
 
   test("list_assigned_tasks deadlineBefore filter works", async () => {
+    await query("UPDATE tasks SET archived = false WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "list_assigned_tasks", {
       deadlineBefore: "2026-07-01T00:00:00Z",
     });
@@ -514,6 +544,7 @@ test.describe("MCP task tool behavior", () => {
   });
 
   test("list_assigned_tasks deadlineBefore filter excludes later tasks", async () => {
+    await query("UPDATE tasks SET archived = false WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "list_assigned_tasks", {
       deadlineBefore: "2026-01-01T00:00:00Z",
     });
@@ -531,52 +562,58 @@ test.describe("MCP task tool behavior", () => {
     expect((data.error as { code: string }).code).toBe("validation_error");
   });
 
-  // -- pagination for assigned tasks --
+  // -- pagination for assigned tasks (two tasks seeded, so nextPageToken is guaranteed) --
 
   test("list_assigned_tasks pagination with pageSize=1", async () => {
+    // Ensure both tasks are active
+    await query("UPDATE tasks SET archived = false WHERE id = ANY($1::uuid[])", [
+      [taskId, taskId2],
+    ]);
     const result = await mcpToolCall(ownerToken, "list_assigned_tasks", { pageSize: 1 });
     const data = parseToolResult(result.result);
-    expect((data.tasks as unknown[]).length).toBeLessThanOrEqual(1);
+    expect((data.tasks as unknown[]).length).toBe(1);
+    expect(data.totalSize as number).toBeGreaterThanOrEqual(2);
+    expect(data.nextPageToken).toBeTruthy();
 
-    if ((data.totalSize as number) > 1) {
-      expect(data.nextPageToken).toBeTruthy();
-
-      const page2 = await mcpToolCall(ownerToken, "list_assigned_tasks", {
-        pageSize: 1,
-        pageToken: data.nextPageToken as string,
-      });
-      const page2Data = parseToolResult(page2.result);
-      expect((page2Data.tasks as { id: string }[])[0].id).not.toBe(
-        (data.tasks as { id: string }[])[0].id,
-      );
-    }
+    const page2 = await mcpToolCall(ownerToken, "list_assigned_tasks", {
+      pageSize: 1,
+      pageToken: data.nextPageToken as string,
+    });
+    const page2Data = parseToolResult(page2.result);
+    expect((page2Data.tasks as { id: string }[])[0].id).not.toBe(
+      (data.tasks as { id: string }[])[0].id,
+    );
   });
 
-  // -- pageToken mismatch --
+  // -- pageToken mismatch (uses the two seeded tasks to guarantee a token exists) --
 
   test("list_assigned_tasks rejects pageToken with mismatched filters", async () => {
+    // Ensure both tasks are active so we get a nextPageToken
+    await query("UPDATE tasks SET archived = false WHERE id = ANY($1::uuid[])", [
+      [taskId, taskId2],
+    ]);
     // Get a valid token with status=active
     const result = await mcpToolCall(ownerToken, "list_assigned_tasks", {
       status: "active",
       pageSize: 1,
     });
     const data = parseToolResult(result.result);
+    expect(data.nextPageToken).toBeTruthy();
 
-    if (data.nextPageToken) {
-      // Use that token with status=archived (different fingerprint)
-      const mismatch = await mcpToolCall(ownerToken, "list_assigned_tasks", {
-        status: "archived",
-        pageToken: data.nextPageToken as string,
-      });
-      const mismatchData = parseToolResult(mismatch.result);
-      expect(mismatchData.error).toBeDefined();
-      expect((mismatchData.error as { code: string }).code).toBe("validation_error");
-    }
+    // Use that token with status=archived (different fingerprint)
+    const mismatch = await mcpToolCall(ownerToken, "list_assigned_tasks", {
+      status: "archived",
+      pageToken: data.nextPageToken as string,
+    });
+    const mismatchData = parseToolResult(mismatch.result);
+    expect(mismatchData.error).toBeDefined();
+    expect((mismatchData.error as { code: string }).code).toBe("validation_error");
   });
 
   // -- task response field verification --
 
   test("list_assigned_tasks response includes expected fields", async () => {
+    await query("UPDATE tasks SET archived = false WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "list_assigned_tasks", {});
     const data = parseToolResult(result.result);
     expect(data).toHaveProperty("tasks");
@@ -584,29 +621,28 @@ test.describe("MCP task tool behavior", () => {
     expect(typeof data.totalSize).toBe("number");
 
     const tasks = data.tasks as Record<string, unknown>[];
-    if (tasks.length > 0) {
-      const t = tasks.find((t) => t.id === taskId) ?? tasks[0];
-      expect(t).toHaveProperty("id");
-      expect(t).toHaveProperty("title");
-      expect(t).toHaveProperty("archived");
-      expect(t).toHaveProperty("done");
-      expect(t).toHaveProperty("createdBy");
-      expect(t).toHaveProperty("createdAt");
-      expect(t).toHaveProperty("updatedAt");
-    }
+    const t = tasks.find((t) => t.id === taskId);
+    expect(t).toBeDefined();
+    expect(t).toHaveProperty("id");
+    expect(t).toHaveProperty("title");
+    expect(t).toHaveProperty("archived");
+    expect(t).toHaveProperty("done");
+    expect(t).toHaveProperty("createdBy");
+    expect(t).toHaveProperty("createdAt");
+    expect(t).toHaveProperty("updatedAt");
   });
 
   test("list_owned_tasks response includes progress field", async () => {
+    await query("UPDATE tasks SET archived = false WHERE id = $1", [taskId]);
     const result = await mcpToolCall(ownerToken, "list_owned_tasks", {});
     const data = parseToolResult(result.result);
     const tasks = data.tasks as Record<string, unknown>[];
-    if (tasks.length > 0) {
-      const t = tasks.find((t) => t.id === taskId) ?? tasks[0];
-      expect(t).toHaveProperty("progress");
-      const progress = t.progress as { total: number; done: number };
-      expect(typeof progress.total).toBe("number");
-      expect(typeof progress.done).toBe("number");
-    }
+    const t = tasks.find((t) => t.id === taskId);
+    expect(t).toBeDefined();
+    expect(t).toHaveProperty("progress");
+    const progress = t!.progress as { total: number; done: number };
+    expect(typeof progress.total).toBe("number");
+    expect(typeof progress.done).toBe("number");
   });
 });
 
@@ -619,6 +655,7 @@ test.describe("MCP snippet tool behavior", () => {
   let userId: string;
   let originalRole: string;
   let snippetId: string;
+  let snippetId2: string;
   let otherId: string;
 
   test.beforeAll(async () => {
@@ -635,7 +672,7 @@ test.describe("MCP snippet tool behavior", () => {
     });
     otherId = other.id as string;
 
-    // Seed a snippet posted by the primary user
+    // Seed first snippet posted by the primary user
     const [snippet] = await query<{ id: string }>(
       `INSERT INTO snippets (content, posted_at, slack_permalink, posted_by_id)
        VALUES ('Daily standup snippet for MCP test', $1, 'https://slack.test/snippet1', $2)
@@ -649,10 +686,19 @@ test.describe("MCP snippet tool behavior", () => {
       "INSERT INTO snippet_mentioned_users (snippet_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
       [snippetId, otherId],
     );
+
+    // Seed second snippet for pagination coverage
+    const [snippet2] = await query<{ id: string }>(
+      `INSERT INTO snippets (content, posted_at, slack_permalink, posted_by_id)
+       VALUES ('Second snippet for pagination', $1, 'https://slack.test/snippet2', $2)
+       RETURNING id`,
+      [new Date("2026-04-16T09:00:00Z").toISOString(), userId],
+    );
+    snippetId2 = snippet2.id;
   });
 
   test.afterAll(async () => {
-    await query("DELETE FROM snippets WHERE id = $1", [snippetId]);
+    await query("DELETE FROM snippets WHERE id = ANY($1::uuid[])", [[snippetId, snippetId2]]);
     await query("UPDATE users SET role = $1 WHERE id = $2", [originalRole, userId]);
   });
 
@@ -737,21 +783,25 @@ test.describe("MCP snippet tool behavior", () => {
   });
 
   test("list_snippets pagination works", async () => {
-    const result = await mcpToolCall(accessToken, "list_snippets", { pageSize: 1 });
+    // Filter to just our seeded user to guarantee exactly 2 snippets
+    const result = await mcpToolCall(accessToken, "list_snippets", {
+      postedBy: userId,
+      pageSize: 1,
+    });
     const data = parseToolResult(result.result);
-    expect((data.snippets as unknown[]).length).toBeLessThanOrEqual(1);
+    expect((data.snippets as unknown[]).length).toBe(1);
+    expect(data.totalSize as number).toBeGreaterThanOrEqual(2);
+    expect(data.nextPageToken).toBeTruthy();
 
-    if ((data.totalSize as number) > 1) {
-      expect(data.nextPageToken).toBeTruthy();
-      const page2 = await mcpToolCall(accessToken, "list_snippets", {
-        pageSize: 1,
-        pageToken: data.nextPageToken as string,
-      });
-      const page2Data = parseToolResult(page2.result);
-      expect((page2Data.snippets as { id: string }[])[0].id).not.toBe(
-        (data.snippets as { id: string }[])[0].id,
-      );
-    }
+    const page2 = await mcpToolCall(accessToken, "list_snippets", {
+      postedBy: userId,
+      pageSize: 1,
+      pageToken: data.nextPageToken as string,
+    });
+    const page2Data = parseToolResult(page2.result);
+    expect((page2Data.snippets as { id: string }[])[0].id).not.toBe(
+      (data.snippets as { id: string }[])[0].id,
+    );
   });
 });
 
@@ -764,6 +814,7 @@ test.describe("MCP kudos tool behavior", () => {
   let userId: string;
   let originalRole: string;
   let kudosId: string;
+  let kudosId2: string;
   let entryId: string;
   let otherId: string;
 
@@ -781,7 +832,7 @@ test.describe("MCP kudos tool behavior", () => {
     });
     otherId = other.id as string;
 
-    // Seed a kudos record
+    // Seed first kudos record
     const [k] = await query<{ id: string }>(
       `INSERT INTO kudos (posted_at, slack_permalink, posted_by_id)
        VALUES ($1, 'https://slack.test/kudos1', $2)
@@ -790,22 +841,35 @@ test.describe("MCP kudos tool behavior", () => {
     );
     kudosId = k.id;
 
-    // Seed a kudos entry
+    // Seed first kudos entry
     const [entry] = await query<{ id: string }>(
       `INSERT INTO kudos_entries (kudos_id, message) VALUES ($1, 'Great job on the release!') RETURNING id`,
       [kudosId],
     );
     entryId = entry.id;
 
-    // Add mentioned user to the entry
+    // Add mentioned user to the first entry
     await query(
       "INSERT INTO kudos_entry_mentioned_users (kudos_entry_id, user_id) VALUES ($1, $2) ON CONFLICT DO NOTHING",
       [entryId, otherId],
     );
+
+    // Seed second kudos record for pagination coverage
+    const [k2] = await query<{ id: string }>(
+      `INSERT INTO kudos (posted_at, slack_permalink, posted_by_id)
+       VALUES ($1, 'https://slack.test/kudos2', $2)
+       RETURNING id`,
+      [new Date("2026-04-21T10:00:00Z").toISOString(), userId],
+    );
+    kudosId2 = k2.id;
+
+    await query(`INSERT INTO kudos_entries (kudos_id, message) VALUES ($1, 'Awesome teamwork!')`, [
+      kudosId2,
+    ]);
   });
 
   test.afterAll(async () => {
-    await query("DELETE FROM kudos WHERE id = $1", [kudosId]);
+    await query("DELETE FROM kudos WHERE id = ANY($1::uuid[])", [[kudosId, kudosId2]]);
     await query("UPDATE users SET role = $1 WHERE id = $2", [originalRole, userId]);
   });
 
@@ -886,21 +950,25 @@ test.describe("MCP kudos tool behavior", () => {
   });
 
   test("list_kudos pagination works", async () => {
-    const result = await mcpToolCall(accessToken, "list_kudos", { pageSize: 1 });
+    // Filter to just our seeded user to guarantee exactly 2 kudos entries
+    const result = await mcpToolCall(accessToken, "list_kudos", {
+      postedBy: userId,
+      pageSize: 1,
+    });
     const data = parseToolResult(result.result);
-    expect((data.kudos as unknown[]).length).toBeLessThanOrEqual(1);
+    expect((data.kudos as unknown[]).length).toBe(1);
+    expect(data.totalSize as number).toBeGreaterThanOrEqual(2);
+    expect(data.nextPageToken).toBeTruthy();
 
-    if ((data.totalSize as number) > 1) {
-      expect(data.nextPageToken).toBeTruthy();
-      const page2 = await mcpToolCall(accessToken, "list_kudos", {
-        pageSize: 1,
-        pageToken: data.nextPageToken as string,
-      });
-      const page2Data = parseToolResult(page2.result);
-      expect((page2Data.kudos as { id: string }[])[0].id).not.toBe(
-        (data.kudos as { id: string }[])[0].id,
-      );
-    }
+    const page2 = await mcpToolCall(accessToken, "list_kudos", {
+      postedBy: userId,
+      pageSize: 1,
+      pageToken: data.nextPageToken as string,
+    });
+    const page2Data = parseToolResult(page2.result);
+    expect((page2Data.kudos as { id: string }[])[0].id).not.toBe(
+      (data.kudos as { id: string }[])[0].id,
+    );
   });
 });
 
