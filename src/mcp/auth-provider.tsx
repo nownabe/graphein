@@ -80,6 +80,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
           redirect_uris: client.redirectUris,
           grant_types: client.grantTypes,
           token_endpoint_auth_method: client.clientSecretHash ? "client_secret_post" : "none",
+          scope: "graphein",
         } as OAuthClientInformationFull;
       },
       registerClient: async (clientInfo) => {
@@ -379,6 +380,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
         aud: resource,
         scope,
         typ: "mcp+jwt",
+        jti: crypto.randomUUID(),
         exp: now + ACCESS_TOKEN_EXPIRY_SECONDS,
         iat: now,
       },
