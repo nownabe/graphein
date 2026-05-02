@@ -78,7 +78,7 @@ MCP Client                    Graphein                         Slack
     │    (endpoints, PKCE, etc.) │                               │
     │                            │                               │
     ├── POST /oauth/register ───►│  (optional: dynamic client   │
-    │◄── client_id, secret ──────┤   registration)              │
+    │◄── client_id ──────────────┤   registration)              │
     │                            │                               │
     ├── GET /oauth/authorize ───►│                               │
     │    (code_challenge, scope) │                               │
@@ -174,7 +174,7 @@ Token endpoint. Exchanges an authorization code (with PKCE `code_verifier`) for 
 
 #### `POST /oauth/register`
 
-Dynamic Client Registration (RFC 7591). Stores client metadata in the database. Returns `client_id` and optionally `client_secret`.
+Dynamic Client Registration (RFC 7591). Stores client metadata in the database. Returns `client_id`. Only public clients (`token_endpoint_auth_method: "none"`) are accepted; requests specifying other authentication methods are rejected.
 
 #### `POST /oauth/revoke`
 
@@ -227,7 +227,7 @@ MCP supports three client registration approaches (in priority order per the spe
 
 Graphein supports **Dynamic Client Registration** via `POST /oauth/register` and **Client ID Metadata Documents** (handled by the authorization server validating the URL-formatted `client_id`). Pre-registration is not needed since Graphein is not a public service with known partner clients.
 
-Both **confidential clients** (with `client_secret`, using `client_secret_post` at the token endpoint) and **public clients** (without a secret, using `token_endpoint_auth_method: "none"`) are supported. Most MCP clients (CLI tools, desktop apps) are public clients that rely on PKCE for security instead of a client secret.
+Only **public clients** (using `token_endpoint_auth_method: "none"`) are supported. MCP clients (CLI tools, desktop apps, AI assistants) are public clients that rely on PKCE for security instead of a client secret. Registration requests specifying any `token_endpoint_auth_method` other than `"none"` are rejected.
 
 ### Rate Limiting
 
@@ -271,7 +271,7 @@ CREATE TABLE oauth_clients (
 );
 ```
 
-`client_secret_hash` stores the SHA-256 hash of the client secret, following the same pattern as the `api_keys` table. The raw secret is returned only once at registration time. `NULL` indicates a public client (`token_endpoint_auth_method: "none"`).
+All MCP OAuth clients are public clients (`token_endpoint_auth_method: "none"`) and authenticate via PKCE. The `client_secret_hash` column is retained in the schema but is always `NULL` for MCP clients since no client secret is issued.
 
 ### `oauth_authorization_codes` Table
 
