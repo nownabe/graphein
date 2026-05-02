@@ -172,13 +172,16 @@ export async function performOAuthFlow(clientId: string): Promise<OAuthTokens> {
 export async function refreshAccessToken(
   clientId: string,
   refreshToken: string,
+  options?: { includeResource?: boolean },
 ): Promise<OAuthTokens> {
   const tokenBody = new URLSearchParams({
     grant_type: "refresh_token",
     refresh_token: refreshToken,
     client_id: clientId,
-    resource: `${env.grapheinUrl}/mcp`,
   });
+  if (options?.includeResource !== false) {
+    tokenBody.set("resource", `${env.grapheinUrl}/mcp`);
+  }
 
   const res = await fetch(`${env.grapheinUrl}/oauth/token`, {
     method: "POST",
