@@ -178,12 +178,7 @@ export function createOAuthService(db: Database) {
       db.delete(oauthAuthorizationCodes).where(lt(oauthAuthorizationCodes.expiresAt, now)),
       db
         .delete(oauthRefreshTokens)
-        .where(
-          or(
-            and(isNotNull(oauthRefreshTokens.revokedAt), lt(oauthRefreshTokens.revokedAt, now)),
-            lt(oauthRefreshTokens.expiresAt, now),
-          ),
-        ),
+        .where(or(isNotNull(oauthRefreshTokens.revokedAt), lt(oauthRefreshTokens.expiresAt, now))),
     ]);
   }
 
