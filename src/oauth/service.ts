@@ -10,12 +10,6 @@ function generateRandomString(length: number): string {
   return Buffer.from(bytes).toString("base64url");
 }
 
-async function hashSha256(data: string): Promise<Buffer> {
-  const encoded = new TextEncoder().encode(data);
-  const digest = await crypto.subtle.digest("SHA-256", encoded);
-  return Buffer.from(digest);
-}
-
 async function hashToHex(data: string): Promise<string> {
   const encoded = new TextEncoder().encode(data);
   const digest = await crypto.subtle.digest("SHA-256", encoded);
@@ -30,23 +24,19 @@ export function createOAuthService(db: Database) {
     tokenEndpointAuthMethod?: string;
   }) {
     const clientId = generateRandomString(32);
-    const isPublic = metadata.tokenEndpointAuthMethod === "none";
-
-    const rawSecret = isPublic ? null : generateRandomString(48);
-    const secretHash = rawSecret ? await hashSha256(rawSecret) : null;
 
     const [client] = await db
       .insert(oauthClients)
       .values({
         clientId,
-        clientSecretHash: secretHash,
+        clientSecretHash: null,
         clientName: metadata.clientName,
         redirectUris: metadata.redirectUris,
         grantTypes: metadata.grantTypes ?? ["authorization_code"],
       })
       .returning();
 
-    return { ...client, clientSecret: rawSecret };
+    return { ...client, clientSecret: null };
   }
 
   async function getClient(clientId: string) {

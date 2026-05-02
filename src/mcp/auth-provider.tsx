@@ -3,6 +3,7 @@ import { sign, verify } from "hono/jwt";
 import type { AuthorizationParams } from "@modelcontextprotocol/sdk/server/auth/provider.js";
 import type { OAuthRegisteredClientsStore } from "@modelcontextprotocol/sdk/server/auth/clients.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { InvalidClientMetadataError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import type {
   OAuthClientInformationFull,
   OAuthTokenRevocationRequest,
@@ -79,11 +80,17 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
           client_name: client.clientName,
           redirect_uris: client.redirectUris,
           grant_types: client.grantTypes,
-          token_endpoint_auth_method: client.clientSecretHash ? "client_secret_post" : "none",
+          token_endpoint_auth_method: "none",
           scope: "graphein",
         } as OAuthClientInformationFull;
       },
       registerClient: async (clientInfo) => {
+        const method = clientInfo.token_endpoint_auth_method;
+        if (method && method !== "none") {
+          throw new InvalidClientMetadataError(
+            `Unsupported token_endpoint_auth_method: ${method}. Only "none" (public clients) is supported.`,
+          );
+        }
         const result = await this.oauthService.registerClient({
           clientName: clientInfo.client_name ?? "Unknown",
           redirectUris: (clientInfo.redirect_uris ?? []).map((u) => u.toString()),
@@ -91,9 +98,12 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
           tokenEndpointAuthMethod: clientInfo.token_endpoint_auth_method,
         });
         return {
-          ...clientInfo,
           client_id: result.clientId,
-          client_secret: result.clientSecret ?? undefined,
+          client_name: result.clientName,
+          redirect_uris: result.redirectUris,
+          grant_types: result.grantTypes,
+          token_endpoint_auth_method: "none",
+          scope: "graphein",
           client_id_issued_at: Math.floor(Date.now() / 1000),
         } as OAuthClientInformationFull;
       },

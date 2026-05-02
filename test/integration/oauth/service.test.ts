@@ -38,26 +38,35 @@ describe("registerClient", () => {
     expect(stored!.clientSecretHash).toBeNull();
   });
 
-  test("registers a confidential client with a hashed secret", async () => {
+  test("always creates a public client regardless of auth method", async () => {
     const result = await oauth.registerClient({
-      clientName: "Confidential App",
+      clientName: "Any Method App",
       redirectUris: ["https://example.com/cb"],
+      tokenEndpointAuthMethod: "client_secret_post",
     });
 
-    // Raw secret is returned once
-    expect(result.clientSecret).not.toBeNull();
-    expect(typeof result.clientSecret).toBe("string");
-    expect(result.clientSecret!.length).toBeGreaterThan(0);
+    expect(result.clientSecret).toBeNull();
 
-    // DB stores the hash, not the raw secret
     const stored = await db.query.oauthClients.findFirst({
       where: eq(oauthClients.clientId, result.clientId),
     });
     expect(stored).toBeDefined();
-    expect(stored!.clientSecretHash).not.toBeNull();
-    expect(Buffer.isBuffer(stored!.clientSecretHash)).toBe(true);
-    // The hash should NOT equal the raw secret bytes
-    expect(stored!.clientSecretHash!.toString("utf-8")).not.toBe(result.clientSecret);
+    expect(stored!.clientSecretHash).toBeNull();
+  });
+
+  test("registers a public client when no auth method is specified", async () => {
+    const result = await oauth.registerClient({
+      clientName: "Default App",
+      redirectUris: ["https://example.com/cb"],
+    });
+
+    expect(result.clientSecret).toBeNull();
+
+    const stored = await db.query.oauthClients.findFirst({
+      where: eq(oauthClients.clientId, result.clientId),
+    });
+    expect(stored).toBeDefined();
+    expect(stored!.clientSecretHash).toBeNull();
   });
 
   test("stores custom grant types", async () => {
