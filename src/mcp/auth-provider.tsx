@@ -79,7 +79,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
           client_name: client.clientName,
           redirect_uris: client.redirectUris,
           grant_types: client.grantTypes,
-          token_endpoint_auth_method: client.clientSecretHash ? "client_secret_post" : "none",
+          token_endpoint_auth_method: "none",
           scope: "graphein",
         } as OAuthClientInformationFull;
       },
@@ -93,7 +93,6 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
         return {
           ...clientInfo,
           client_id: result.clientId,
-          client_secret: result.clientSecret ?? undefined,
           client_id_issued_at: Math.floor(Date.now() / 1000),
         } as OAuthClientInformationFull;
       },

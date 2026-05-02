@@ -10,12 +10,6 @@ function generateRandomString(length: number): string {
   return Buffer.from(bytes).toString("base64url");
 }
 
-async function hashSha256(data: string): Promise<Buffer> {
-  const encoded = new TextEncoder().encode(data);
-  const digest = await crypto.subtle.digest("SHA-256", encoded);
-  return Buffer.from(digest);
-}
-
 async function hashToHex(data: string): Promise<string> {
   const encoded = new TextEncoder().encode(data);
   const digest = await crypto.subtle.digest("SHA-256", encoded);
@@ -29,24 +23,31 @@ export function createOAuthService(db: Database) {
     grantTypes?: string[];
     tokenEndpointAuthMethod?: string;
   }) {
-    const clientId = generateRandomString(32);
-    const isPublic = metadata.tokenEndpointAuthMethod === "none";
+    // Only public clients (token_endpoint_auth_method: "none") are supported.
+    // Confidential clients cannot be securely validated because we only store
+    // a hashed secret, and @hono/mcp expects the raw secret on the client
+    // object for comparison. MCP clients are typically native apps that use
+    // PKCE instead of client secrets.
+    if (metadata.tokenEndpointAuthMethod && metadata.tokenEndpointAuthMethod !== "none") {
+      throw new Error(
+        `Unsupported token_endpoint_auth_method: ${metadata.tokenEndpointAuthMethod}. Only "none" (public clients) is supported.`,
+      );
+    }
 
-    const rawSecret = isPublic ? null : generateRandomString(48);
-    const secretHash = rawSecret ? await hashSha256(rawSecret) : null;
+    const clientId = generateRandomString(32);
 
     const [client] = await db
       .insert(oauthClients)
       .values({
         clientId,
-        clientSecretHash: secretHash,
+        clientSecretHash: null,
         clientName: metadata.clientName,
         redirectUris: metadata.redirectUris,
         grantTypes: metadata.grantTypes ?? ["authorization_code"],
       })
       .returning();
 
-    return { ...client, clientSecret: rawSecret };
+    return { ...client, clientSecret: null };
   }
 
   async function getClient(clientId: string) {

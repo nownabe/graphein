@@ -12,7 +12,7 @@ function createMockOAuthService(overrides: Partial<OAuthService> = {}): OAuthSer
   return {
     registerClient: async () => ({
       clientId: "new-client",
-      clientSecret: "secret",
+      clientSecret: null,
       clientName: "Test",
       redirectUris: [],
       grantTypes: [],
@@ -122,7 +122,7 @@ describe("GrapheinOAuthProvider", () => {
         token_endpoint_auth_method: "none",
       } as any);
       expect(result.client_id).toBe("new-client");
-      expect(result.client_secret).toBe("secret");
+      expect(result.client_secret).toBeUndefined();
     });
   });
 
