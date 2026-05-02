@@ -3,6 +3,7 @@ import { sign, verify } from "hono/jwt";
 import type { AuthorizationParams } from "@modelcontextprotocol/sdk/server/auth/provider.js";
 import type { OAuthRegisteredClientsStore } from "@modelcontextprotocol/sdk/server/auth/clients.js";
 import type { AuthInfo } from "@modelcontextprotocol/sdk/server/auth/types.js";
+import { InvalidClientMetadataError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import type {
   OAuthClientInformationFull,
   OAuthTokenRevocationRequest,
@@ -74,8 +75,6 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       getClient: async (clientId: string) => {
         const client = await this.oauthService.getClient(clientId);
         if (!client) return undefined;
-        // Reject legacy confidential clients — they must re-register as public.
-        if (client.clientSecretHash != null) return undefined;
         return {
           client_id: client.clientId,
           client_name: client.clientName,
@@ -86,6 +85,12 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
         } as OAuthClientInformationFull;
       },
       registerClient: async (clientInfo) => {
+        const method = clientInfo.token_endpoint_auth_method;
+        if (method && method !== "none") {
+          throw new InvalidClientMetadataError(
+            `Unsupported token_endpoint_auth_method: ${method}. Only "none" (public clients) is supported.`,
+          );
+        }
         const result = await this.oauthService.registerClient({
           clientName: clientInfo.client_name ?? "Unknown",
           redirectUris: (clientInfo.redirect_uris ?? []).map((u) => u.toString()),

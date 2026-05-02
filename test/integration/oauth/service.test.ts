@@ -38,14 +38,20 @@ describe("registerClient", () => {
     expect(stored!.clientSecretHash).toBeNull();
   });
 
-  test("rejects confidential client registration", async () => {
-    await expect(
-      oauth.registerClient({
-        clientName: "Confidential App",
-        redirectUris: ["https://example.com/cb"],
-        tokenEndpointAuthMethod: "client_secret_post",
-      }),
-    ).rejects.toThrow("Unsupported token_endpoint_auth_method");
+  test("always creates a public client regardless of auth method", async () => {
+    const result = await oauth.registerClient({
+      clientName: "Any Method App",
+      redirectUris: ["https://example.com/cb"],
+      tokenEndpointAuthMethod: "client_secret_post",
+    });
+
+    expect(result.clientSecret).toBeNull();
+
+    const stored = await db.query.oauthClients.findFirst({
+      where: eq(oauthClients.clientId, result.clientId),
+    });
+    expect(stored).toBeDefined();
+    expect(stored!.clientSecretHash).toBeNull();
   });
 
   test("registers a public client when no auth method is specified", async () => {

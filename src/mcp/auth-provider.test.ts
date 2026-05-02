@@ -1,6 +1,7 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { Hono } from "hono";
 import { sign, verify } from "hono/jwt";
+import { InvalidClientMetadataError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { GrapheinOAuthProvider } from "./auth-provider";
 import type { OAuthService } from "../oauth/service";
 import type { SessionHelpers } from "../auth/session";
@@ -114,7 +115,7 @@ describe("GrapheinOAuthProvider", () => {
       expect(result!.token_endpoint_auth_method).toBe("none");
     });
 
-    test("getClient rejects legacy confidential client with clientSecretHash", async () => {
+    test("getClient accepts legacy confidential client as public", async () => {
       mockOAuthService = createMockOAuthService({
         getClient: async () => ({
           id: "uuid",
@@ -135,7 +136,9 @@ describe("GrapheinOAuthProvider", () => {
       );
 
       const result = await provider.clientsStore.getClient("legacy-confidential");
-      expect(result).toBeUndefined();
+      expect(result).toBeDefined();
+      expect(result!.client_id).toBe("legacy-confidential");
+      expect(result!.token_endpoint_auth_method).toBe("none");
     });
 
     test("registerClient delegates to oauth service", async () => {
@@ -161,6 +164,17 @@ describe("GrapheinOAuthProvider", () => {
       expect(result.client_id).toBe("new-client");
       expect(result.client_secret).toBeUndefined();
       expect(result.token_endpoint_auth_method).toBe("none");
+    });
+
+    test("registerClient rejects confidential auth method with InvalidClientMetadataError", async () => {
+      await expect(
+        provider.clientsStore.registerClient!({
+          client_name: "Confidential App",
+          redirect_uris: ["https://example.com/cb"],
+          grant_types: ["authorization_code"],
+          token_endpoint_auth_method: "client_secret_post",
+        } as any),
+      ).rejects.toBeInstanceOf(InvalidClientMetadataError);
     });
   });
 

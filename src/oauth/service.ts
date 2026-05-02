@@ -23,17 +23,6 @@ export function createOAuthService(db: Database) {
     grantTypes?: string[];
     tokenEndpointAuthMethod?: string;
   }) {
-    // Only public clients (token_endpoint_auth_method: "none") are supported.
-    // Confidential clients cannot be securely validated because we only store
-    // a hashed secret, and @hono/mcp expects the raw secret on the client
-    // object for comparison. MCP clients are typically native apps that use
-    // PKCE instead of client secrets.
-    if (metadata.tokenEndpointAuthMethod && metadata.tokenEndpointAuthMethod !== "none") {
-      throw new Error(
-        `Unsupported token_endpoint_auth_method: ${metadata.tokenEndpointAuthMethod}. Only "none" (public clients) is supported.`,
-      );
-    }
-
     const clientId = generateRandomString(32);
 
     const [client] = await db
