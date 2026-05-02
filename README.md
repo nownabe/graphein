@@ -32,7 +32,17 @@ After creating the app:
 2. Go to **Settings → OpenID Connect** and set the Redirect URL to `{BASE_URL}/auth/slack/callback`
 3. Install the app to your workspace
 
-### 2. Configure Environment Variables
+### 2. Start ngrok
+
+Slack OIDC login requires a publicly reachable callback URL, even for local development. Use [ngrok](https://ngrok.com/) to expose your local server:
+
+```bash
+ngrok http 3000
+```
+
+Copy the generated `https://xxxx.ngrok-free.app` URL — you'll use it as `BASE_URL` in the next step and as the Redirect URL in Slack App settings.
+
+### 3. Configure Environment Variables
 
 ```bash
 cp .envrc.example .envrc
@@ -52,9 +62,9 @@ Edit `.envrc`:
 | `SLACK_CLIENT_SECRET`  | Basic Information → App Credentials                                |
 | `GEMINI_API_KEY`       | Generate at [Google AI Studio](https://aistudio.google.com/apikey) |
 | `JWT_SECRET`           | Any secret key (e.g., `openssl rand -hex 32`)                      |
-| `BASE_URL`             | `http://localhost:3000`                                            |
+| `BASE_URL`             | ngrok URL (e.g. `https://xxxx.ngrok-free.app`)                     |
 
-### 3. Run
+### 4. Run
 
 ```bash
 # Install dependencies
