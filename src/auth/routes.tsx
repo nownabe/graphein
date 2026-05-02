@@ -27,13 +27,34 @@ export function createAuthRoutes(
 
   auth.get("/slack", (c) => {
     const state = crypto.randomUUID();
+    const isSecure = config.baseUrl.startsWith("https");
     setCookie(c, "oauth_state", state, {
       httpOnly: true,
-      secure: config.baseUrl.startsWith("https"),
+      secure: isSecure,
       sameSite: "Lax",
       path: "/auth/slack/callback",
       maxAge: 600, // 10 minutes
     });
+
+    // Persist return_to so the callback can resume the original flow
+    const returnTo = c.req.query("return_to");
+    if (returnTo) {
+      try {
+        const url = new URL(returnTo, config.baseUrl);
+        if (url.origin === new URL(config.baseUrl).origin) {
+          setCookie(c, "return_to", url.pathname + url.search, {
+            httpOnly: true,
+            secure: isSecure,
+            sameSite: "Lax",
+            path: "/auth/slack/callback",
+            maxAge: 600,
+          });
+        }
+      } catch {
+        // Invalid URL — ignore
+      }
+    }
+
     const params = new URLSearchParams({
       client_id: config.slackClientId,
       redirect_uri: `${config.baseUrl}/auth/slack/callback`,
@@ -125,6 +146,13 @@ export function createAuthRoutes(
       maxAge: 60 * 60 * 24 * 365,
       sameSite: "Lax",
     });
+
+    // Resume the pre-login flow if return_to was set
+    const returnTo = getCookie(c, "return_to");
+    deleteCookie(c, "return_to", { path: "/auth/slack/callback" });
+    if (returnTo?.startsWith("/")) {
+      return c.redirect(returnTo);
+    }
 
     return c.redirect("/tasks");
   });
