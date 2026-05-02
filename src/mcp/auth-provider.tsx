@@ -74,6 +74,8 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
       getClient: async (clientId: string) => {
         const client = await this.oauthService.getClient(clientId);
         if (!client) return undefined;
+        // Reject legacy confidential clients — they must re-register as public.
+        if (client.clientSecretHash != null) return undefined;
         return {
           client_id: client.clientId,
           client_name: client.clientName,

@@ -114,6 +114,30 @@ describe("GrapheinOAuthProvider", () => {
       expect(result!.token_endpoint_auth_method).toBe("none");
     });
 
+    test("getClient rejects legacy confidential client with clientSecretHash", async () => {
+      mockOAuthService = createMockOAuthService({
+        getClient: async () => ({
+          id: "uuid",
+          clientId: "legacy-confidential",
+          clientName: "Legacy App",
+          clientSecretHash: Buffer.from("somehash"),
+          redirectUris: ["https://example.com/callback"],
+          grantTypes: ["authorization_code"],
+          createdAt: new Date(),
+        }),
+      });
+      provider = new GrapheinOAuthProvider(
+        mockOAuthService,
+        createMockUserService(),
+        mockSession,
+        BASE_URL,
+        MCP_JWT_SECRET,
+      );
+
+      const result = await provider.clientsStore.getClient("legacy-confidential");
+      expect(result).toBeUndefined();
+    });
+
     test("registerClient delegates to oauth service", async () => {
       const result = await provider.clientsStore.registerClient!({
         client_name: "New Client",
