@@ -29,7 +29,7 @@ Fixed files:
 
 - .gitignore
 - drizzle/meta/0000_snapshot.json
-- drizzle/meta/_journal.json
+- drizzle/meta/\_journal.json
 
 Removed `drizzle/meta/` from `.gitignore` so snapshot files are tracked, added the missing `0000_snapshot.json`, and formatted both JSON files with oxfmt.
 
