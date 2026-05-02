@@ -123,6 +123,20 @@ describe("GrapheinOAuthProvider", () => {
       } as any);
       expect(result.client_id).toBe("new-client");
       expect(result.client_secret).toBeUndefined();
+      expect(result.token_endpoint_auth_method).toBe("none");
+    });
+
+    test("registerClient omits client_secret even when upstream supplies one", async () => {
+      const result = await provider.clientsStore.registerClient!({
+        client_name: "New Client",
+        redirect_uris: ["https://example.com/cb"],
+        grant_types: ["authorization_code"],
+        token_endpoint_auth_method: "none",
+        client_secret: "upstream-generated-secret",
+      } as any);
+      expect(result.client_id).toBe("new-client");
+      expect(result.client_secret).toBeUndefined();
+      expect(result.token_endpoint_auth_method).toBe("none");
     });
   });
 

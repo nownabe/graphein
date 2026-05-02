@@ -91,8 +91,12 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
           tokenEndpointAuthMethod: clientInfo.token_endpoint_auth_method,
         });
         return {
-          ...clientInfo,
           client_id: result.clientId,
+          client_name: result.clientName,
+          redirect_uris: result.redirectUris,
+          grant_types: result.grantTypes,
+          token_endpoint_auth_method: "none",
+          scope: "graphein",
           client_id_issued_at: Math.floor(Date.now() / 1000),
         } as OAuthClientInformationFull;
       },
