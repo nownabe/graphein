@@ -263,6 +263,7 @@ Stores dynamically registered OAuth clients.
 CREATE TABLE oauth_clients (
   id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   client_id           TEXT NOT NULL UNIQUE,
+  client_secret_hash  BYTEA,
   client_name         TEXT NOT NULL,
   redirect_uris       TEXT[] NOT NULL,
   grant_types         TEXT[] NOT NULL DEFAULT '{authorization_code}',
@@ -270,7 +271,7 @@ CREATE TABLE oauth_clients (
 );
 ```
 
-All MCP OAuth clients are public clients (`token_endpoint_auth_method: "none"`) and authenticate via PKCE. No client secret is stored.
+All MCP OAuth clients are public clients (`token_endpoint_auth_method: "none"`) and authenticate via PKCE. The `client_secret_hash` column is retained in the schema but is always `NULL` for MCP clients since no client secret is issued.
 
 ### `oauth_authorization_codes` Table
 
