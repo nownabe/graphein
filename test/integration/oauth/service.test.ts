@@ -276,6 +276,25 @@ describe("refresh tokens", () => {
     expect(result).toBeNull();
   });
 
+  test("consumes token without resource and reuses stored resource", async () => {
+    const user = await createTestUser(db);
+
+    const rawToken = await oauth.createRefreshToken({
+      clientId: "test-client",
+      userId: user.id,
+      scope: "graphein",
+      resource: "https://graphein.example.com/mcp",
+    });
+
+    const result = await oauth.consumeRefreshToken(rawToken, "test-client");
+
+    expect(result).not.toBeNull();
+    expect(result!.clientId).toBe("test-client");
+    expect(result!.userId).toBe(user.id);
+    expect(result!.scope).toBe("graphein");
+    expect(result!.resource).toBe("https://graphein.example.com/mcp");
+  });
+
   test("rejects token with wrong resource", async () => {
     const user = await createTestUser(db);
 

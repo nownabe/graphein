@@ -95,6 +95,20 @@ test.describe("MCP OAuth flow", () => {
     await expect(refreshAccessToken(client.clientId, tokens.refresh_token!)).rejects.toThrow();
   });
 
+  test("refresh token rotation without resource parameter", async () => {
+    const client = await registerOAuthClient("E2E Refresh No Resource Test");
+    const tokens = await performOAuthFlow(client.clientId);
+
+    // Refresh without sending the resource parameter
+    const refreshed = await refreshAccessToken(client.clientId, tokens.refresh_token!, {
+      includeResource: false,
+    });
+    expect(refreshed.access_token).toBeTruthy();
+    expect(refreshed.access_token).not.toBe(tokens.access_token);
+    expect(refreshed.refresh_token).toBeTruthy();
+    expect(refreshed.refresh_token).not.toBe(tokens.refresh_token);
+  });
+
   test("token revocation", async () => {
     const client = await registerOAuthClient("E2E Revoke Test");
     const tokens = await performOAuthFlow(client.clientId);

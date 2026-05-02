@@ -300,7 +300,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
     const tokenData = await this.oauthService.consumeRefreshToken(
       refreshToken,
       client.client_id,
-      resource?.toString() ?? "",
+      resource?.toString(),
     );
     if (!tokenData) throw new Error("Invalid or expired refresh token");
 

@@ -142,22 +142,26 @@ export function createOAuthService(db: Database) {
     return rawToken;
   }
 
-  async function consumeRefreshToken(token: string, clientId: string, resource: string) {
+  async function consumeRefreshToken(token: string, clientId: string, resource?: string) {
     const tokenHash = await hashToHex(token);
 
-    // Atomic revoke-and-return to prevent double-consume race conditions
+    // Atomic revoke-and-return to prevent double-consume race conditions.
+    // When resource is omitted, match by token hash + client ID only;
+    // when provided, also require exact resource equality.
+    const conditions = [
+      eq(oauthRefreshTokens.tokenHash, tokenHash),
+      eq(oauthRefreshTokens.clientId, clientId),
+      isNull(oauthRefreshTokens.revokedAt),
+      gt(oauthRefreshTokens.expiresAt, new Date()),
+    ];
+    if (resource !== undefined) {
+      conditions.push(eq(oauthRefreshTokens.resource, resource));
+    }
+
     const [record] = await db
       .update(oauthRefreshTokens)
       .set({ revokedAt: new Date() })
-      .where(
-        and(
-          eq(oauthRefreshTokens.tokenHash, tokenHash),
-          eq(oauthRefreshTokens.clientId, clientId),
-          eq(oauthRefreshTokens.resource, resource),
-          isNull(oauthRefreshTokens.revokedAt),
-          gt(oauthRefreshTokens.expiresAt, new Date()),
-        ),
-      )
+      .where(and(...conditions))
       .returning();
 
     if (!record) return null;
