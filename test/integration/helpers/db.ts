@@ -16,6 +16,9 @@ import {
   kudosEntries,
   kudos,
   kudosChannels,
+  oauthClients,
+  oauthAuthorizationCodes,
+  oauthRefreshTokens,
 } from "../../../src/db/schema";
 
 export async function createTestUser(
@@ -41,6 +44,9 @@ export async function createTestUser(
 }
 
 export async function cleanupDb(db: Database) {
+  await db.delete(oauthAuthorizationCodes);
+  await db.delete(oauthRefreshTokens);
+  await db.delete(oauthClients);
   await db.delete(apiKeys);
   await db.delete(kudosEntryMentionedUsergroups);
   await db.delete(kudosEntryMentionedUsers);
