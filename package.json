@@ -20,7 +20,8 @@
     "check:format": "oxfmt --check",
     "check:lint": "oxlint --deny-warnings",
     "check:workflows": "actionlint && ghalint run && zizmor .github/workflows/",
-    "slack:manifest": "bun run scripts/generate-slack-manifest.ts"
+    "slack:manifest": "bun run scripts/generate-slack-manifest.ts",
+    "postinstall": "playwright install chromium"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",
