@@ -11,16 +11,7 @@ Guide for setting up a local development environment and contributing to Graphei
 
 ## Local Setup
 
-### 1. Create a Slack App
-
-See [README.md](../README.md#1-create-a-slack-app) for creating the Slack app.
-
-Additionally for local development:
-
-1. Go to **Settings → Basic Information → App-Level Tokens** and generate a token with the `connections:write` scope (starts with `xapp-`) — this enables Socket Mode
-2. Set the OIDC Redirect URL to your ngrok URL: `https://xxxx.ngrok-free.app/auth/slack/callback`
-
-### 2. Start ngrok
+### 1. Start ngrok
 
 Slack OIDC login requires a publicly reachable callback URL. Use ngrok to expose your local server:
 
@@ -28,7 +19,16 @@ Slack OIDC login requires a publicly reachable callback URL. Use ngrok to expose
 ngrok http 3000
 ```
 
-Copy the generated `https://xxxx.ngrok-free.app` URL for `BASE_URL`.
+Copy the generated `https://xxxx.ngrok-free.app` URL — you'll use it as `BASE_URL` and for the Slack App Redirect URL.
+
+### 2. Create a Slack App
+
+See [README.md](../README.md#1-create-a-slack-app) for creating the Slack app. Use your ngrok URL as the base URL when running `bun run slack:manifest`.
+
+Additionally for local development:
+
+1. Go to **Settings → Basic Information → App-Level Tokens** and generate a token with the `connections:write` scope (starts with `xapp-`) — this enables Socket Mode
+2. Set the OIDC Redirect URL to your ngrok URL: `https://xxxx.ngrok-free.app/auth/slack/callback`
 
 ### 3. Configure Environment Variables
 
