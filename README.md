@@ -43,17 +43,17 @@ cp .envrc.example .envrc
 | `SLACK_CLIENT_SECRET`  | Basic Information → App Credentials                                |
 | `GEMINI_API_KEY`       | Generate at [Google AI Studio](https://aistudio.google.com/apikey) |
 | `JWT_SECRET`           | Any secret key (e.g., `openssl rand -hex 32`)                      |
-| `MCP_JWT_SECRET`       | Secret for MCP OAuth tokens (e.g., `openssl rand -hex 32`)        |
+| `MCP_JWT_SECRET`       | Secret for MCP OAuth tokens (e.g., `openssl rand -hex 32`)         |
 | `BASE_URL`             | Public URL where Graphein is hosted                                |
 
 Optional:
 
-| Variable             | Description                                    | Default |
-| -------------------- | ---------------------------------------------- | ------- |
-| `PORT`               | Server port                                    | `3000`  |
-| `APP_TIMEZONE`       | Timezone for deadline display                  | `UTC`   |
-| `SLACK_SOCKET_MODE`  | Use Socket Mode instead of HTTP (`true`/`false`) | `false` |
-| `SLACK_APP_TOKEN`    | Required only if `SLACK_SOCKET_MODE=true` (`xapp-...`) | —       |
+| Variable            | Description                                            | Default |
+| ------------------- | ------------------------------------------------------ | ------- |
+| `PORT`              | Server port                                            | `3000`  |
+| `APP_TIMEZONE`      | Timezone for deadline display                          | `UTC`   |
+| `SLACK_SOCKET_MODE` | Use Socket Mode instead of HTTP (`true`/`false`)       | `false` |
+| `SLACK_APP_TOKEN`   | Required only if `SLACK_SOCKET_MODE=true` (`xapp-...`) | —       |
 
 ### 3. Run
 
