@@ -13,9 +13,6 @@ public/styles.css
 .env.local
 .envrc
 
-# Drizzle
-drizzle/meta/
-
 # OS
 .DS_Store
 .playwright-mcp

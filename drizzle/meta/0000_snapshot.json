@@ -1,6 +1,6 @@
 {
-  "id": "d0aa4693-6fc6-4b1c-8378-b791a414e35b",
-  "prevId": "f73f7b44-0b91-45e9-b56b-4229833e830e",
+  "id": "0ac9f5c1-7048-4353-b898-4cbdcb7b7f08",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -78,12 +78,8 @@
           "name": "api_keys_user_id_users_id_fk",
           "tableFrom": "api_keys",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -93,9 +89,7 @@
         "api_keys_key_hash_unique": {
           "name": "api_keys_key_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "key_hash"
-          ]
+          "columns": ["key_hash"]
         }
       },
       "policies": {},
@@ -212,12 +206,8 @@
           "name": "kudos_posted_by_id_users_id_fk",
           "tableFrom": "kudos",
           "tableTo": "users",
-          "columnsFrom": [
-            "posted_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["posted_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -227,10 +217,7 @@
         "kudos_slack_message_unique": {
           "name": "kudos_slack_message_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slack_channel_id",
-            "slack_message_ts"
-          ]
+          "columns": ["slack_channel_id", "slack_message_ts"]
         }
       },
       "policies": {},
@@ -269,9 +256,7 @@
         "kudos_channels_slack_channel_id_unique": {
           "name": "kudos_channels_slack_channel_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slack_channel_id"
-          ]
+          "columns": ["slack_channel_id"]
         }
       },
       "policies": {},
@@ -315,12 +300,8 @@
           "name": "kudos_entries_kudos_id_kudos_id_fk",
           "tableFrom": "kudos_entries",
           "tableTo": "kudos",
-          "columnsFrom": [
-            "kudos_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["kudos_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -354,12 +335,8 @@
           "name": "kudos_entry_mentioned_usergroups_kudos_entry_id_kudos_entries_id_fk",
           "tableFrom": "kudos_entry_mentioned_usergroups",
           "tableTo": "kudos_entries",
-          "columnsFrom": [
-            "kudos_entry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["kudos_entry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -367,12 +344,8 @@
           "name": "kudos_entry_mentioned_usergroups_usergroup_id_usergroups_id_fk",
           "tableFrom": "kudos_entry_mentioned_usergroups",
           "tableTo": "usergroups",
-          "columnsFrom": [
-            "usergroup_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usergroup_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -380,10 +353,7 @@
       "compositePrimaryKeys": {
         "kudos_entry_mentioned_usergroups_kudos_entry_id_usergroup_id_pk": {
           "name": "kudos_entry_mentioned_usergroups_kudos_entry_id_usergroup_id_pk",
-          "columns": [
-            "kudos_entry_id",
-            "usergroup_id"
-          ]
+          "columns": ["kudos_entry_id", "usergroup_id"]
         }
       },
       "uniqueConstraints": {},
@@ -414,12 +384,8 @@
           "name": "kudos_entry_mentioned_users_kudos_entry_id_kudos_entries_id_fk",
           "tableFrom": "kudos_entry_mentioned_users",
           "tableTo": "kudos_entries",
-          "columnsFrom": [
-            "kudos_entry_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["kudos_entry_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -427,12 +393,8 @@
           "name": "kudos_entry_mentioned_users_user_id_users_id_fk",
           "tableFrom": "kudos_entry_mentioned_users",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -440,12 +402,230 @@
       "compositePrimaryKeys": {
         "kudos_entry_mentioned_users_kudos_entry_id_user_id_pk": {
           "name": "kudos_entry_mentioned_users_kudos_entry_id_user_id_pk",
-          "columns": [
-            "kudos_entry_id",
-            "user_id"
-          ]
+          "columns": ["kudos_entry_id", "user_id"]
         }
       },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.oauth_authorization_codes": {
+      "name": "oauth_authorization_codes",
+      "schema": "",
+      "columns": {
+        "code": {
+          "name": "code",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "redirect_uri": {
+          "name": "redirect_uri",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resource": {
+          "name": "resource",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_challenge": {
+          "name": "code_challenge",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "code_challenge_method": {
+          "name": "code_challenge_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'S256'"
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "oauth_authorization_codes_user_id_users_id_fk": {
+          "name": "oauth_authorization_codes_user_id_users_id_fk",
+          "tableFrom": "oauth_authorization_codes",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.oauth_clients": {
+      "name": "oauth_clients",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "client_secret_hash": {
+          "name": "client_secret_hash",
+          "type": "bytea",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "client_name": {
+          "name": "client_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "redirect_uris": {
+          "name": "redirect_uris",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "grant_types": {
+          "name": "grant_types",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"authorization_code\"}'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "oauth_clients_client_id_unique": {
+          "name": "oauth_clients_client_id_unique",
+          "nullsNotDistinct": false,
+          "columns": ["client_id"]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.oauth_refresh_tokens": {
+      "name": "oauth_refresh_tokens",
+      "schema": "",
+      "columns": {
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "client_id": {
+          "name": "client_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "scope": {
+          "name": "scope",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "resource": {
+          "name": "resource",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "oauth_refresh_tokens_user_id_users_id_fk": {
+          "name": "oauth_refresh_tokens_user_id_users_id_fk",
+          "tableFrom": "oauth_refresh_tokens",
+          "tableTo": "users",
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -483,9 +663,7 @@
         "snippet_channels_slack_channel_id_unique": {
           "name": "snippet_channels_slack_channel_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slack_channel_id"
-          ]
+          "columns": ["slack_channel_id"]
         }
       },
       "policies": {},
@@ -515,12 +693,8 @@
           "name": "snippet_mentioned_usergroups_snippet_id_snippets_id_fk",
           "tableFrom": "snippet_mentioned_usergroups",
           "tableTo": "snippets",
-          "columnsFrom": [
-            "snippet_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["snippet_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -528,12 +702,8 @@
           "name": "snippet_mentioned_usergroups_usergroup_id_usergroups_id_fk",
           "tableFrom": "snippet_mentioned_usergroups",
           "tableTo": "usergroups",
-          "columnsFrom": [
-            "usergroup_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usergroup_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -541,10 +711,7 @@
       "compositePrimaryKeys": {
         "snippet_mentioned_usergroups_snippet_id_usergroup_id_pk": {
           "name": "snippet_mentioned_usergroups_snippet_id_usergroup_id_pk",
-          "columns": [
-            "snippet_id",
-            "usergroup_id"
-          ]
+          "columns": ["snippet_id", "usergroup_id"]
         }
       },
       "uniqueConstraints": {},
@@ -575,12 +742,8 @@
           "name": "snippet_mentioned_users_snippet_id_snippets_id_fk",
           "tableFrom": "snippet_mentioned_users",
           "tableTo": "snippets",
-          "columnsFrom": [
-            "snippet_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["snippet_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -588,12 +751,8 @@
           "name": "snippet_mentioned_users_user_id_users_id_fk",
           "tableFrom": "snippet_mentioned_users",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -601,10 +760,7 @@
       "compositePrimaryKeys": {
         "snippet_mentioned_users_snippet_id_user_id_pk": {
           "name": "snippet_mentioned_users_snippet_id_user_id_pk",
-          "columns": [
-            "snippet_id",
-            "user_id"
-          ]
+          "columns": ["snippet_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -696,12 +852,8 @@
           "name": "snippets_posted_by_id_users_id_fk",
           "tableFrom": "snippets",
           "tableTo": "users",
-          "columnsFrom": [
-            "posted_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["posted_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -711,10 +863,7 @@
         "snippets_slack_message_unique": {
           "name": "snippets_slack_message_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slack_channel_id",
-            "slack_message_ts"
-          ]
+          "columns": ["slack_channel_id", "slack_message_ts"]
         }
       },
       "policies": {},
@@ -758,12 +907,8 @@
           "name": "task_assignees_task_id_tasks_id_fk",
           "tableFrom": "task_assignees",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -771,12 +916,8 @@
           "name": "task_assignees_user_id_users_id_fk",
           "tableFrom": "task_assignees",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -784,10 +925,7 @@
       "compositePrimaryKeys": {
         "task_assignees_task_id_user_id_pk": {
           "name": "task_assignees_task_id_user_id_pk",
-          "columns": [
-            "task_id",
-            "user_id"
-          ]
+          "columns": ["task_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -825,12 +963,8 @@
           "name": "task_owners_task_id_tasks_id_fk",
           "tableFrom": "task_owners",
           "tableTo": "tasks",
-          "columnsFrom": [
-            "task_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["task_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -838,12 +972,8 @@
           "name": "task_owners_user_id_users_id_fk",
           "tableFrom": "task_owners",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -851,10 +981,7 @@
       "compositePrimaryKeys": {
         "task_owners_task_id_user_id_pk": {
           "name": "task_owners_task_id_user_id_pk",
-          "columns": [
-            "task_id",
-            "user_id"
-          ]
+          "columns": ["task_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -943,12 +1070,8 @@
           "name": "tasks_created_by_id_users_id_fk",
           "tableFrom": "tasks",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -982,12 +1105,8 @@
           "name": "usergroup_members_usergroup_id_usergroups_id_fk",
           "tableFrom": "usergroup_members",
           "tableTo": "usergroups",
-          "columnsFrom": [
-            "usergroup_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["usergroup_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -995,12 +1114,8 @@
           "name": "usergroup_members_user_id_users_id_fk",
           "tableFrom": "usergroup_members",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1008,10 +1123,7 @@
       "compositePrimaryKeys": {
         "usergroup_members_usergroup_id_user_id_pk": {
           "name": "usergroup_members_usergroup_id_user_id_pk",
-          "columns": [
-            "usergroup_id",
-            "user_id"
-          ]
+          "columns": ["usergroup_id", "user_id"]
         }
       },
       "uniqueConstraints": {},
@@ -1076,9 +1188,7 @@
         "usergroups_slack_usergroup_id_unique": {
           "name": "usergroups_slack_usergroup_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slack_usergroup_id"
-          ]
+          "columns": ["slack_usergroup_id"]
         }
       },
       "policies": {},
@@ -1169,9 +1279,7 @@
         "users_slack_user_id_unique": {
           "name": "users_slack_user_id_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "slack_user_id"
-          ]
+          "columns": ["slack_user_id"]
         }
       },
       "policies": {},
