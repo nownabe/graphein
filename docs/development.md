@@ -78,14 +78,6 @@ bun run db:generate      # Generate migration after editing src/db/schema.ts
 bun run db:migrate       # Apply pending migrations
 ```
 
-To run ad-hoc SQL:
-
-```bash
-bun run tools/run-sql.ts "SELECT * FROM users LIMIT 5"       # dev DB
-bun run tools/run-sql.ts --test "SELECT count(*) FROM users"  # test DB
-bun run tools/run-sql.ts --file path/to/query.sql             # from file
-```
-
 ## Testing
 
 ### Unit Tests
