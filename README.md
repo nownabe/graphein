@@ -30,17 +30,17 @@ After creating the app:
 
 ### 2. Configure Environment Variables
 
-| Variable               | Description                                                        |
-| ---------------------- | ------------------------------------------------------------------ |
-| `DATABASE_URL`         | PostgreSQL connection URL                                          |
-| `SLACK_BOT_TOKEN`      | OAuth & Permissions → Bot User OAuth Token (`xoxb-...`)            |
-| `SLACK_SIGNING_SECRET` | Basic Information → Signing Secret                                 |
-| `SLACK_CLIENT_ID`      | Basic Information → App Credentials                                |
-| `SLACK_CLIENT_SECRET`  | Basic Information → App Credentials                                |
-| `GEMINI_API_KEY`       | Generate at [Google AI Studio](https://aistudio.google.com/apikey) |
-| `JWT_SECRET`           | Any secret key (e.g., `openssl rand -hex 32`)                      |
-| `MCP_JWT_SECRET`       | Secret for MCP OAuth tokens (e.g., `openssl rand -hex 32`)         |
-| `BASE_URL`             | Public URL where Graphein is hosted                                |
+| Variable               | Description                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL`         | PostgreSQL connection URL (e.g., `postgresql://user:password@host:5432/graphein`)                       |
+| `SLACK_BOT_TOKEN`      | Slack Bot token. Found in your Slack App's **OAuth & Permissions** page (`xoxb-...`)                    |
+| `SLACK_SIGNING_SECRET` | Slack request signing secret. Found in your Slack App's **Basic Information → App Credentials** section |
+| `SLACK_CLIENT_ID`      | Slack OAuth client ID. Found in your Slack App's **Basic Information → App Credentials** section        |
+| `SLACK_CLIENT_SECRET`  | Slack OAuth client secret. Found in your Slack App's **Basic Information → App Credentials** section    |
+| `GEMINI_API_KEY`       | Google Gemini API key. Generate at [Google AI Studio](https://aistudio.google.com/apikey)               |
+| `JWT_SECRET`           | Secret key for signing session tokens. Generate with `openssl rand -hex 32`                             |
+| `MCP_JWT_SECRET`       | Secret key for signing MCP OAuth tokens. Generate with `openssl rand -hex 32`                           |
+| `BASE_URL`             | Public URL where Graphein is hosted (e.g., `https://graphein.example.com`)                              |
 
 Optional:
 
