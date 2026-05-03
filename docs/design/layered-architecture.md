@@ -385,9 +385,7 @@ responses.
 Example:
 
 ```ts
-type RemoveChannelResult =
-  | { ok: true }
-  | { ok: false; error: "not_found" };
+type RemoveChannelResult = { ok: true } | { ok: false; error: "not_found" };
 ```
 
 Then:
