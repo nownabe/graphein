@@ -4,15 +4,12 @@ Graphein converts Slack messages into trackable tasks. Users trigger a message s
 
 The name comes from the Greek word **γραφεῖν** (graphein), meaning "to write" — turning spoken words into written action.
 
-## Tech Stack
+## Requirements
 
-- **Runtime**: [Bun](https://bun.sh/)
-- **Framework**: [Hono](https://hono.dev/) with JSX server-side rendering
-- **Database**: PostgreSQL with [Drizzle ORM](https://orm.drizzle.team/)
-- **Styling**: [Tailwind CSS](https://tailwindcss.com/) v4
-- **Interactivity**: [htmx](https://htmx.org/)
-- **Slack**: [Bolt for JavaScript](https://slack.dev/bolt-js/)
-- **LLM**: Gemini 2.0 Flash (title and deadline extraction)
+- [Bun](https://bun.sh/) runtime
+- PostgreSQL
+- A Slack workspace with permission to install apps
+- [Gemini API key](https://aistudio.google.com/apikey) (for automatic title/deadline extraction)
 
 ## Setup
 
@@ -28,84 +25,57 @@ Follow the prompts to configure app name, base URL, and Socket Mode. The generat
 
 After creating the app:
 
-1. If using Socket Mode, go to **Settings → Basic Information → App-Level Tokens** and generate a token with the `connections:write` scope (starts with `xapp-`)
-2. Go to **Settings → OpenID Connect** and set the Redirect URL to `{BASE_URL}/auth/slack/callback`
-3. Install the app to your workspace
+1. Go to **Settings → OpenID Connect** and set the Redirect URL to `{BASE_URL}/auth/slack/callback`
+2. Install the app to your workspace
 
-### 2. Start ngrok
-
-Slack OIDC login requires a publicly reachable callback URL, even for local development. Use [ngrok](https://ngrok.com/) to expose your local server:
-
-```bash
-ngrok http 3000
-```
-
-Copy the generated `https://xxxx.ngrok-free.app` URL — you'll use it as `BASE_URL` in the next step and as the Redirect URL in Slack App settings.
-
-### 3. Configure Environment Variables
+### 2. Configure Environment Variables
 
 ```bash
 cp .envrc.example .envrc
-direnv allow
 ```
-
-Edit `.envrc`:
 
 | Variable               | Description                                                        |
 | ---------------------- | ------------------------------------------------------------------ |
-| `DATABASE_URL`         | PostgreSQL connection URL. The default value works as-is           |
+| `DATABASE_URL`         | PostgreSQL connection URL                                          |
 | `SLACK_BOT_TOKEN`      | OAuth & Permissions → Bot User OAuth Token (`xoxb-...`)            |
-| `SLACK_APP_TOKEN`      | Basic Information → App-Level Tokens (`xapp-...`)                  |
-| `SLACK_SOCKET_MODE`    | `true` for local development                                       |
 | `SLACK_SIGNING_SECRET` | Basic Information → Signing Secret                                 |
 | `SLACK_CLIENT_ID`      | Basic Information → App Credentials                                |
 | `SLACK_CLIENT_SECRET`  | Basic Information → App Credentials                                |
 | `GEMINI_API_KEY`       | Generate at [Google AI Studio](https://aistudio.google.com/apikey) |
 | `JWT_SECRET`           | Any secret key (e.g., `openssl rand -hex 32`)                      |
-| `BASE_URL`             | ngrok URL (e.g. `https://xxxx.ngrok-free.app`)                     |
+| `MCP_JWT_SECRET`       | Secret for MCP OAuth tokens (e.g., `openssl rand -hex 32`)        |
+| `BASE_URL`             | Public URL where Graphein is hosted                                |
 
-### 4. Run
+Optional:
+
+| Variable             | Description                                    | Default |
+| -------------------- | ---------------------------------------------- | ------- |
+| `PORT`               | Server port                                    | `3000`  |
+| `APP_TIMEZONE`       | Timezone for deadline display                  | `UTC`   |
+| `SLACK_SOCKET_MODE`  | Use Socket Mode instead of HTTP (`true`/`false`) | `false` |
+| `SLACK_APP_TOKEN`    | Required only if `SLACK_SOCKET_MODE=true` (`xapp-...`) | —       |
+
+### 3. Run
 
 ```bash
 # Install dependencies
 bun install
 
-# Start PostgreSQL
-bun run db:up
-
-# Run migrations
+# Run database migrations
 bun run db:migrate
 
-# Build Tailwind CSS
+# Build CSS
 bun run css:build
 
-# Start the dev server
-bun run dev
+# Start the server
+bun run start
 ```
 
-Access the app at `http://localhost:3000`.
+The app is available at `http://localhost:3000` (or your configured `BASE_URL`).
 
-## Development
+## Contributing
 
-```bash
-# Run dev server with auto-reload
-bun run dev
-
-# Watch and rebuild CSS
-bun run css
-
-# Run unit tests
-bun test
-
-# Run integration tests (requires db-test running)
-bun run test:integration
-
-# Run all checks (typecheck, tests, format, lint, workflows)
-bun run check:all
-
-# Generate a new migration after schema changes
-bun run db:generate
-```
+See [docs/development.md](docs/development.md) for development setup and guidelines.
 
 ## License
 
