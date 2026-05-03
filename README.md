@@ -30,10 +30,6 @@ After creating the app:
 
 ### 2. Configure Environment Variables
 
-```bash
-cp .envrc.example .envrc
-```
-
 | Variable               | Description                                                        |
 | ---------------------- | ------------------------------------------------------------------ |
 | `DATABASE_URL`         | PostgreSQL connection URL                                          |
