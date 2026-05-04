@@ -1,6 +1,6 @@
 import type { KudosEntryWithContext } from "../../kudos/service";
 import type { PeriodType } from "../../snippets/period";
-import type { MrkdwnOptions } from "../../slack/mrkdwn";
+import type { MrkdwnOptions } from "../../adapters/slack/mrkdwn";
 import { t } from "../../i18n/index";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";

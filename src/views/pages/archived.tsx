@@ -1,7 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
-import type { MrkdwnOptions } from "../../slack/mrkdwn";
+import type { MrkdwnOptions } from "../../adapters/slack/mrkdwn";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 import { TaskList } from "../components/task-list";

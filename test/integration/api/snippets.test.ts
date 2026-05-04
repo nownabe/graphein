@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { createSnippetApiRoutes } from "../../../src/api/snippets";
+import { createSnippetApiRoutes } from "../../../src/adapters/api/snippets";
 import { createSnippetService } from "../../../src/snippets/service";
 import {
   snippets,
