@@ -20,7 +20,7 @@
  */
 
 import { parseArgs } from "util";
-import { mkdirSync } from "fs";
+import { mkdirSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { waitPr, type WaitPrResult } from "../tools/lib/wait-pr";
 
@@ -70,8 +70,8 @@ console.log(`📝 Logs: ${logDir}/`);
 
 async function run(
   cmd: string[],
-  opts?: { timeout?: number; cwd?: string; logType?: string },
-): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+  opts?: { timeout?: number; cwd?: string; logType?: string; onSpawn?: (pid: number) => void },
+): Promise<{ stdout: string; stderr: string; exitCode: number; pid: number }> {
   const cmdStr = cmd.join(" ");
   const logType = opts?.logType ?? "orchestrator";
 
@@ -83,6 +83,8 @@ async function run(
     cwd: opts?.cwd,
     timeout: opts?.timeout,
   });
+  await logLine("orchestrator", `pid=${proc.pid}`);
+  opts?.onSpawn?.(proc.pid);
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
@@ -104,7 +106,7 @@ async function run(
     if (stderr) await logLine("orchestrator", `stderr: ${stderr.slice(0, 500)}`);
   }
 
-  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
+  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode, pid: proc.pid };
 }
 
 function extractPrUrl(text: string): string | null {
@@ -122,6 +124,68 @@ function extractSessionId(jsonOutput: string): string | null {
     return result.session_id ?? null;
   } catch {
     return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Claude session helpers
+// ---------------------------------------------------------------------------
+
+/** Compute the Claude CLI project directory for a given cwd. */
+function claudeProjectDir(cwd: string): string | null {
+  const home = process.env.HOME ?? "";
+  const projectsDir = resolve(home, ".claude", "projects");
+  const encoded = cwd.replaceAll("/", "-").replaceAll(".", "-");
+  try {
+    const entries = readdirSync(projectsDir);
+    return entries.includes(encoded) ? resolve(projectsDir, encoded) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** List existing .jsonl session files in a Claude project directory. */
+function listSessionFiles(cwd: string): Set<string> {
+  const dir = claudeProjectDir(cwd);
+  if (!dir) return new Set();
+  try {
+    return new Set(readdirSync(dir).filter((f) => f.endsWith(".jsonl")));
+  } catch {
+    return new Set();
+  }
+}
+
+/** Poll for a new session file that wasn't in knownFiles, print when found. */
+async function detectAndPrintSession(
+  cwd: string,
+  knownFiles: Set<string>,
+): Promise<string | null> {
+  for (let i = 0; i < 60; i++) {
+    const dir = claudeProjectDir(cwd);
+    if (dir) {
+      try {
+        const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
+        const newFile = files.find((f) => !knownFiles.has(f));
+        if (newFile) {
+          const sessionId = newFile.replace(".jsonl", "");
+          const sessionFile = resolve(dir, newFile);
+          console.log(`   Session ID: ${sessionId}`);
+          console.log(`   Session file: ${sessionFile}`);
+          return sessionId;
+        }
+      } catch {}
+    }
+    await Bun.sleep(500);
+  }
+  return null;
+}
+
+/** Print session info for a known session ID. */
+function printSessionInfo(sessionId: string, cwd: string) {
+  console.log(`   Session ID: ${sessionId}`);
+  const dir = claudeProjectDir(cwd);
+  if (dir) {
+    console.log(`   Session file: ${resolve(dir, `${sessionId}.jsonl`)}`);
   }
 }
 
@@ -252,6 +316,9 @@ const implementPrompt = enableCodexReview
   ? `Handle issue ${issueRef}\n\nIMPORTANT: Do NOT create a pull request. Only implement the changes, run checks (bun run check:all), and commit. Do NOT use /pr skill or gh pr create.`
   : `Handle issue ${issueRef}\n\nIMPORTANT: When creating the PR (step 5 of /pr skill), use subagent mode:\nonly run \`gh pr create\`, do NOT run wait-pr.ts. Return the PR URL at the end of your response.`;
 
+const knownSessions = listSessionFiles(worktreePath);
+let sessionDetection: Promise<string | null> | null = null;
+
 const implementResult = await run(
   [
     "claude",
@@ -262,8 +329,18 @@ const implementResult = await run(
     "--output-format",
     "json",
   ],
-  { timeout: 1_800_000, cwd: worktreePath, logType: "implement" },
+  {
+    timeout: 1_800_000,
+    cwd: worktreePath,
+    logType: "implement",
+    onSpawn: (pid) => {
+      console.log(`   PID: ${pid}`);
+      sessionDetection = detectAndPrintSession(worktreePath, knownSessions);
+    },
+  },
 );
+
+await sessionDetection;
 
 if (implementResult.exitCode !== 0) {
   console.error(`❌ Implementation failed (exit code: ${implementResult.exitCode})`);
@@ -356,7 +433,15 @@ if (enableCodexReview) {
         "--output-format",
         "text",
       ],
-      { timeout: 600_000, cwd: worktreePath, logType: `codex-fix-${codexRound}` },
+      {
+        timeout: 600_000,
+        cwd: worktreePath,
+        logType: `codex-fix-${codexRound}`,
+        onSpawn: (pid) => {
+          console.log(`   PID: ${pid}`);
+          printSessionInfo(sessionId, worktreePath);
+        },
+      },
     );
 
     if (fixResult.exitCode !== 0) {
@@ -393,7 +478,15 @@ if (enableCodexReview) {
       "--output-format",
       "json",
     ],
-    { timeout: 600_000, cwd: worktreePath, logType: "create-pr" },
+    {
+      timeout: 600_000,
+      cwd: worktreePath,
+      logType: "create-pr",
+      onSpawn: (pid) => {
+        console.log(`   PID: ${pid}`);
+        printSessionInfo(sessionId, worktreePath);
+      },
+    },
   );
 
   if (createPrResult.exitCode !== 0) {
@@ -534,7 +627,15 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
       "--output-format",
       "text",
     ],
-    { timeout: 600_000, cwd: worktreePath, logType: `fix-${round}` },
+    {
+      timeout: 600_000,
+      cwd: worktreePath,
+      logType: `fix-${round}`,
+      onSpawn: (pid) => {
+        console.log(`   PID: ${pid}`);
+        printSessionInfo(sessionId, worktreePath);
+      },
+    },
   );
 
   if (fixResult.exitCode !== 0) {
