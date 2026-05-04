@@ -1,8 +1,8 @@
 import { z } from "@hono/zod-openapi";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import { eq, or, ilike, asc, and, sql, count as drizzleCount } from "drizzle-orm";
+import { or, ilike, asc, and, sql, count as drizzleCount } from "drizzle-orm";
 import type { Database } from "../db/client";
-import { users, snippetChannels, kudosChannels } from "../db/schema";
+import { users } from "../db/schema";
 import type { UserService } from "../users/service";
 import type { SnippetService } from "../snippets/service";
 import type { KudosService } from "../kudos/service";
@@ -538,30 +538,15 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
 
     const { slackChannelId } = c.req.valid("json");
 
-    // Try to insert; onConflictDoNothing returns undefined if already exists
-    const created = await snippetService.addSnippetChannel(slackChannelId);
-    if (created) {
-      return c.json(
-        {
-          id: created.id,
-          slackChannelId: created.slackChannelId,
-          createdAt: created.createdAt.toISOString(),
-        },
-        201,
-      );
-    }
-
-    // Already exists — fetch and return 200
-    const existing = await db.query.snippetChannels.findFirst({
-      where: eq(snippetChannels.slackChannelId, slackChannelId),
-    });
+    const result = await snippetService.addSnippetChannel(slackChannelId);
+    const { channel } = result;
     return c.json(
       {
-        id: existing!.id,
-        slackChannelId: existing!.slackChannelId,
-        createdAt: existing!.createdAt.toISOString(),
+        id: channel.id,
+        slackChannelId: channel.slackChannelId,
+        createdAt: channel.createdAt.toISOString(),
       },
-      200,
+      result.created ? 201 : 200,
     );
   });
 
@@ -575,14 +560,11 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
 
     const { id } = c.req.valid("param");
 
-    const existing = await db.query.snippetChannels.findFirst({
-      where: eq(snippetChannels.id, id),
-    });
-    if (!existing) {
+    const result = await snippetService.removeSnippetChannel(id);
+    if (!result.found) {
       return c.json({ error: { code: "not_found", message: "Snippet channel not found." } }, 404);
     }
 
-    await snippetService.removeSnippetChannel(id);
     return c.body(null, 204);
   });
 
@@ -617,29 +599,15 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
 
     const { slackChannelId } = c.req.valid("json");
 
-    const created = await kudosService.addKudosChannel(slackChannelId);
-    if (created) {
-      return c.json(
-        {
-          id: created.id,
-          slackChannelId: created.slackChannelId,
-          createdAt: created.createdAt.toISOString(),
-        },
-        201,
-      );
-    }
-
-    // Already exists — fetch and return 200
-    const existing = await db.query.kudosChannels.findFirst({
-      where: eq(kudosChannels.slackChannelId, slackChannelId),
-    });
+    const result = await kudosService.addKudosChannel(slackChannelId);
+    const { channel } = result;
     return c.json(
       {
-        id: existing!.id,
-        slackChannelId: existing!.slackChannelId,
-        createdAt: existing!.createdAt.toISOString(),
+        id: channel.id,
+        slackChannelId: channel.slackChannelId,
+        createdAt: channel.createdAt.toISOString(),
       },
-      200,
+      result.created ? 201 : 200,
     );
   });
 
@@ -653,14 +621,11 @@ export function createAdminApiRoutes(deps: AdminApiDeps) {
 
     const { id } = c.req.valid("param");
 
-    const existing = await db.query.kudosChannels.findFirst({
-      where: eq(kudosChannels.id, id),
-    });
-    if (!existing) {
+    const result = await kudosService.removeKudosChannel(id);
+    if (!result.found) {
       return c.json({ error: { code: "not_found", message: "Kudos channel not found." } }, 404);
     }
 
-    await kudosService.removeKudosChannel(id);
     return c.body(null, 204);
   });
 

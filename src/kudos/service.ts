@@ -30,6 +30,14 @@ export interface ListKudosFilters {
   cursorEntryId?: string;
 }
 
+export type KudosChannel = typeof kudosChannels.$inferSelect;
+
+export type AddKudosChannelResult =
+  | { created: true; channel: KudosChannel }
+  | { created: false; channel: KudosChannel };
+
+export type RemoveKudosChannelResult = { found: boolean };
+
 export function createKudosService(db: Database) {
   async function createKudos(data: {
     slackMessageTs?: string;
@@ -203,17 +211,24 @@ export function createKudosService(db: Database) {
     });
   }
 
-  async function addKudosChannel(slackChannelId: string) {
-    const [channel] = await db
+  async function addKudosChannel(slackChannelId: string): Promise<AddKudosChannelResult> {
+    const [created] = await db
       .insert(kudosChannels)
       .values({ slackChannelId })
       .onConflictDoNothing()
       .returning();
-    return channel;
+    if (created) {
+      return { created: true, channel: created };
+    }
+    const existing = await db.query.kudosChannels.findFirst({
+      where: eq(kudosChannels.slackChannelId, slackChannelId),
+    });
+    return { created: false, channel: existing! };
   }
 
-  async function removeKudosChannel(id: string) {
-    await db.delete(kudosChannels).where(eq(kudosChannels.id, id));
+  async function removeKudosChannel(id: string): Promise<RemoveKudosChannelResult> {
+    const deleted = await db.delete(kudosChannels).where(eq(kudosChannels.id, id)).returning();
+    return { found: deleted.length > 0 };
   }
 
   async function isKudosChannel(slackChannelId: string): Promise<boolean> {

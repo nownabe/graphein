@@ -54,9 +54,9 @@ describe("DELETE /admin/snippet-channels/:id", () => {
 
     // Add channel first
     const { snippetService } = createTestApp();
-    const channel = await snippetService.addSnippetChannel("C123DEL");
+    const { channel } = await snippetService.addSnippetChannel("C123DEL");
 
-    const res = await authRequest(app, admin.id, `/admin/snippet-channels/${channel!.id}`, {
+    const res = await authRequest(app, admin.id, `/admin/snippet-channels/${channel.id}`, {
       method: "DELETE",
     });
     expect(res.status).toBe(200);

@@ -1,8 +1,8 @@
 import { z } from "zod";
-import { type SQL, and, eq, or, asc, ilike, sql, count as drizzleCount } from "drizzle-orm";
+import { type SQL, and, or, asc, ilike, sql, count as drizzleCount } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { Database } from "../../db/client";
-import { users, snippetChannels, kudosChannels } from "../../db/schema";
+import { users } from "../../db/schema";
 import type { UserService } from "../../users/service";
 import type { SnippetService } from "../../snippets/service";
 import type { KudosService } from "../../kudos/service";
@@ -201,22 +201,11 @@ export function registerAdminTools(server: McpServer, deps: AdminToolsDeps): voi
       const denied = requireAdmin();
       if (denied) return denied;
 
-      const created = await snippetService.addSnippetChannel(slackChannelId);
-      if (created) {
-        return jsonResult({
-          id: created.id,
-          slackChannelId: created.slackChannelId,
-          createdAt: created.createdAt.toISOString(),
-        });
-      }
-
-      const existing = await db.query.snippetChannels.findFirst({
-        where: eq(snippetChannels.slackChannelId, slackChannelId),
-      });
+      const { channel } = await snippetService.addSnippetChannel(slackChannelId);
       return jsonResult({
-        id: existing!.id,
-        slackChannelId: existing!.slackChannelId,
-        createdAt: existing!.createdAt.toISOString(),
+        id: channel.id,
+        slackChannelId: channel.slackChannelId,
+        createdAt: channel.createdAt.toISOString(),
       });
     },
   );
@@ -237,14 +226,11 @@ export function registerAdminTools(server: McpServer, deps: AdminToolsDeps): voi
       const denied = requireAdmin();
       if (denied) return denied;
 
-      const existing = await db.query.snippetChannels.findFirst({
-        where: eq(snippetChannels.id, channelId),
-      });
-      if (!existing) {
+      const result = await snippetService.removeSnippetChannel(channelId);
+      if (!result.found) {
         return errorResult("not_found", "Snippet channel not found.");
       }
 
-      await snippetService.removeSnippetChannel(channelId);
       return jsonResult({ success: true });
     },
   );
@@ -290,22 +276,11 @@ export function registerAdminTools(server: McpServer, deps: AdminToolsDeps): voi
       const denied = requireAdmin();
       if (denied) return denied;
 
-      const created = await kudosService.addKudosChannel(slackChannelId);
-      if (created) {
-        return jsonResult({
-          id: created.id,
-          slackChannelId: created.slackChannelId,
-          createdAt: created.createdAt.toISOString(),
-        });
-      }
-
-      const existing = await db.query.kudosChannels.findFirst({
-        where: eq(kudosChannels.slackChannelId, slackChannelId),
-      });
+      const { channel } = await kudosService.addKudosChannel(slackChannelId);
       return jsonResult({
-        id: existing!.id,
-        slackChannelId: existing!.slackChannelId,
-        createdAt: existing!.createdAt.toISOString(),
+        id: channel.id,
+        slackChannelId: channel.slackChannelId,
+        createdAt: channel.createdAt.toISOString(),
       });
     },
   );
@@ -326,14 +301,11 @@ export function registerAdminTools(server: McpServer, deps: AdminToolsDeps): voi
       const denied = requireAdmin();
       if (denied) return denied;
 
-      const existing = await db.query.kudosChannels.findFirst({
-        where: eq(kudosChannels.id, channelId),
-      });
-      if (!existing) {
+      const result = await kudosService.removeKudosChannel(channelId);
+      if (!result.found) {
         return errorResult("not_found", "Kudos channel not found.");
       }
 
-      await kudosService.removeKudosChannel(channelId);
       return jsonResult({ success: true });
     },
   );

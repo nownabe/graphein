@@ -61,6 +61,14 @@ export interface KeysetResult {
   hasNextPage: boolean;
 }
 
+export type SnippetChannel = typeof snippetChannels.$inferSelect;
+
+export type AddSnippetChannelResult =
+  | { created: true; channel: SnippetChannel }
+  | { created: false; channel: SnippetChannel };
+
+export type RemoveSnippetChannelResult = { found: boolean };
+
 export function createSnippetService(db: Database) {
   async function createSnippet(data: {
     content: string;
@@ -329,17 +337,24 @@ export function createSnippetService(db: Database) {
     });
   }
 
-  async function addSnippetChannel(slackChannelId: string) {
-    const [channel] = await db
+  async function addSnippetChannel(slackChannelId: string): Promise<AddSnippetChannelResult> {
+    const [created] = await db
       .insert(snippetChannels)
       .values({ slackChannelId })
       .onConflictDoNothing()
       .returning();
-    return channel;
+    if (created) {
+      return { created: true, channel: created };
+    }
+    const existing = await db.query.snippetChannels.findFirst({
+      where: eq(snippetChannels.slackChannelId, slackChannelId),
+    });
+    return { created: false, channel: existing! };
   }
 
-  async function removeSnippetChannel(id: string) {
-    await db.delete(snippetChannels).where(eq(snippetChannels.id, id));
+  async function removeSnippetChannel(id: string): Promise<RemoveSnippetChannelResult> {
+    const deleted = await db.delete(snippetChannels).where(eq(snippetChannels.id, id)).returning();
+    return { found: deleted.length > 0 };
   }
 
   async function isSnippetChannel(slackChannelId: string): Promise<boolean> {
