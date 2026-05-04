@@ -1,5 +1,5 @@
 import type { KudosEntryWithContext } from "../../kudos/service";
-import { Mrkdwn, type MrkdwnOptions } from "../../slack/mrkdwn";
+import { Mrkdwn, type MrkdwnOptions } from "../../adapters/slack/mrkdwn";
 
 export function KudosCard({
   entry,

@@ -1,6 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { createDb } from "../../../src/db/client";
-import { createAdminApiRoutes } from "../../../src/api/admin";
+import { createAdminApiRoutes } from "../../../src/adapters/api/admin";
 import { createUserService } from "../../../src/users/service";
 import { createSnippetService } from "../../../src/snippets/service";
 import { createKudosService } from "../../../src/kudos/service";

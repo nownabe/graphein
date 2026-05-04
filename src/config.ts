@@ -8,8 +8,8 @@ import type { UsergroupService } from "./usergroups/service";
 import type { SettingsService } from "./settings/service";
 import type { ApiKeyService } from "./api-keys/service";
 import type { OAuthService } from "./oauth/service";
-import type { MrkdwnOptions } from "./slack/mrkdwn";
-import type { HonoReceiver } from "./slack/receiver";
+import type { MrkdwnOptions } from "./adapters/slack/mrkdwn";
+import type { HonoReceiver } from "./adapters/slack/receiver";
 
 export type BuildMrkdwnLabels = (texts: (string | null | undefined)[]) => Promise<MrkdwnOptions>;
 export type ResolveChannelName = (channelId: string) => Promise<string | undefined>;

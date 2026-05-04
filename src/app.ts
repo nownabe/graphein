@@ -8,18 +8,22 @@ import { mcpAuthRouter, StreamableHTTPTransport } from "@hono/mcp";
 import { wellKnownRouter } from "@hono/mcp/auth";
 import { createCsrfMiddleware } from "./auth/csrf";
 import { createAuthMiddleware } from "./auth/middleware";
-import { createAuthRoutes } from "./auth/routes.tsx";
-import { createTaskRoutes } from "./tasks/routes.tsx";
-import { createAdminRoutes } from "./admin/routes.tsx";
-import { createSnippetRoutes } from "./snippets/routes.tsx";
-import { createKudosRoutes } from "./kudos/routes.tsx";
-import { createApiKeyRoutes } from "./api-keys/routes.tsx";
+import { createAuthRoutes } from "./adapters/web/auth/routes.tsx";
+import { createTaskRoutes } from "./adapters/web/tasks/routes.tsx";
+import { createAdminRoutes } from "./adapters/web/admin/routes.tsx";
+import { createSnippetRoutes } from "./adapters/web/snippets/routes.tsx";
+import { createKudosRoutes } from "./adapters/web/kudos/routes.tsx";
+import { createApiKeyRoutes } from "./adapters/web/api-keys/routes.tsx";
 import { clickjackingMiddleware } from "./auth/clickjacking";
-import { createApiMiddleware, createRateLimiter, extractBearerToken } from "./api/middleware";
-import { createApiRoutes } from "./api/routes";
-import { GrapheinOAuthProvider } from "./mcp/auth-provider";
-import { createMcpServer } from "./mcp/server";
-import "./mcp/types"; // Side-effect import for ContextVariableMap augmentation
+import {
+  createApiMiddleware,
+  createRateLimiter,
+  extractBearerToken,
+} from "./adapters/api/middleware";
+import { createApiRoutes } from "./adapters/api/routes";
+import { GrapheinOAuthProvider } from "./adapters/mcp/auth-provider";
+import { createMcpServer } from "./adapters/mcp/server";
+import "./adapters/mcp/types"; // Side-effect import for ContextVariableMap augmentation
 import type { HonoAppConfig } from "./config";
 
 export function createHonoApp(config: HonoAppConfig) {

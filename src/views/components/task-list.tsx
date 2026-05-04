@@ -1,7 +1,7 @@
 import type { InferSelectModel } from "drizzle-orm";
 import type { tasks } from "../../db/schema";
 import { t } from "../../i18n/index";
-import type { MrkdwnOptions } from "../../slack/mrkdwn";
+import type { MrkdwnOptions } from "../../adapters/slack/mrkdwn";
 import { TaskCard } from "./task-card";
 
 type Task = InferSelectModel<typeof tasks> & {

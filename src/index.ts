@@ -10,9 +10,9 @@ import { createApiKeyService } from "./api-keys/service";
 import { createOAuthService } from "./oauth/service";
 import { createSessionHelpers } from "./auth/session";
 import { createGeminiClient } from "./llm/gemini";
-import { createBolt } from "./slack/bolt";
-import { createLabelBuilder } from "./slack/labels";
-import { createSlackLabelResolver } from "./slack/helpers";
+import { createBolt } from "./adapters/slack/bolt";
+import { createLabelBuilder } from "./adapters/slack/labels";
+import { createSlackLabelResolver } from "./adapters/slack/helpers";
 
 function requireEnv(name: string): string {
   const value = process.env[name];

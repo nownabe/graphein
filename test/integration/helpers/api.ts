@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createApiAuthMiddleware } from "../../../src/api/middleware";
+import { createApiAuthMiddleware } from "../../../src/adapters/api/middleware";
 import { createDb } from "../../../src/db/client";
 import { users } from "../../../src/db/schema";
 import type { ApiKeyService } from "../../../src/api-keys/service";
