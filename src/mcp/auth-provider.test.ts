@@ -6,7 +6,7 @@ import { GrapheinOAuthProvider } from "./auth-provider";
 import type { OAuthService } from "../oauth/service";
 import type { SessionHelpers } from "../auth/session";
 
-const MCP_JWT_SECRET = "test-mcp-jwt-secret";
+const JWT_SECRET = "test-mcp-jwt-secret";
 const BASE_URL = "https://graphein.example.com";
 
 function createMockOAuthService(overrides: Partial<OAuthService> = {}): OAuthService {
@@ -78,7 +78,7 @@ describe("GrapheinOAuthProvider", () => {
       createMockUserService(),
       mockSession,
       BASE_URL,
-      MCP_JWT_SECRET,
+      JWT_SECRET,
     );
   });
 
@@ -105,7 +105,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const result = await provider.clientsStore.getClient("my-client");
@@ -132,7 +132,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const result = await provider.clientsStore.getClient("legacy-confidential");
@@ -204,14 +204,19 @@ describe("GrapheinOAuthProvider", () => {
 
     test("shows consent page with POST forms when user is authenticated", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({
+          sub: "user-uuid",
+          name: "Test User",
+          typ: "session",
+          exp: 9999999999,
+        }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const app = new Hono();
@@ -265,14 +270,19 @@ describe("GrapheinOAuthProvider", () => {
 
     test("renders consent page in Japanese when locale cookie is ja", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({
+          sub: "user-uuid",
+          name: "Test User",
+          typ: "session",
+          exp: 9999999999,
+        }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const app = new Hono();
@@ -329,14 +339,19 @@ describe("GrapheinOAuthProvider", () => {
           iat: now,
           ...overrides,
         },
-        MCP_JWT_SECRET,
+        JWT_SECRET,
         "HS256",
       );
     }
 
     test("generates code and redirects on approve", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({
+          sub: "user-uuid",
+          name: "Test User",
+          typ: "session",
+          exp: 9999999999,
+        }),
       });
       mockOAuthService = createMockOAuthService({
         createAuthorizationCode: async () => "auth-code-123",
@@ -346,7 +361,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const app = new Hono();
@@ -373,14 +388,19 @@ describe("GrapheinOAuthProvider", () => {
 
     test("redirects with error on deny", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({
+          sub: "user-uuid",
+          name: "Test User",
+          typ: "session",
+          exp: 9999999999,
+        }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const app = new Hono();
@@ -422,14 +442,19 @@ describe("GrapheinOAuthProvider", () => {
 
     test("returns 400 for missing request_token", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({
+          sub: "user-uuid",
+          name: "Test User",
+          typ: "session",
+          exp: 9999999999,
+        }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const app = new Hono();
@@ -448,14 +473,19 @@ describe("GrapheinOAuthProvider", () => {
 
     test("returns 400 for tampered request_token", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({
+          sub: "user-uuid",
+          name: "Test User",
+          typ: "session",
+          exp: 9999999999,
+        }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const app = new Hono();
@@ -480,14 +510,19 @@ describe("GrapheinOAuthProvider", () => {
 
     test("returns 400 for invalid decision", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({
+          sub: "user-uuid",
+          name: "Test User",
+          typ: "session",
+          exp: 9999999999,
+        }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const app = new Hono();
@@ -519,7 +554,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const result = await provider.challengeForAuthorizationCode({} as any, "code123");
@@ -552,7 +587,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const tokens = await provider.exchangeAuthorizationCode(
@@ -569,7 +604,7 @@ describe("GrapheinOAuthProvider", () => {
       expect(tokens.scope).toBe("graphein");
 
       // Verify the access token is a valid JWT
-      const decoded = (await verify(tokens.access_token, MCP_JWT_SECRET, "HS256")) as any;
+      const decoded = (await verify(tokens.access_token, JWT_SECRET, "HS256")) as any;
       expect(decoded.sub).toBe("user-uuid");
       expect(decoded.aud).toBe("https://graphein.example.com/mcp");
       expect(decoded.typ).toBe("mcp+jwt");
@@ -599,7 +634,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       await expect(
@@ -624,7 +659,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       await expect(
@@ -654,7 +689,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       await expect(
@@ -685,7 +720,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const tokens = await provider.exchangeRefreshToken(
@@ -724,7 +759,7 @@ describe("GrapheinOAuthProvider", () => {
           exp: now + 3600,
           iat: now,
         },
-        MCP_JWT_SECRET,
+        JWT_SECRET,
         "HS256",
       );
 
@@ -746,7 +781,7 @@ describe("GrapheinOAuthProvider", () => {
           exp: now - 10,
           iat: now - 3610,
         },
-        MCP_JWT_SECRET,
+        JWT_SECRET,
         "HS256",
       );
 
@@ -764,7 +799,7 @@ describe("GrapheinOAuthProvider", () => {
           exp: now + 3600,
           iat: now,
         },
-        MCP_JWT_SECRET,
+        JWT_SECRET,
         "HS256",
       );
 
@@ -777,7 +812,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService({ findUserById: async () => undefined }),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const now = Math.floor(Date.now() / 1000);
@@ -790,7 +825,7 @@ describe("GrapheinOAuthProvider", () => {
           exp: now + 3600,
           iat: now,
         },
-        MCP_JWT_SECRET,
+        JWT_SECRET,
         "HS256",
       );
 
@@ -805,7 +840,7 @@ describe("GrapheinOAuthProvider", () => {
         }),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       const now = Math.floor(Date.now() / 1000);
@@ -818,7 +853,7 @@ describe("GrapheinOAuthProvider", () => {
           exp: now + 3600,
           iat: now,
         },
-        MCP_JWT_SECRET,
+        JWT_SECRET,
         "HS256",
       );
 
@@ -857,7 +892,7 @@ describe("GrapheinOAuthProvider", () => {
         createMockUserService(),
         mockSession,
         BASE_URL,
-        MCP_JWT_SECRET,
+        JWT_SECRET,
       );
 
       await provider.revokeToken!({} as any, { token: "refresh-to-revoke" });

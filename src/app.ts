@@ -33,7 +33,7 @@ export function createHonoApp(config: HonoAppConfig) {
     settingsService,
     apiKeyService,
     oauthService,
-    mcpJwtSecret,
+    jwtSecret,
     buildMrkdwnLabels,
   } = config;
 
@@ -215,7 +215,7 @@ export function createHonoApp(config: HonoAppConfig) {
     userService,
     session,
     config.baseUrl,
-    mcpJwtSecret,
+    jwtSecret,
     config.devMode,
   );
   app.post("/oauth/consent", (c) => oauthProvider.handleConsent(c));

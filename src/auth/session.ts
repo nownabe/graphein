@@ -3,6 +3,7 @@ import { sign, verify } from "hono/jwt";
 export interface JwtPayload {
   sub: string; // user ID
   name: string;
+  typ: string;
   exp: number;
 }
 
@@ -17,11 +18,16 @@ export function createSessionHelpers(jwtSecret: string): SessionHelpers {
   return {
     async createToken(userId: string, displayName: string): Promise<string> {
       const now = Math.floor(Date.now() / 1000);
-      return sign({ sub: userId, name: displayName, exp: now + EXPIRATION_SECONDS }, jwtSecret);
+      return sign(
+        { sub: userId, name: displayName, typ: "session", exp: now + EXPIRATION_SECONDS },
+        jwtSecret,
+      );
     },
     async verifyToken(token: string): Promise<JwtPayload | null> {
       try {
-        return (await verify(token, jwtSecret, "HS256")) as unknown as JwtPayload;
+        const payload = (await verify(token, jwtSecret, "HS256")) as unknown as JwtPayload;
+        if (payload.typ !== "session") return null;
+        return payload;
       } catch {
         return null;
       }

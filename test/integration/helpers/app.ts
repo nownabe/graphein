@@ -13,7 +13,6 @@ import { createSessionHelpers } from "../../../src/auth/session";
 import { TEST_DATABASE_URL } from "./setup";
 
 const JWT_SECRET = "test-secret";
-const MCP_JWT_SECRET = "test-mcp-secret";
 const BASE_URL = "http://localhost:3000";
 
 const session = createSessionHelpers(JWT_SECRET);
@@ -45,7 +44,7 @@ export function createTestApp() {
     settingsService,
     apiKeyService,
     oauthService,
-    mcpJwtSecret: MCP_JWT_SECRET,
+    jwtSecret: JWT_SECRET,
     buildMrkdwnLabels: async () => ({ users: {}, channels: {}, usergroups: {} }),
     resolveChannelName: async () => undefined,
     timezone: "Asia/Tokyo",
