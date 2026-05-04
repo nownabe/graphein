@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
 import { Hono } from "hono";
 import { createAuthRoutes, type AuthRoutesConfig } from "./routes";
-import type { SessionHelpers } from "../../../auth/session";
-import type { UserService } from "../../../users/service";
+import type { SessionHelpers } from "../../../application/auth/session";
+import type { UserService } from "../../../application/users/service";
 
 const BASE_URL = "https://graphein.example.com";
 

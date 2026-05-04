@@ -1,4 +1,4 @@
-import type { users } from "../../db/schema";
+import type { users } from "../../infrastructure/db/schema";
 
 export type McpUser = typeof users.$inferSelect;
 

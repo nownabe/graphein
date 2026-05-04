@@ -1,4 +1,4 @@
-import type { Database } from "../../../src/db/client";
+import type { Database } from "../../../src/infrastructure/db/client";
 import {
   users,
   tasks,
@@ -19,7 +19,7 @@ import {
   oauthClients,
   oauthAuthorizationCodes,
   oauthRefreshTokens,
-} from "../../../src/db/schema";
+} from "../../../src/infrastructure/db/schema";
 
 export async function createTestUser(
   db: Database,

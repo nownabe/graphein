@@ -1,6 +1,6 @@
 import { eq, and, desc, inArray } from "drizzle-orm";
-import type { Database } from "../db/client";
-import { tasks, taskAssignees, taskOwners } from "../db/schema";
+import type { Database } from "../../infrastructure/db/client";
+import { tasks, taskAssignees, taskOwners } from "../../infrastructure/db/schema";
 
 export function createTaskService(db: Database) {
   async function listActiveTasksForMember(userId: string) {

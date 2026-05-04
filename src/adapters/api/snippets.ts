@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import type { SnippetService } from "../../snippets/service";
+import type { SnippetService } from "../../application/snippets/service";
 import {
   ErrorResponseSchema,
   EmbeddedUserWithAvatarSchema,
@@ -17,7 +17,7 @@ import {
   validateTimestampCursor,
   filterFingerprint,
   UUID_REGEX,
-} from "../../pagination";
+} from "../../domain/pagination";
 
 // ---------------------------------------------------------------------------
 // Shared Zod helpers

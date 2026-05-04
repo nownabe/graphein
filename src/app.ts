@@ -6,15 +6,15 @@ import { streamSSE } from "hono/streaming";
 import { contextStorage } from "hono/context-storage";
 import { mcpAuthRouter, StreamableHTTPTransport } from "@hono/mcp";
 import { wellKnownRouter } from "@hono/mcp/auth";
-import { createCsrfMiddleware } from "./auth/csrf";
-import { createAuthMiddleware } from "./auth/middleware";
+import { createCsrfMiddleware } from "./adapters/middleware/csrf";
+import { createAuthMiddleware } from "./application/auth/middleware";
 import { createAuthRoutes } from "./adapters/web/auth/routes.tsx";
 import { createTaskRoutes } from "./adapters/web/tasks/routes.tsx";
 import { createAdminRoutes } from "./adapters/web/admin/routes.tsx";
 import { createSnippetRoutes } from "./adapters/web/snippets/routes.tsx";
 import { createKudosRoutes } from "./adapters/web/kudos/routes.tsx";
 import { createApiKeyRoutes } from "./adapters/web/api-keys/routes.tsx";
-import { clickjackingMiddleware } from "./auth/clickjacking";
+import { clickjackingMiddleware } from "./adapters/middleware/clickjacking";
 import {
   createApiMiddleware,
   createRateLimiter,

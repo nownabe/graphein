@@ -1,4 +1,4 @@
-import type { SnippetWithAuthor } from "../../snippets/service";
+import type { SnippetWithAuthor } from "../../application/snippets/service";
 import { Mrkdwn, type MrkdwnOptions } from "../../adapters/slack/mrkdwn";
 
 export function SnippetCard({

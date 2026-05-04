@@ -1,6 +1,6 @@
 import { eq, and, inArray } from "drizzle-orm";
-import type { Database } from "../db/client";
-import { usergroupMembers, usergroups } from "../db/schema";
+import type { Database } from "../../infrastructure/db/client";
+import { usergroupMembers, usergroups } from "../../infrastructure/db/schema";
 
 const MEMBERSHIP_SYNC_TTL_MS = 24 * 60 * 60 * 1000; // 1 day
 

@@ -1,7 +1,11 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { createKudosApiRoutes } from "../../../src/adapters/api/kudos";
-import { createKudosService } from "../../../src/kudos/service";
-import { kudos, kudosEntries, kudosEntryMentionedUsers } from "../../../src/db/schema";
+import { createKudosService } from "../../../src/application/kudos/service";
+import {
+  kudos,
+  kudosEntries,
+  kudosEntryMentionedUsers,
+} from "../../../src/infrastructure/db/schema";
 import { db, createUser, buildApiApp, apiRequest, cleanupDb } from "../helpers/api";
 
 const kudosService = createKudosService(db);

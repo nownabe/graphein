@@ -1,12 +1,12 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { createSnippetApiRoutes } from "../../../src/adapters/api/snippets";
-import { createSnippetService } from "../../../src/snippets/service";
+import { createSnippetService } from "../../../src/application/snippets/service";
 import {
   snippets,
   snippetMentionedUsers,
   snippetMentionedUsergroups,
   usergroups,
-} from "../../../src/db/schema";
+} from "../../../src/infrastructure/db/schema";
 import { db, createUser, buildApiApp, apiRequest, cleanupDb } from "../helpers/api";
 
 const snippetService = createSnippetService(db);

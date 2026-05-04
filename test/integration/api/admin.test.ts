@@ -1,10 +1,10 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { createDb } from "../../../src/db/client";
+import { createDb } from "../../../src/infrastructure/db/client";
 import { createAdminApiRoutes } from "../../../src/adapters/api/admin";
-import { createUserService } from "../../../src/users/service";
-import { createSnippetService } from "../../../src/snippets/service";
-import { createKudosService } from "../../../src/kudos/service";
-import { snippetChannels, kudosChannels } from "../../../src/db/schema";
+import { createUserService } from "../../../src/application/users/service";
+import { createSnippetService } from "../../../src/application/snippets/service";
+import { createKudosService } from "../../../src/application/kudos/service";
+import { snippetChannels, kudosChannels } from "../../../src/infrastructure/db/schema";
 import { TEST_DATABASE_URL } from "../helpers/setup";
 import { cleanupDb } from "../helpers/db";
 import { createUser, buildApiApp, apiRequest } from "../helpers/api";

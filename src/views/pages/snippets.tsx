@@ -1,7 +1,7 @@
-import type { SnippetWithAuthor } from "../../snippets/service";
-import type { PeriodType } from "../../snippets/period";
+import type { SnippetWithAuthor } from "../../application/snippets/service";
+import type { PeriodType } from "../../domain/period";
 import type { MrkdwnOptions } from "../../adapters/slack/mrkdwn";
-import { t } from "../../i18n/index";
+import { t } from "../../domain/i18n/index";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 import { SnippetCard } from "../components/snippet-card";

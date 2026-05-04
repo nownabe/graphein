@@ -1,6 +1,6 @@
 import type { InferSelectModel } from "drizzle-orm";
-import type { snippetChannels } from "../../db/schema";
-import { t } from "../../i18n/index";
+import type { snippetChannels } from "../../infrastructure/db/schema";
+import { t } from "../../domain/i18n/index";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 import { AdminTabs } from "../components/admin-tabs";

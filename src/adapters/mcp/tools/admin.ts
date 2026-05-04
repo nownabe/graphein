@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { type SQL, and, or, asc, ilike, sql, count as drizzleCount } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Database } from "../../../db/client";
-import { users } from "../../../db/schema";
-import type { UserService } from "../../../users/service";
-import type { SnippetService } from "../../../snippets/service";
-import type { KudosService } from "../../../kudos/service";
+import type { Database } from "../../../infrastructure/db/client";
+import { users } from "../../../infrastructure/db/schema";
+import type { UserService } from "../../../application/users/service";
+import type { SnippetService } from "../../../application/snippets/service";
+import type { KudosService } from "../../../application/kudos/service";
 import type { McpContext } from "../types";
 
 import {
@@ -13,7 +13,7 @@ import {
   decodePageToken,
   filterFingerprint,
   UUID_REGEX,
-} from "../../../pagination";
+} from "../../../domain/pagination";
 import { errorResult, jsonResult } from "./helpers";
 
 // ---------------------------------------------------------------------------

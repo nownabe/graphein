@@ -12,9 +12,9 @@ import {
   count as drizzleCount,
 } from "drizzle-orm";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { Database } from "../../../db/client";
-import { tasks, taskAssignees, taskOwners, users } from "../../../db/schema";
-import type { TaskService } from "../../../tasks/service";
+import type { Database } from "../../../infrastructure/db/client";
+import { tasks, taskAssignees, taskOwners, users } from "../../../infrastructure/db/schema";
+import type { TaskService } from "../../../application/tasks/service";
 import type { McpContext } from "../types";
 
 import {
@@ -24,7 +24,7 @@ import {
   validateTimestampCursor,
   filterFingerprint,
   UUID_REGEX,
-} from "../../../pagination";
+} from "../../../domain/pagination";
 import { errorResult, jsonResult } from "./helpers";
 
 async function getProgressForTasks(

@@ -10,7 +10,7 @@
 
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
-import * as schema from "../src/db/schema";
+import * as schema from "../src/infrastructure/db/schema";
 
 const DATABASE_URL =
   process.env.DATABASE_URL ?? "postgres://graphein:graphein@localhost:15432/graphein";

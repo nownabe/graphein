@@ -3,8 +3,8 @@ import { Hono } from "hono";
 import { sign, verify } from "hono/jwt";
 import { InvalidClientMetadataError } from "@modelcontextprotocol/sdk/server/auth/errors.js";
 import { GrapheinOAuthProvider } from "./auth-provider";
-import type { OAuthService } from "../../oauth/service";
-import type { SessionHelpers } from "../../auth/session";
+import type { OAuthService } from "../../application/oauth/service";
+import type { SessionHelpers } from "../../application/auth/session";
 
 const JWT_SECRET = "test-mcp-jwt-secret";
 const BASE_URL = "https://graphein.example.com";

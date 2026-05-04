@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { setCookie, deleteCookie, getCookie } from "hono/cookie";
-import type { SessionHelpers } from "../../../auth/session";
-import type { UserService } from "../../../users/service";
+import type { SessionHelpers } from "../../../application/auth/session";
+import type { UserService } from "../../../application/users/service";
 import { LoginPage } from "../../../views/pages/login";
 
 export interface AuthRoutesConfig {

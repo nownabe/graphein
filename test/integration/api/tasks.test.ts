@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { createTaskApiRoutes } from "../../../src/adapters/api/tasks";
-import { createTaskService } from "../../../src/tasks/service";
-import { tasks, taskAssignees, taskOwners } from "../../../src/db/schema";
+import { createTaskService } from "../../../src/application/tasks/service";
+import { tasks, taskAssignees, taskOwners } from "../../../src/infrastructure/db/schema";
 import { db, createUser, buildApiApp, apiRequest, cleanupDb } from "../helpers/api";
 
 const taskService = createTaskService(db);

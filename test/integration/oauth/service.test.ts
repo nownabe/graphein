@@ -1,8 +1,12 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { eq } from "drizzle-orm";
-import { createDb } from "../../../src/db/client";
-import { oauthClients, oauthAuthorizationCodes, oauthRefreshTokens } from "../../../src/db/schema";
-import { createOAuthService } from "../../../src/oauth/service";
+import { createDb } from "../../../src/infrastructure/db/client";
+import {
+  oauthClients,
+  oauthAuthorizationCodes,
+  oauthRefreshTokens,
+} from "../../../src/infrastructure/db/schema";
+import { createOAuthService } from "../../../src/application/oauth/service";
 import { createTestUser, cleanupDb } from "../helpers/db";
 import { TEST_DATABASE_URL } from "../helpers/setup";
 

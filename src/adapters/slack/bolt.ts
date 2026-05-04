@@ -9,15 +9,15 @@ import {
   extractUsergroupMentions,
 } from "./helpers";
 import { blocksToMrkdwn } from "./rich-text";
-import type { UserService } from "../../users/service";
-import type { TaskService } from "../../tasks/service";
-import type { SnippetService } from "../../snippets/service";
-import type { KudosService } from "../../kudos/service";
-import type { UsergroupService } from "../../usergroups/service";
-import { parseKudosMessage } from "../../kudos/parser";
-import type { GeminiClient } from "../../llm/gemini";
-import { t } from "../../i18n";
-import type { Locale } from "../../i18n/messages";
+import type { UserService } from "../../application/users/service";
+import type { TaskService } from "../../application/tasks/service";
+import type { SnippetService } from "../../application/snippets/service";
+import type { KudosService } from "../../application/kudos/service";
+import type { UsergroupService } from "../../application/usergroups/service";
+import { parseKudosMessage } from "../../domain/kudos-parser";
+import type { GeminiClient } from "../../infrastructure/llm/gemini";
+import { t } from "../../domain/i18n";
+import type { Locale } from "../../domain/i18n/messages";
 
 export interface BoltConfig {
   slackBotToken: string;

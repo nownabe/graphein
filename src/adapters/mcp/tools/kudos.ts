@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { KudosService } from "../../../kudos/service";
+import type { KudosService } from "../../../application/kudos/service";
 import type { McpContext } from "../types";
 
 import {
@@ -9,7 +9,7 @@ import {
   isValidIso8601,
   filterFingerprint,
   UUID_REGEX,
-} from "../../../pagination";
+} from "../../../domain/pagination";
 import { errorResult, jsonResult } from "./helpers";
 
 // ---------------------------------------------------------------------------

@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
-import type { KudosService } from "../../../kudos/service";
-import type { SettingsService } from "../../../settings/service";
+import type { KudosService } from "../../../application/kudos/service";
+import type { SettingsService } from "../../../application/settings/service";
 import type { BuildMrkdwnLabels } from "../../../config";
 import {
   computePeriod,
@@ -11,7 +11,7 @@ import {
   parseDateInTimezone,
   formatDateInTimezone,
   type PeriodType,
-} from "../../../snippets/period";
+} from "../../../domain/period";
 import { KudosPage, KudosContentPartial } from "../../../views/pages/kudos";
 
 export interface KudosRoutesDeps {

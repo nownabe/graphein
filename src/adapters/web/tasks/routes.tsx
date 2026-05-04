@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
-import type { TaskService } from "../../../tasks/service";
-import type { UserService } from "../../../users/service";
+import type { TaskService } from "../../../application/tasks/service";
+import type { UserService } from "../../../application/users/service";
 import { HomePage, HomeContentPartial } from "../../../views/pages/home";
 import type { FilterCounts } from "../../../views/pages/home";
 import { ArchivedPage } from "../../../views/pages/archived.tsx";

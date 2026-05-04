@@ -10,7 +10,7 @@ import {
   isNull,
   count as drizzleCount,
 } from "drizzle-orm";
-import type { Database } from "../db/client";
+import type { Database } from "../../infrastructure/db/client";
 import {
   snippets,
   snippetChannels,
@@ -18,7 +18,7 @@ import {
   snippetMentionedUsergroups,
   usergroups,
   users,
-} from "../db/schema";
+} from "../../infrastructure/db/schema";
 
 export interface SnippetWithAuthor {
   id: string;

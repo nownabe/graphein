@@ -1,10 +1,10 @@
 import { OpenAPIHono } from "@hono/zod-openapi";
 import { Scalar } from "@scalar/hono-api-reference";
-import type { Database } from "../../db/client";
-import type { KudosService } from "../../kudos/service";
-import type { SnippetService } from "../../snippets/service";
-import type { TaskService } from "../../tasks/service";
-import type { UserService } from "../../users/service";
+import type { Database } from "../../infrastructure/db/client";
+import type { KudosService } from "../../application/kudos/service";
+import type { SnippetService } from "../../application/snippets/service";
+import type { TaskService } from "../../application/tasks/service";
+import type { UserService } from "../../application/users/service";
 import { createAdminApiRoutes } from "./admin";
 import { createKudosApiRoutes } from "./kudos";
 import { createTaskApiRoutes } from "./tasks";

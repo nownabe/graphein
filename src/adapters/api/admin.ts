@@ -1,11 +1,11 @@
 import { z } from "@hono/zod-openapi";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
 import { or, ilike, asc, and, sql, count as drizzleCount } from "drizzle-orm";
-import type { Database } from "../../db/client";
-import { users } from "../../db/schema";
-import type { UserService } from "../../users/service";
-import type { SnippetService } from "../../snippets/service";
-import type { KudosService } from "../../kudos/service";
+import type { Database } from "../../infrastructure/db/client";
+import { users } from "../../infrastructure/db/schema";
+import type { UserService } from "../../application/users/service";
+import type { SnippetService } from "../../application/snippets/service";
+import type { KudosService } from "../../application/kudos/service";
 import { ErrorResponseSchema, UnauthorizedResponse, RateLimitedResponse } from "./schemas";
 
 // ---------------------------------------------------------------------------

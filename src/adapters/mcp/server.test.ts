@@ -1,10 +1,10 @@
 import { describe, test, expect } from "bun:test";
 import { createMcpServer, type McpServerConfig } from "./server";
-import type { Database } from "../../db/client";
-import type { KudosService } from "../../kudos/service";
-import type { SnippetService } from "../../snippets/service";
-import type { TaskService } from "../../tasks/service";
-import type { UserService } from "../../users/service";
+import type { Database } from "../../infrastructure/db/client";
+import type { KudosService } from "../../application/kudos/service";
+import type { SnippetService } from "../../application/snippets/service";
+import type { TaskService } from "../../application/tasks/service";
+import type { UserService } from "../../application/users/service";
 
 const mockDb = {} as Database;
 const mockTaskService = {} as TaskService;
