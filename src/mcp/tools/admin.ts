@@ -8,55 +8,8 @@ import type { SnippetService } from "../../snippets/service";
 import type { KudosService } from "../../kudos/service";
 import type { McpContext } from "../types";
 
-// ---------------------------------------------------------------------------
-// Shared helpers (mirrored from src/mcp/tools/tasks.ts)
-// ---------------------------------------------------------------------------
-
-interface PageCursor {
-  fp: string;
-  v: string;
-  id?: string;
-}
-
-function encodePageToken(cursor: PageCursor): string {
-  return Buffer.from(JSON.stringify(cursor)).toString("base64url");
-}
-
-function decodePageToken(token: string): PageCursor | null {
-  try {
-    const raw = Buffer.from(token, "base64url").toString("utf-8");
-    const parsed = JSON.parse(raw);
-    if (typeof parsed.fp !== "string" || typeof parsed.v !== "string") return null;
-    if (parsed.id !== undefined && typeof parsed.id !== "string") return null;
-    return parsed as PageCursor;
-  } catch {
-    return null;
-  }
-}
-
-const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-
-function filterFingerprint(params: Record<string, string | undefined>): string {
-  const sorted = Object.entries(params)
-    .filter(([_, v]) => v !== undefined)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([k, v]) => `${k}=${v}`)
-    .join("&");
-  return sorted;
-}
-
-function errorResult(code: string, message: string) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify({ error: { code, message } }) }],
-    isError: true,
-  };
-}
-
-function jsonResult(data: unknown) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(data) }],
-  };
-}
+import { encodePageToken, decodePageToken, filterFingerprint, UUID_REGEX } from "../../pagination";
+import { errorResult, jsonResult } from "./helpers";
 
 // ---------------------------------------------------------------------------
 // Tool registration
