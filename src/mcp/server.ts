@@ -43,7 +43,7 @@ export function createMcpServer(config: McpServerConfig): McpServer {
     getMcpContext,
   });
   registerSnippetTools(server, {
-    db: config.db,
+    snippetService: config.snippetService,
     getMcpContext,
   });
   registerKudosTools(server, {

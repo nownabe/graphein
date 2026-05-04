@@ -1,5 +1,6 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { createSnippetApiRoutes } from "../../../src/api/snippets";
+import { createSnippetService } from "../../../src/snippets/service";
 import {
   snippets,
   snippetMentionedUsers,
@@ -8,8 +9,10 @@ import {
 } from "../../../src/db/schema";
 import { db, createUser, buildApiApp, apiRequest, cleanupDb } from "../helpers/api";
 
+const snippetService = createSnippetService(db);
+
 function buildApp(mockUser: Awaited<ReturnType<typeof createUser>>) {
-  const snippetRoutes = createSnippetApiRoutes({ db });
+  const snippetRoutes = createSnippetApiRoutes({ snippetService });
   return buildApiApp(mockUser, "user", snippetRoutes);
 }
 

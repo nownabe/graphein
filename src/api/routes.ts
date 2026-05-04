@@ -58,7 +58,7 @@ export function createApiRoutes(deps: ApiRouteDeps) {
   app.route("/", taskApiRoutes);
 
   // --- Snippet API routes ---
-  const snippetApiRoutes = createSnippetApiRoutes({ db: deps.db });
+  const snippetApiRoutes = createSnippetApiRoutes({ snippetService: deps.snippetService });
   app.route("/", snippetApiRoutes);
 
   // --- Kudos API routes ---
