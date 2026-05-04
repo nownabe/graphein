@@ -30,7 +30,12 @@ const fakeUser = {
 function createMockSession(overrides: Partial<SessionHelpers> = {}): SessionHelpers {
   return {
     createToken: mock(async () => "jwt-token"),
-    verifyToken: mock(async () => ({ sub: "user-uuid", name: "Test", typ: "session", exp: 9999999999 })),
+    verifyToken: mock(async () => ({
+      sub: "user-uuid",
+      name: "Test",
+      typ: "session",
+      exp: 9999999999,
+    })),
     ...overrides,
   } as unknown as SessionHelpers;
 }

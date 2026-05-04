@@ -202,10 +202,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
     // Verify the signed request token to recover the original authorization params
     let reqPayload: Record<string, unknown>;
     try {
-      reqPayload = (await verify(requestToken, this.jwtSecret, "HS256")) as Record<
-        string,
-        unknown
-      >;
+      reqPayload = (await verify(requestToken, this.jwtSecret, "HS256")) as Record<string, unknown>;
     } catch {
       return c.text("Invalid or expired consent request", 400);
     }

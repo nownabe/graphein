@@ -771,10 +771,10 @@ HTTP-level errors (401 Unauthorized, 403 Forbidden) are handled before reaching 
 
 ## Configuration
 
-| Variable    | Description                                                     | Required       |
-| ----------- | --------------------------------------------------------------- | -------------- |
-| `BASE_URL`  | Existing. Used as the OAuth issuer URL and resource server base | Yes (existing) |
-| `JWT_SECRET`| Existing. Signs both session and MCP OAuth access tokens (HS256)| Yes (existing) |
+| Variable     | Description                                                      | Required       |
+| ------------ | ---------------------------------------------------------------- | -------------- |
+| `BASE_URL`   | Existing. Used as the OAuth issuer URL and resource server base  | Yes (existing) |
+| `JWT_SECRET` | Existing. Signs both session and MCP OAuth access tokens (HS256) | Yes (existing) |
 
 Cross-boundary token confusion between session tokens and MCP access tokens is prevented by the `typ` claim (`"mcp+jwt"` for MCP tokens) rather than separate signing keys.
 
