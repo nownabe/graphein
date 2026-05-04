@@ -10,7 +10,7 @@ import { findUserBySlackId } from "./db";
 export async function createJwtToken(userId: string, displayName: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const exp = now + 60 * 60 * 24; // 1 day for tests
-  return sign({ sub: userId, name: displayName, exp }, env.jwtSecret);
+  return sign({ sub: userId, name: displayName, typ: "session", exp }, env.jwtSecret);
 }
 
 /**

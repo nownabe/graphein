@@ -204,7 +204,7 @@ describe("GrapheinOAuthProvider", () => {
 
     test("shows consent page with POST forms when user is authenticated", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", typ: "session", exp: 9999999999 }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
@@ -265,7 +265,7 @@ describe("GrapheinOAuthProvider", () => {
 
     test("renders consent page in Japanese when locale cookie is ja", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", typ: "session", exp: 9999999999 }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
@@ -336,7 +336,7 @@ describe("GrapheinOAuthProvider", () => {
 
     test("generates code and redirects on approve", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", typ: "session", exp: 9999999999 }),
       });
       mockOAuthService = createMockOAuthService({
         createAuthorizationCode: async () => "auth-code-123",
@@ -373,7 +373,7 @@ describe("GrapheinOAuthProvider", () => {
 
     test("redirects with error on deny", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", typ: "session", exp: 9999999999 }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
@@ -422,7 +422,7 @@ describe("GrapheinOAuthProvider", () => {
 
     test("returns 400 for missing request_token", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", typ: "session", exp: 9999999999 }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
@@ -448,7 +448,7 @@ describe("GrapheinOAuthProvider", () => {
 
     test("returns 400 for tampered request_token", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", typ: "session", exp: 9999999999 }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,
@@ -480,7 +480,7 @@ describe("GrapheinOAuthProvider", () => {
 
     test("returns 400 for invalid decision", async () => {
       mockSession = createMockSession({
-        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", exp: 9999999999 }),
+        verifyToken: async () => ({ sub: "user-uuid", name: "Test User", typ: "session", exp: 9999999999 }),
       });
       provider = new GrapheinOAuthProvider(
         mockOAuthService,

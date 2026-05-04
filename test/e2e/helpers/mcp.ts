@@ -60,7 +60,7 @@ export async function registerOAuthClient(name = "E2E Test Client"): Promise<OAu
  */
 async function createSessionToken(userId: string, displayName: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
-  return sign({ sub: userId, name: displayName, exp: now + 3600 }, env.jwtSecret);
+  return sign({ sub: userId, name: displayName, typ: "session", exp: now + 3600 }, env.jwtSecret);
 }
 
 /**
