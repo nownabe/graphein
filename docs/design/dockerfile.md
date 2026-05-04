@@ -169,6 +169,7 @@ public/styles.css
 ```
 
 Key exclusions:
+
 - `node_modules` — rebuilt inside the image
 - `.env*`, `.envrc` — secrets must not be baked in
 - `test/`, `tools/`, `scripts/` — not needed at runtime
