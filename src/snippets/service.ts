@@ -1,4 +1,15 @@
-import { eq, and, or, desc, gte, lt, sql, inArray, isNull } from "drizzle-orm";
+import {
+  type SQL,
+  eq,
+  and,
+  or,
+  desc,
+  gte,
+  lt,
+  inArray,
+  isNull,
+  count as drizzleCount,
+} from "drizzle-orm";
 import type { Database } from "../db/client";
 import {
   snippets,
@@ -26,14 +37,28 @@ export interface SnippetWithAuthor {
   mentionedUsergroups: { id: string; name: string; handle: string | null }[];
 }
 
-export interface ListSnippetsFilters {
+export interface SnippetFilters {
   mentionedUserIds?: string[];
   mentionedUsergroupIds?: string[];
   postedById?: string;
   periodStart?: Date;
   periodEnd?: Date;
+}
+
+export interface ListSnippetsFilters extends SnippetFilters {
   limit?: number;
   offset?: number;
+}
+
+export interface KeysetPaginationParams {
+  pageSize: number;
+  cursor?: { postedAt: Date; id: string };
+}
+
+export interface KeysetResult {
+  snippets: SnippetWithAuthor[];
+  total: number;
+  hasNextPage: boolean;
 }
 
 export function createSnippetService(db: Database) {
@@ -82,10 +107,12 @@ export function createSnippetService(db: Database) {
     return snippet;
   }
 
-  async function listSnippets(
-    filters: ListSnippetsFilters,
-  ): Promise<{ snippets: SnippetWithAuthor[]; total: number }> {
-    const conditions = [];
+  // ---------------------------------------------------------------------------
+  // Shared query helpers
+  // ---------------------------------------------------------------------------
+
+  function buildFilterConditions(filters: SnippetFilters): SQL[] {
+    const conditions: SQL[] = [];
 
     if (filters.postedById) {
       conditions.push(eq(snippets.postedById, filters.postedById));
@@ -97,35 +124,124 @@ export function createSnippetService(db: Database) {
       conditions.push(lt(snippets.postedAt, filters.periodEnd));
     }
 
-    // For mention filters, combine user and group mentions with OR
-    const mentionConditions = [];
+    const mentionConditions: SQL[] = [];
     if (filters.mentionedUserIds && filters.mentionedUserIds.length > 0) {
       const mentionedSnippetIds = db
         .select({ snippetId: snippetMentionedUsers.snippetId })
         .from(snippetMentionedUsers)
         .where(inArray(snippetMentionedUsers.userId, filters.mentionedUserIds));
-      mentionConditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
+      mentionConditions.push(inArray(snippets.id, mentionedSnippetIds));
     }
     if (filters.mentionedUsergroupIds && filters.mentionedUsergroupIds.length > 0) {
       const mentionedSnippetIds = db
         .select({ snippetId: snippetMentionedUsergroups.snippetId })
         .from(snippetMentionedUsergroups)
         .where(inArray(snippetMentionedUsergroups.usergroupId, filters.mentionedUsergroupIds));
-      mentionConditions.push(sql`${snippets.id} IN (${mentionedSnippetIds})`);
+      mentionConditions.push(inArray(snippets.id, mentionedSnippetIds));
     }
     if (mentionConditions.length > 0) {
-      conditions.push(or(...mentionConditions)!);
+      conditions.push(
+        mentionConditions.length === 1 ? mentionConditions[0] : or(...mentionConditions)!,
+      );
     }
 
-    const where = conditions.length > 0 ? and(...conditions) : undefined;
+    return conditions;
+  }
 
-    // Count total
-    const [{ total }] = await db
-      .select({ total: sql<number>`count(*)::int` })
-      .from(snippets)
-      .where(where);
+  async function fetchMentions(snippetIds: string[]) {
+    const mentionedUsersMap = new Map<string, { id: string; displayName: string }[]>();
+    const mentionedGroupsMap = new Map<
+      string,
+      { id: string; name: string; handle: string | null }[]
+    >();
 
-    // Fetch snippets with poster info
+    if (snippetIds.length === 0) {
+      return { mentionedUsersMap, mentionedGroupsMap };
+    }
+
+    const mentionedUsersRows = await db
+      .select({
+        snippetId: snippetMentionedUsers.snippetId,
+        userId: snippetMentionedUsers.userId,
+        displayName: users.displayName,
+      })
+      .from(snippetMentionedUsers)
+      .innerJoin(users, eq(snippetMentionedUsers.userId, users.id))
+      .where(inArray(snippetMentionedUsers.snippetId, snippetIds));
+
+    for (const row of mentionedUsersRows) {
+      const list = mentionedUsersMap.get(row.snippetId) ?? [];
+      list.push({ id: row.userId, displayName: row.displayName });
+      mentionedUsersMap.set(row.snippetId, list);
+    }
+
+    const mentionedGroupsRows = await db
+      .select({
+        snippetId: snippetMentionedUsergroups.snippetId,
+        usergroupId: snippetMentionedUsergroups.usergroupId,
+        name: usergroups.name,
+        handle: usergroups.handle,
+      })
+      .from(snippetMentionedUsergroups)
+      .innerJoin(usergroups, eq(snippetMentionedUsergroups.usergroupId, usergroups.id))
+      .where(inArray(snippetMentionedUsergroups.snippetId, snippetIds));
+
+    for (const row of mentionedGroupsRows) {
+      const list = mentionedGroupsMap.get(row.snippetId) ?? [];
+      list.push({ id: row.usergroupId, name: row.name, handle: row.handle });
+      mentionedGroupsMap.set(row.snippetId, list);
+    }
+
+    return { mentionedUsersMap, mentionedGroupsMap };
+  }
+
+  type SnippetRow = {
+    id: string;
+    content: string;
+    postedAt: Date;
+    slackMessageTs: string | null;
+    slackChannelId: string | null;
+    slackPermalink: string | null;
+    postedById: string;
+    posterDisplayName: string;
+    posterAvatarUrl: string | null;
+  };
+
+  function hydrateSnippets(
+    rows: SnippetRow[],
+    mentionedUsersMap: Map<string, { id: string; displayName: string }[]>,
+    mentionedGroupsMap: Map<string, { id: string; name: string; handle: string | null }[]>,
+  ): SnippetWithAuthor[] {
+    return rows.map((row) => ({
+      id: row.id,
+      content: row.content,
+      postedAt: row.postedAt,
+      slackMessageTs: row.slackMessageTs,
+      slackChannelId: row.slackChannelId,
+      slackPermalink: row.slackPermalink,
+      postedById: row.postedById,
+      poster: {
+        id: row.postedById,
+        displayName: row.posterDisplayName,
+        avatarUrl: row.posterAvatarUrl,
+      },
+      mentionedUsers: mentionedUsersMap.get(row.id) ?? [],
+      mentionedUsergroups: mentionedGroupsMap.get(row.id) ?? [],
+    }));
+  }
+
+  // ---------------------------------------------------------------------------
+  // Public listing methods
+  // ---------------------------------------------------------------------------
+
+  async function listSnippets(
+    filters: ListSnippetsFilters,
+  ): Promise<{ snippets: SnippetWithAuthor[]; total: number }> {
+    const filterConditions = buildFilterConditions(filters);
+    const where = filterConditions.length > 0 ? and(...filterConditions) : undefined;
+
+    const [{ total }] = await db.select({ total: drizzleCount() }).from(snippets).where(where);
+
     const limit = filters.limit ?? 50;
     const offset = filters.offset ?? 0;
 
@@ -144,86 +260,67 @@ export function createSnippetService(db: Database) {
       .from(snippets)
       .innerJoin(users, eq(snippets.postedById, users.id))
       .where(where)
-      .orderBy(desc(snippets.postedAt))
+      .orderBy(desc(snippets.postedAt), desc(snippets.id))
       .limit(limit)
       .offset(offset);
 
-    // Fetch mentions for all snippets
     const snippetIds = rows.map((r) => r.id);
-    const result: SnippetWithAuthor[] = [];
+    const { mentionedUsersMap, mentionedGroupsMap } = await fetchMentions(snippetIds);
 
-    if (snippetIds.length === 0) {
-      return { snippets: [], total };
-    }
+    return { snippets: hydrateSnippets(rows, mentionedUsersMap, mentionedGroupsMap), total };
+  }
 
-    const mentionedUsersRows = await db
-      .select({
-        snippetId: snippetMentionedUsers.snippetId,
-        userId: snippetMentionedUsers.userId,
-        displayName: users.displayName,
-      })
-      .from(snippetMentionedUsers)
-      .innerJoin(users, eq(snippetMentionedUsers.userId, users.id))
-      .where(
-        sql`${snippetMentionedUsers.snippetId} IN (${sql.join(
-          snippetIds.map((id) => sql`${id}`),
-          sql`, `,
-        )})`,
+  async function listSnippetsKeyset(
+    filters: SnippetFilters,
+    pagination: KeysetPaginationParams,
+  ): Promise<KeysetResult> {
+    const filterConditions = buildFilterConditions(filters);
+    const where = filterConditions.length > 0 ? and(...filterConditions) : undefined;
+
+    const [{ total }] = await db.select({ total: drizzleCount() }).from(snippets).where(where);
+
+    // Add cursor condition for keyset pagination
+    const allConditions = [...filterConditions];
+    if (pagination.cursor) {
+      const { postedAt, id } = pagination.cursor;
+      allConditions.push(
+        or(
+          lt(snippets.postedAt, postedAt),
+          and(eq(snippets.postedAt, postedAt), lt(snippets.id, id)),
+        )!,
       );
+    }
+    const allWhere = allConditions.length > 0 ? and(...allConditions) : undefined;
 
-    const mentionedGroupsRows = await db
+    const rows = await db
       .select({
-        snippetId: snippetMentionedUsergroups.snippetId,
-        usergroupId: snippetMentionedUsergroups.usergroupId,
-        name: usergroups.name,
-        handle: usergroups.handle,
+        id: snippets.id,
+        content: snippets.content,
+        postedAt: snippets.postedAt,
+        slackMessageTs: snippets.slackMessageTs,
+        slackChannelId: snippets.slackChannelId,
+        slackPermalink: snippets.slackPermalink,
+        postedById: snippets.postedById,
+        posterDisplayName: users.displayName,
+        posterAvatarUrl: users.avatarUrl,
       })
-      .from(snippetMentionedUsergroups)
-      .innerJoin(usergroups, eq(snippetMentionedUsergroups.usergroupId, usergroups.id))
-      .where(
-        sql`${snippetMentionedUsergroups.snippetId} IN (${sql.join(
-          snippetIds.map((id) => sql`${id}`),
-          sql`, `,
-        )})`,
-      );
+      .from(snippets)
+      .innerJoin(users, eq(snippets.postedById, users.id))
+      .where(allWhere)
+      .orderBy(desc(snippets.postedAt), desc(snippets.id))
+      .limit(pagination.pageSize + 1);
 
-    const mentionedUsersMap = new Map<string, { id: string; displayName: string }[]>();
-    for (const row of mentionedUsersRows) {
-      const list = mentionedUsersMap.get(row.snippetId) ?? [];
-      list.push({ id: row.userId, displayName: row.displayName });
-      mentionedUsersMap.set(row.snippetId, list);
-    }
+    const hasNextPage = rows.length > pagination.pageSize;
+    const page = hasNextPage ? rows.slice(0, pagination.pageSize) : rows;
 
-    const mentionedGroupsMap = new Map<
-      string,
-      { id: string; name: string; handle: string | null }[]
-    >();
-    for (const row of mentionedGroupsRows) {
-      const list = mentionedGroupsMap.get(row.snippetId) ?? [];
-      list.push({ id: row.usergroupId, name: row.name, handle: row.handle });
-      mentionedGroupsMap.set(row.snippetId, list);
-    }
+    const snippetIds = page.map((r) => r.id);
+    const { mentionedUsersMap, mentionedGroupsMap } = await fetchMentions(snippetIds);
 
-    for (const row of rows) {
-      result.push({
-        id: row.id,
-        content: row.content,
-        postedAt: row.postedAt,
-        slackMessageTs: row.slackMessageTs,
-        slackChannelId: row.slackChannelId,
-        slackPermalink: row.slackPermalink,
-        postedById: row.postedById,
-        poster: {
-          id: row.postedById,
-          displayName: row.posterDisplayName,
-          avatarUrl: row.posterAvatarUrl,
-        },
-        mentionedUsers: mentionedUsersMap.get(row.id) ?? [],
-        mentionedUsergroups: mentionedGroupsMap.get(row.id) ?? [],
-      });
-    }
-
-    return { snippets: result, total };
+    return {
+      snippets: hydrateSnippets(page, mentionedUsersMap, mentionedGroupsMap),
+      total,
+      hasNextPage,
+    };
   }
 
   async function listSnippetChannels() {
@@ -288,6 +385,7 @@ export function createSnippetService(db: Database) {
   return {
     createSnippet,
     listSnippets,
+    listSnippetsKeyset,
     listSnippetChannels,
     addSnippetChannel,
     removeSnippetChannel,

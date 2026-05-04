@@ -1,14 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import { type SQL, and, eq, lt, gte, or, desc, inArray, count as drizzleCount } from "drizzle-orm";
-import type { Database } from "../db/client";
-import {
-  snippets,
-  snippetMentionedUsers,
-  snippetMentionedUsergroups,
-  users,
-  usergroups,
-} from "../db/schema";
+import type { SnippetService } from "../snippets/service";
 import {
   ErrorResponseSchema,
   EmbeddedUserWithAvatarSchema,
@@ -142,8 +134,8 @@ const listSnippetsRoute = createRoute({
 // Factory
 // ---------------------------------------------------------------------------
 
-export function createSnippetApiRoutes(deps: { db: Database }) {
-  const { db } = deps;
+export function createSnippetApiRoutes(deps: { snippetService: SnippetService }) {
+  const { snippetService } = deps;
   const app = new OpenAPIHono({
     defaultHook: (result, c) => {
       if (!result.success) {
@@ -177,158 +169,51 @@ export function createSnippetApiRoutes(deps: { db: Database }) {
     });
 
     // Decode cursor
-    let cursorCondition: SQL | undefined;
+    let cursor: { postedAt: Date; id: string } | undefined;
     if (query.pageToken) {
-      const cursor = decodePageToken(query.pageToken);
-      if (!cursor || cursor.fp !== fp || !cursor.id || !validateTimestampCursor(cursor)) {
+      const decoded = decodePageToken(query.pageToken);
+      if (!decoded || decoded.fp !== fp || !decoded.id || !validateTimestampCursor(decoded)) {
         return c.json(
           { error: { code: "validation_error", message: "Invalid or mismatched pageToken." } },
           422,
         );
       }
-      const cursorTime = new Date(cursor.v);
-      // Keyset: (postedAt, id) < (cursorTime, cursorId)
-      cursorCondition = or(
-        lt(snippets.postedAt, cursorTime),
-        and(eq(snippets.postedAt, cursorTime), lt(snippets.id, cursor.id)),
-      );
+      cursor = { postedAt: new Date(decoded.v), id: decoded.id };
     }
 
-    // Build filter conditions (without cursor)
-    const filterConditions: SQL[] = [];
+    const result = await snippetService.listSnippetsKeyset(
+      {
+        postedById: query.postedBy,
+        mentionedUserIds: query.mentionedUser ? [query.mentionedUser] : undefined,
+        mentionedUsergroupIds: query.mentionedUsergroup ? [query.mentionedUsergroup] : undefined,
+        periodStart: query.periodStart ? new Date(query.periodStart) : undefined,
+        periodEnd: query.periodEnd ? new Date(query.periodEnd) : undefined,
+      },
+      { pageSize: query.pageSize, cursor },
+    );
 
-    if (query.postedBy) {
-      filterConditions.push(eq(snippets.postedById, query.postedBy));
-    }
-    if (query.periodStart) {
-      filterConditions.push(gte(snippets.postedAt, new Date(query.periodStart)));
-    }
-    if (query.periodEnd) {
-      filterConditions.push(lt(snippets.postedAt, new Date(query.periodEnd)));
-    }
-
-    // mentionedUser and mentionedUsergroup are combined with OR
-    const mentionConditions: SQL[] = [];
-    if (query.mentionedUser) {
-      const mentionedSnippetIds = db
-        .select({ snippetId: snippetMentionedUsers.snippetId })
-        .from(snippetMentionedUsers)
-        .where(eq(snippetMentionedUsers.userId, query.mentionedUser));
-      mentionConditions.push(inArray(snippets.id, mentionedSnippetIds));
-    }
-    if (query.mentionedUsergroup) {
-      const mentionedSnippetIds = db
-        .select({ snippetId: snippetMentionedUsergroups.snippetId })
-        .from(snippetMentionedUsergroups)
-        .where(eq(snippetMentionedUsergroups.usergroupId, query.mentionedUsergroup));
-      mentionConditions.push(inArray(snippets.id, mentionedSnippetIds));
-    }
-    if (mentionConditions.length > 0) {
-      filterConditions.push(
-        mentionConditions.length === 1 ? mentionConditions[0] : or(...mentionConditions)!,
-      );
-    }
-
-    const where = filterConditions.length > 0 ? and(...filterConditions) : undefined;
-
-    // Count total
-    const [{ total }] = await db.select({ total: drizzleCount() }).from(snippets).where(where);
-
-    // Fetch page with cursor
-    const allConditions = cursorCondition
-      ? [...filterConditions, cursorCondition]
-      : filterConditions;
-    const allWhere = allConditions.length > 0 ? and(...allConditions) : undefined;
-
-    const rows = await db
-      .select({
-        id: snippets.id,
-        content: snippets.content,
-        postedAt: snippets.postedAt,
-        slackPermalink: snippets.slackPermalink,
-        postedById: snippets.postedById,
-        posterDisplayName: users.displayName,
-        posterAvatarUrl: users.avatarUrl,
-      })
-      .from(snippets)
-      .innerJoin(users, eq(snippets.postedById, users.id))
-      .where(allWhere)
-      .orderBy(desc(snippets.postedAt), desc(snippets.id))
-      .limit(query.pageSize + 1);
-
-    const hasNext = rows.length > query.pageSize;
-    const page = hasNext ? rows.slice(0, query.pageSize) : rows;
-
-    // Fetch mentions for all snippets in the page
-    const snippetIds = page.map((r) => r.id);
-
-    let mentionedUsersMap = new Map<string, { id: string; displayName: string }[]>();
-    let mentionedGroupsMap = new Map<
-      string,
-      { id: string; name: string; handle: string | null }[]
-    >();
-
-    if (snippetIds.length > 0) {
-      const mentionedUsersRows = await db
-        .select({
-          snippetId: snippetMentionedUsers.snippetId,
-          userId: snippetMentionedUsers.userId,
-          displayName: users.displayName,
-        })
-        .from(snippetMentionedUsers)
-        .innerJoin(users, eq(snippetMentionedUsers.userId, users.id))
-        .where(inArray(snippetMentionedUsers.snippetId, snippetIds));
-
-      for (const row of mentionedUsersRows) {
-        const list = mentionedUsersMap.get(row.snippetId) ?? [];
-        list.push({ id: row.userId, displayName: row.displayName });
-        mentionedUsersMap.set(row.snippetId, list);
-      }
-
-      const mentionedGroupsRows = await db
-        .select({
-          snippetId: snippetMentionedUsergroups.snippetId,
-          usergroupId: snippetMentionedUsergroups.usergroupId,
-          name: usergroups.name,
-          handle: usergroups.handle,
-        })
-        .from(snippetMentionedUsergroups)
-        .innerJoin(usergroups, eq(snippetMentionedUsergroups.usergroupId, usergroups.id))
-        .where(inArray(snippetMentionedUsergroups.snippetId, snippetIds));
-
-      for (const row of mentionedGroupsRows) {
-        const list = mentionedGroupsMap.get(row.snippetId) ?? [];
-        list.push({ id: row.usergroupId, name: row.name, handle: row.handle });
-        mentionedGroupsMap.set(row.snippetId, list);
-      }
-    }
-
-    const lastRow = page[page.length - 1];
+    const lastSnippet = result.snippets[result.snippets.length - 1];
     const nextPageToken =
-      hasNext && lastRow
+      result.hasNextPage && lastSnippet
         ? encodePageToken({
             fp,
-            v: lastRow.postedAt.toISOString(),
-            id: lastRow.id,
+            v: lastSnippet.postedAt.toISOString(),
+            id: lastSnippet.id,
           })
         : "";
 
     return c.json(
       {
-        snippets: page.map((r) => ({
-          id: r.id,
-          content: r.content,
-          postedAt: r.postedAt.toISOString(),
-          slackPermalink: r.slackPermalink,
-          postedBy: {
-            id: r.postedById,
-            displayName: r.posterDisplayName,
-            avatarUrl: r.posterAvatarUrl,
-          },
-          mentionedUsers: mentionedUsersMap.get(r.id) ?? [],
-          mentionedUsergroups: mentionedGroupsMap.get(r.id) ?? [],
+        snippets: result.snippets.map((s) => ({
+          id: s.id,
+          content: s.content,
+          postedAt: s.postedAt.toISOString(),
+          slackPermalink: s.slackPermalink,
+          postedBy: s.poster,
+          mentionedUsers: s.mentionedUsers,
+          mentionedUsergroups: s.mentionedUsergroups,
         })),
-        totalSize: total,
+        totalSize: result.total,
         nextPageToken,
       },
       200,
