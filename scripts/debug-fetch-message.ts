@@ -1,4 +1,4 @@
-import { boltApp } from "../src/slack/bolt";
+import { boltApp } from "../src/adapters/slack/bolt";
 
 const res = await boltApp.client.conversations.history({
   channel: "C0AR8RZMFHC",
