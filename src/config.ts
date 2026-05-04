@@ -30,7 +30,7 @@ export interface HonoAppConfig {
   settingsService: SettingsService;
   apiKeyService: ApiKeyService;
   oauthService: OAuthService;
-  mcpJwtSecret: string;
+  jwtSecret: string;
   buildMrkdwnLabels: BuildMrkdwnLabels;
   resolveChannelName: ResolveChannelName;
   slackReceiver?: HonoReceiver;

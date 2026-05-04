@@ -194,7 +194,7 @@ Fine-grained scopes (e.g., `tasks:read`, `tasks:write`, `admin`) can be added in
 
 ### Access Token Format
 
-Access tokens are JWTs signed with HS256 using a **dedicated signing key** (`MCP_JWT_SECRET`), separate from the session JWT secret. This prevents cross-boundary token confusion — a browser session token cannot be used as an MCP access token, and vice versa, even if the claims happen to overlap.
+Access tokens are JWTs signed with HS256 using `JWT_SECRET` (the same key used for browser session tokens). Cross-boundary token confusion is prevented by the `typ` claim — MCP access tokens carry `typ: "mcp+jwt"`, while session tokens have no `typ` claim. The `verifyAccessToken` method rejects any token without `typ: "mcp+jwt"`, and the session `verifyToken` helper rejects tokens that don't match the session payload shape.
 
 ```json
 {
@@ -207,11 +207,9 @@ Access tokens are JWTs signed with HS256 using a **dedicated signing key** (`MCP
 }
 ```
 
-The `typ` claim provides an additional safeguard for token type disambiguation.
-
 The MCP resource server middleware verifies:
 
-1. JWT signature is valid (using `MCP_JWT_SECRET`)
+1. JWT signature is valid (using `JWT_SECRET`)
 2. `typ` claim equals `mcp+jwt`
 3. `aud` matches the MCP server URL (from the `resource` parameter)
 4. Token is not expired
@@ -551,7 +549,7 @@ export class GrapheinOAuthProvider implements OAuthServerProvider {
     private userService: UserService,
     private session: SessionHelpers,
     private baseUrl: string,
-    private mcpJwtSecret: string, // Separate from session JWT secret
+    private jwtSecret: string,
   ) {}
 
   get clientsStore() {
@@ -593,7 +591,7 @@ export class GrapheinOAuthProvider implements OAuthServerProvider {
   }
 
   async verifyAccessToken(token: string) {
-    // 1. Verify JWT signature (HS256 with mcpJwtSecret)
+    // 1. Verify JWT signature (HS256 with jwtSecret)
     // 2. Check typ === "mcp+jwt", aud matches resource URL
     // 3. Check exp claim
     // 4. Look up user, verify not deactivated
@@ -623,7 +621,7 @@ const oauthProvider = new GrapheinOAuthProvider(
   userService,
   session,
   config.baseUrl,
-  mcpJwtSecret, // Separate from session JWT secret
+  jwtSecret,
 );
 
 app.route(
@@ -773,12 +771,12 @@ HTTP-level errors (401 Unauthorized, 403 Forbidden) are handled before reaching 
 
 ## Configuration
 
-| Variable         | Description                                                     | Required       |
-| ---------------- | --------------------------------------------------------------- | -------------- |
-| `BASE_URL`       | Existing. Used as the OAuth issuer URL and resource server base | Yes (existing) |
-| `MCP_JWT_SECRET` | Dedicated signing key for MCP OAuth access tokens (HS256)       | Yes (new)      |
+| Variable    | Description                                                     | Required       |
+| ----------- | --------------------------------------------------------------- | -------------- |
+| `BASE_URL`  | Existing. Used as the OAuth issuer URL and resource server base | Yes (existing) |
+| `JWT_SECRET`| Existing. Signs both session and MCP OAuth access tokens (HS256)| Yes (existing) |
 
-`MCP_JWT_SECRET` must be different from `JWT_SECRET` (used for browser session tokens) to prevent cross-boundary token confusion.
+Cross-boundary token confusion between session tokens and MCP access tokens is prevented by the `typ` claim (`"mcp+jwt"` for MCP tokens) rather than separate signing keys.
 
 ---
 

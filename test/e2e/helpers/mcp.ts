@@ -307,7 +307,7 @@ export async function createMcpAccessToken(userId: string, scope = "graphein"): 
       exp: now + 3600,
       iat: now,
     },
-    env.mcpJwtSecret,
+    env.jwtSecret,
     "HS256",
   );
 }

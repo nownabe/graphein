@@ -136,7 +136,7 @@ test.describe("MCP OAuth flow", () => {
         exp: now - 60, // expired 1 minute ago
         iat: now - 120,
       },
-      env.mcpJwtSecret,
+      env.jwtSecret,
       "HS256",
     );
 

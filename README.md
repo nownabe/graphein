@@ -38,8 +38,7 @@ After creating the app:
 | `SLACK_CLIENT_ID`      | Slack OAuth client ID. Found in your Slack App's **Basic Information → App Credentials** section        |
 | `SLACK_CLIENT_SECRET`  | Slack OAuth client secret. Found in your Slack App's **Basic Information → App Credentials** section    |
 | `GEMINI_API_KEY`       | Google Gemini API key. Generate at [Google AI Studio](https://aistudio.google.com/apikey)               |
-| `JWT_SECRET`           | Secret key for signing session tokens. Generate with `openssl rand -hex 32`                             |
-| `MCP_JWT_SECRET`       | Secret key for signing MCP OAuth tokens. Generate with `openssl rand -hex 32`                           |
+| `JWT_SECRET`           | Secret key for signing session and MCP OAuth tokens. Generate with `openssl rand -hex 32`               |
 | `BASE_URL`             | Public URL where Graphein is hosted (e.g., `https://graphein.example.com`)                              |
 
 Optional:

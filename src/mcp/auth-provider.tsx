@@ -66,7 +66,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
     private userService: UserService,
     private session: SessionHelpers,
     private baseUrl: string,
-    private mcpJwtSecret: string,
+    private jwtSecret: string,
     private devMode: boolean = false,
   ) {}
 
@@ -157,7 +157,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
         exp: now + CONSENT_REQUEST_EXPIRY_SECONDS,
         iat: now,
       },
-      this.mcpJwtSecret,
+      this.jwtSecret,
       "HS256",
     );
 
@@ -202,7 +202,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
     // Verify the signed request token to recover the original authorization params
     let reqPayload: Record<string, unknown>;
     try {
-      reqPayload = (await verify(requestToken, this.mcpJwtSecret, "HS256")) as Record<
+      reqPayload = (await verify(requestToken, this.jwtSecret, "HS256")) as Record<
         string,
         unknown
       >;
@@ -339,7 +339,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
   async verifyAccessToken(token: string): Promise<AuthInfo> {
     let payload: McpJwtPayload;
     try {
-      payload = (await verify(token, this.mcpJwtSecret, "HS256")) as unknown as McpJwtPayload;
+      payload = (await verify(token, this.jwtSecret, "HS256")) as unknown as McpJwtPayload;
     } catch {
       throw new Error("Invalid access token");
     }
@@ -394,7 +394,7 @@ export class GrapheinOAuthProvider implements HonoOAuthServerProvider {
         exp: now + ACCESS_TOKEN_EXPIRY_SECONDS,
         iat: now,
       },
-      this.mcpJwtSecret,
+      this.jwtSecret,
       "HS256",
     );
   }
