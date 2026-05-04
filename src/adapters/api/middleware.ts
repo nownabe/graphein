@@ -1,6 +1,6 @@
 import { createMiddleware } from "hono/factory";
-import type { ApiKeyService, ApiKeyRole } from "../../api-keys/service";
-import type { users } from "../../db/schema";
+import type { ApiKeyService, ApiKeyRole } from "../../application/api-keys/service";
+import type { users } from "../../infrastructure/db/schema";
 
 // ---------------------------------------------------------------------------
 // Context variable types for API-authenticated requests

@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { createApiAuthMiddleware } from "../../../src/adapters/api/middleware";
-import { createDb } from "../../../src/db/client";
-import { users } from "../../../src/db/schema";
-import type { ApiKeyService } from "../../../src/api-keys/service";
+import { createDb } from "../../../src/infrastructure/db/client";
+import { users } from "../../../src/infrastructure/db/schema";
+import type { ApiKeyService } from "../../../src/application/api-keys/service";
 import { TEST_DATABASE_URL } from "./setup";
 import { cleanupDb } from "./db";
 

@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { createDb } from "../../../src/db/client";
-import { createSnippetService } from "../../../src/snippets/service";
-import { snippetChannels } from "../../../src/db/schema";
+import { createDb } from "../../../src/infrastructure/db/client";
+import { createSnippetService } from "../../../src/application/snippets/service";
+import { snippetChannels } from "../../../src/infrastructure/db/schema";
 import { TEST_DATABASE_URL } from "../helpers/setup";
 import { cleanupDb } from "../helpers/db";
 

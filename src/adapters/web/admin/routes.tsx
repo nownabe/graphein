@@ -1,10 +1,10 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
-import type { UserService } from "../../../users/service";
-import type { SnippetService } from "../../../snippets/service";
-import type { KudosService } from "../../../kudos/service";
-import type { SettingsService } from "../../../settings/service";
+import type { UserService } from "../../../application/users/service";
+import type { SnippetService } from "../../../application/snippets/service";
+import type { KudosService } from "../../../application/kudos/service";
+import type { SettingsService } from "../../../application/settings/service";
 import type { ResolveChannelName } from "../../../config";
 import { AdminUsersPage, AdminUsersListInner } from "../../../views/pages/admin-users.tsx";
 import {

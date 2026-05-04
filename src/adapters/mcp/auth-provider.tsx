@@ -9,9 +9,9 @@ import type {
   OAuthTokenRevocationRequest,
   OAuthTokens,
 } from "@modelcontextprotocol/sdk/shared/auth.js";
-import type { OAuthService } from "../../oauth/service";
-import type { UserService } from "../../users/service";
-import type { SessionHelpers } from "../../auth/session";
+import type { OAuthService } from "../../application/oauth/service";
+import type { UserService } from "../../application/users/service";
+import type { SessionHelpers } from "../../application/auth/session";
 import { OAuthConsentPage } from "../../views/pages/oauth-consent";
 
 // @hono/mcp passes Hono Context instead of express Response to authorize(),

@@ -9,7 +9,7 @@
 import type { App } from "@slack/bolt";
 import { createSlackLabelResolver } from "./helpers";
 import type { MrkdwnOptions } from "./mrkdwn";
-import type { UserService } from "../../users/service";
+import type { UserService } from "../../application/users/service";
 
 export function extractSlackEntityIds(text: string): {
   users: string[];

@@ -1,15 +1,15 @@
 import type { Hono } from "hono";
 import { createHonoApp } from "../../../src/app";
-import { createDb } from "../../../src/db/client";
-import { createUserService } from "../../../src/users/service";
-import { createTaskService } from "../../../src/tasks/service";
-import { createSnippetService } from "../../../src/snippets/service";
-import { createUsergroupService } from "../../../src/usergroups/service";
-import { createSettingsService } from "../../../src/settings/service";
-import { createApiKeyService } from "../../../src/api-keys/service";
-import { createKudosService } from "../../../src/kudos/service";
-import { createOAuthService } from "../../../src/oauth/service";
-import { createSessionHelpers } from "../../../src/auth/session";
+import { createDb } from "../../../src/infrastructure/db/client";
+import { createUserService } from "../../../src/application/users/service";
+import { createTaskService } from "../../../src/application/tasks/service";
+import { createSnippetService } from "../../../src/application/snippets/service";
+import { createUsergroupService } from "../../../src/application/usergroups/service";
+import { createSettingsService } from "../../../src/application/settings/service";
+import { createApiKeyService } from "../../../src/application/api-keys/service";
+import { createKudosService } from "../../../src/application/kudos/service";
+import { createOAuthService } from "../../../src/application/oauth/service";
+import { createSessionHelpers } from "../../../src/application/auth/session";
 import { TEST_DATABASE_URL } from "./setup";
 
 const JWT_SECRET = "test-secret";

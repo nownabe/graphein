@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { createDb } from "../../../src/db/client";
-import { createKudosService } from "../../../src/kudos/service";
-import { kudosChannels } from "../../../src/db/schema";
+import { createDb } from "../../../src/infrastructure/db/client";
+import { createKudosService } from "../../../src/application/kudos/service";
+import { kudosChannels } from "../../../src/infrastructure/db/schema";
 import { TEST_DATABASE_URL } from "../helpers/setup";
 import { cleanupDb } from "../helpers/db";
 

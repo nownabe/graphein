@@ -1,6 +1,6 @@
 import { spawn, type ChildProcess } from "node:child_process";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
-import { createDb } from "../../src/db/client";
+import { createDb } from "../../src/infrastructure/db/client";
 import { env } from "./helpers/env";
 import { ensureUser, closeDb } from "./helpers/db";
 import { getSlackClient } from "./helpers/slack";

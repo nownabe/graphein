@@ -1,7 +1,7 @@
-import type { KudosEntryWithContext } from "../../kudos/service";
-import type { PeriodType } from "../../snippets/period";
+import type { KudosEntryWithContext } from "../../application/kudos/service";
+import type { PeriodType } from "../../domain/period";
 import type { MrkdwnOptions } from "../../adapters/slack/mrkdwn";
-import { t } from "../../i18n/index";
+import { t } from "../../domain/i18n/index";
 import { Layout } from "../layout";
 import { Nav } from "../components/nav";
 import { KudosCard } from "../components/kudos-card";

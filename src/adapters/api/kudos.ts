@@ -1,6 +1,6 @@
 import { z } from "@hono/zod-openapi";
 import { createRoute, OpenAPIHono } from "@hono/zod-openapi";
-import type { KudosService } from "../../kudos/service";
+import type { KudosService } from "../../application/kudos/service";
 import {
   EmbeddedUserWithAvatarSchema,
   ErrorResponseSchema,
@@ -14,7 +14,7 @@ import {
   isValidIso8601,
   filterFingerprint,
   UUID_REGEX,
-} from "../../pagination";
+} from "../../domain/pagination";
 
 // ---------------------------------------------------------------------------
 // Shared Zod helpers

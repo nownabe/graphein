@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { SnippetService } from "../../../snippets/service";
+import type { SnippetService } from "../../../application/snippets/service";
 import type { McpContext } from "../types";
 
 import {
@@ -9,7 +9,7 @@ import {
   isValidIso8601,
   validateTimestampCursor,
   filterFingerprint,
-} from "../../../pagination";
+} from "../../../domain/pagination";
 import { errorResult, jsonResult } from "./helpers";
 
 // ---------------------------------------------------------------------------

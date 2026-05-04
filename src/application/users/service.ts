@@ -1,6 +1,6 @@
 import { eq, inArray, ilike, or, sql, asc, ne, and, isNull } from "drizzle-orm";
-import type { Database } from "../db/client";
-import { users } from "../db/schema";
+import type { Database } from "../../infrastructure/db/client";
+import { users } from "../../infrastructure/db/schema";
 
 export type UserRole = "user" | "admin";
 

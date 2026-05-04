@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
-import type { Database } from "../db/client";
-import { appSettings } from "../db/schema";
+import type { Database } from "../../infrastructure/db/client";
+import { appSettings } from "../../infrastructure/db/schema";
 
 const FISCAL_QUARTER_START_MONTH_KEY = "fiscal_quarter_start_month";
 const DEFAULT_FISCAL_QUARTER_START_MONTH = 1; // January (calendar quarters)

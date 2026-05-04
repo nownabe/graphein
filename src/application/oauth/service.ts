@@ -1,6 +1,10 @@
 import { eq, and, lt, gt, isNotNull, isNull, or } from "drizzle-orm";
-import type { Database } from "../db/client";
-import { oauthClients, oauthAuthorizationCodes, oauthRefreshTokens } from "../db/schema";
+import type { Database } from "../../infrastructure/db/client";
+import {
+  oauthClients,
+  oauthAuthorizationCodes,
+  oauthRefreshTokens,
+} from "../../infrastructure/db/schema";
 
 const CODE_EXPIRY_MINUTES = 5;
 const REFRESH_TOKEN_EXPIRY_DAYS = 30;

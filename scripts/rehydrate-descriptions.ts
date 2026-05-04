@@ -8,11 +8,11 @@
 // descriptions that cannot be upgraded any other way.
 
 import { isNotNull, and, eq } from "drizzle-orm";
-import { db } from "../src/db/client";
-import { tasks } from "../src/db/schema";
-import { boltApp } from "../src/slack/bolt";
-import { blocksToMrkdwn } from "../src/slack/rich-text";
-import { createSlackLabelResolver, hydrateMentionLabels } from "../src/slack/helpers";
+import { db } from "../src/infrastructure/db/client";
+import { tasks } from "../src/infrastructure/db/schema";
+import { boltApp } from "../src/adapters/slack/bolt";
+import { blocksToMrkdwn } from "../src/adapters/slack/rich-text";
+import { createSlackLabelResolver, hydrateMentionLabels } from "../src/adapters/slack/helpers";
 
 async function main() {
   const candidates = await db

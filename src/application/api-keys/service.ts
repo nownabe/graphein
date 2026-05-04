@@ -1,6 +1,6 @@
 import { eq, and, isNull, desc, sql } from "drizzle-orm";
-import type { Database } from "../db/client";
-import { apiKeys, users } from "../db/schema";
+import type { Database } from "../../infrastructure/db/client";
+import { apiKeys, users } from "../../infrastructure/db/schema";
 
 /** Maximum number of active (non-revoked) keys per user. */
 const MAX_ACTIVE_KEYS_PER_USER = 10;

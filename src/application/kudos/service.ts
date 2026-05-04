@@ -1,5 +1,5 @@
 import { type SQL, eq, ne, and, or, desc, gte, lt, sql, isNull } from "drizzle-orm";
-import type { Database } from "../db/client";
+import type { Database } from "../../infrastructure/db/client";
 import {
   kudos,
   kudosChannels,
@@ -7,7 +7,7 @@ import {
   kudosEntryMentionedUsers,
   kudosEntryMentionedUsergroups,
   users,
-} from "../db/schema";
+} from "../../infrastructure/db/schema";
 
 export interface KudosEntryWithContext {
   entryId: string;

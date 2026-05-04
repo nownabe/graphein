@@ -5,7 +5,7 @@ import {
   createApiRateLimitMiddleware,
   createRateLimiter,
 } from "./middleware";
-import type { ApiKeyService } from "../../api-keys/service";
+import type { ApiKeyService } from "../../application/api-keys/service";
 
 // ---------------------------------------------------------------------------
 // Helpers

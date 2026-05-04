@@ -12,9 +12,9 @@ import {
   inArray,
   count as drizzleCount,
 } from "drizzle-orm";
-import type { Database } from "../../db/client";
-import { tasks, taskAssignees, taskOwners, users } from "../../db/schema";
-import type { TaskService } from "../../tasks/service";
+import type { Database } from "../../infrastructure/db/client";
+import { tasks, taskAssignees, taskOwners, users } from "../../infrastructure/db/schema";
+import type { TaskService } from "../../application/tasks/service";
 import {
   CreatedBySchema,
   ErrorResponseSchema,
@@ -29,7 +29,7 @@ import {
   validateTimestampCursor,
   filterFingerprint,
   UUID_REGEX,
-} from "../../pagination";
+} from "../../domain/pagination";
 
 // ---------------------------------------------------------------------------
 // Shared Zod helpers

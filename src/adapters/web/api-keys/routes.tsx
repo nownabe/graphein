@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { getCookie } from "hono/cookie";
 import type { MiddlewareHandler } from "hono";
-import type { ApiKeyService, ApiKeyRole } from "../../../api-keys/service";
+import type { ApiKeyService, ApiKeyRole } from "../../../application/api-keys/service";
 import { ApiKeysPage, ApiKeysList, ApiKeyCreatedBanner } from "../../../views/pages/api-keys.tsx";
 
 export interface ApiKeyRoutesDeps {

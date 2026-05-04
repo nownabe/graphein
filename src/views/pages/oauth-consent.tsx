@@ -1,4 +1,4 @@
-import { t } from "../../i18n/index";
+import { t } from "../../domain/i18n/index";
 import { Layout } from "../layout";
 
 export function OAuthConsentPage({
