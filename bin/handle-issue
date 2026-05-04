@@ -330,7 +330,7 @@ const implementResult = await run(
     "json",
   ],
   {
-    timeout: 1_800_000,
+    timeout: 43_200_000,
     cwd: worktreePath,
     logType: "implement",
     onSpawn: (pid) => {
