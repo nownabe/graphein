@@ -398,6 +398,24 @@ This keeps the semantics in `application/` and the formatting in `adapters/`.
 
 ---
 
+## Current State
+
+The layered skeleton directories exist under `src/`:
+
+```text
+src/
+  adapters/        # transport and external interface adapters
+  application/     # use-cases and shared application services
+  domain/          # pure business logic and value-level rules
+  infrastructure/  # DB and external system integrations
+```
+
+Legacy feature-grouped code (`src/tasks/`, `src/api/`, `src/mcp/`, etc.) remains
+in place and will be migrated incrementally into the layered directories. Both
+old and new paths coexist during the transition.
+
+---
+
 ## Migration Strategy
 
 Adopt this structure incrementally.
