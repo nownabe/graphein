@@ -1,0 +1,15 @@
+node_modules
+.git
+.env*
+.envrc
+test/
+tools/
+scripts/
+docs/
+*.md
+compose.yaml
+.github/
+playwright.config.ts
+playwright-report/
+test-results/
+public/styles.css
