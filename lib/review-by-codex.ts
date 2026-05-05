@@ -1,9 +1,9 @@
 /**
- * Code review backend using Codex CLI (`codex exec`).
+ * Code review backend using Codex CLI (`codex exec review`).
  *
- * Invokes `codex exec` with `--output-schema` for structured output and
- * `-o` to capture the result. The `codex review` subcommand does not
- * support schema-constrained output, so we use `codex exec` instead.
+ * Invokes `codex exec review --base <base> -o <file>` with a custom prompt
+ * that instructs the model to output JSON conforming to the shared
+ * {@link CodeReviewResult} schema.
  */
 
 import { unlink } from "node:fs/promises";
@@ -18,40 +18,17 @@ import {
 
 const DEFAULT_BASE = "main";
 
-const REVIEW_PROMPT = `You are a code reviewer. Review the changes on the current branch compared to the base branch.
+const REVIEW_PROMPT = `Output your review as a single JSON object conforming to this schema:
 
-## Instructions
+{schema}
 
-1. Run \`git diff {base}...HEAD --name-only\` to list changed files.
-2. Run \`git diff {base}...HEAD\` to see the full diff.
-3. Read relevant source files for full context when needed.
-4. Read CLAUDE.md for project conventions.
-5. Evaluate the changes for:
-   - **Correctness**: logic errors, off-by-one, null/undefined handling
-   - **Security**: injection, XSS, auth bypass, secret exposure
-   - **Edge cases**: empty inputs, concurrent access, error paths
-   - **Performance**: unnecessary queries, missing indexes, O(n²) in hot paths
-   - **Consistency**: adherence to project conventions
-
-## Standards
-
-- Be pragmatic. Only flag things that actually matter.
-- Do NOT nitpick style or formatting that linters handle.
-- Do NOT suggest adding comments, documentation, or type annotations unless something is genuinely confusing.
-- Focus on bugs, logic errors, security issues, missing error handling at boundaries, and violations of project conventions.
-- Each issue must be actionable — say exactly what to change and where.
-
-## Output
-
-Populate the structured output with:
+Populate the JSON with:
 - schema_version: "1.0"
 - status: "approved" if no issues, "changes_requested" if issues found
 - summary: brief human-readable summary
 - comment_markdown: ready-to-post PR comment in markdown
-- reviewed_ref: { base: "{base}", head: the HEAD commit SHA }
-- findings: array of issues found (empty if approved)
-
-For reviewed_ref.head, run \`git rev-parse HEAD\` to get the current commit SHA.`;
+- reviewed_ref: { base: the base branch name, head: the HEAD commit SHA }
+- findings: array of issues found (empty if approved)`;
 
 async function spawn(
   cmd: string[],
@@ -84,26 +61,14 @@ export async function reviewByCodex(options: ReviewOptions = {}): Promise<CodeRe
   const base = options.base ?? DEFAULT_BASE;
   const cwd = options.cwd;
 
-  const prompt = REVIEW_PROMPT.replaceAll("{base}", base);
+  const schemaJson = JSON.stringify(CODE_REVIEW_JSON_SCHEMA, null, 2);
+  const prompt = REVIEW_PROMPT.replaceAll("{schema}", schemaJson);
 
-  // Write the JSON schema to a temp file for --output-schema
   const id = crypto.randomUUID();
-  const schemaPath = join(tmpdir(), `codex-review-schema-${id}.json`);
   const outputPath = join(tmpdir(), `codex-review-output-${id}.json`);
-  await Bun.write(schemaPath, JSON.stringify(CODE_REVIEW_JSON_SCHEMA));
 
   try {
-    const args = [
-      "codex",
-      "exec",
-      prompt,
-      "-s",
-      "read-only",
-      "--output-schema",
-      schemaPath,
-      "-o",
-      outputPath,
-    ];
+    const args = ["codex", "exec", "review", prompt, "--base", base, "-o", outputPath];
 
     const result = await spawn(args, cwd);
 
@@ -116,11 +81,17 @@ export async function reviewByCodex(options: ReviewOptions = {}): Promise<CodeRe
       throw new Error("codex CLI did not produce an output file");
     }
 
-    const parsed: CodeReviewResult = JSON.parse(await outputFile.text());
+    const text = await outputFile.text();
+    // Extract JSON from the output (codex may include surrounding text)
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error("codex CLI output does not contain valid JSON");
+    }
+
+    const parsed: CodeReviewResult = JSON.parse(jsonMatch[0]);
     return parsed;
   } finally {
-    // Clean up temp files
-    await Promise.all([unlink(schemaPath).catch(() => {}), unlink(outputPath).catch(() => {})]);
+    await unlink(outputPath).catch(() => {});
   }
 }
 
