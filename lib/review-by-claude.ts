@@ -81,8 +81,15 @@ export async function reviewByClaude(options: ReviewOptions = {}): Promise<CodeR
     throw new Error(`claude CLI exited with code ${result.exitCode}: ${result.stderr}`);
   }
 
-  const parsed: CodeReviewResult = JSON.parse(result.stdout);
-  return parsed;
+  const envelope = JSON.parse(result.stdout) as {
+    structured_output?: CodeReviewResult;
+  };
+
+  if (!envelope.structured_output) {
+    throw new Error("claude CLI response missing structured_output field");
+  }
+
+  return envelope.structured_output;
 }
 
 export const claudeReviewer: ReviewBackend = {
