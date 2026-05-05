@@ -52,18 +52,28 @@ For reviewed_ref.head, run \`git rev-parse HEAD\` to get the current commit SHA.
 async function spawn(
   cmd: string[],
   cwd?: string,
+  timeoutMs = 300_000,
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const proc = Bun.spawn(cmd, {
     stdout: "pipe",
     stderr: "pipe",
     cwd,
   });
-  const [stdout, stderr, exitCode] = await Promise.all([
-    new Response(proc.stdout).text(),
-    new Response(proc.stderr).text(),
-    proc.exited,
-  ]);
-  return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
+
+  const timeout = setTimeout(() => {
+    proc.kill();
+  }, timeoutMs);
+
+  try {
+    const [stdout, stderr, exitCode] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+    ]);
+    return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode };
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 export async function reviewByClaude(options: ReviewOptions = {}): Promise<CodeReviewResult> {

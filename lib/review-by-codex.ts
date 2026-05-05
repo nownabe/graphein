@@ -87,8 +87,9 @@ export async function reviewByCodex(options: ReviewOptions = {}): Promise<CodeRe
   const prompt = REVIEW_PROMPT.replaceAll("{base}", base);
 
   // Write the JSON schema to a temp file for --output-schema
-  const schemaPath = join(tmpdir(), `codex-review-schema-${Date.now()}.json`);
-  const outputPath = join(tmpdir(), `codex-review-output-${Date.now()}.json`);
+  const id = crypto.randomUUID();
+  const schemaPath = join(tmpdir(), `codex-review-schema-${id}.json`);
+  const outputPath = join(tmpdir(), `codex-review-output-${id}.json`);
   await Bun.write(schemaPath, JSON.stringify(CODE_REVIEW_JSON_SCHEMA));
 
   try {
