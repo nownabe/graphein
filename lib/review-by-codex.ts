@@ -10,25 +10,13 @@ import { unlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  CODE_REVIEW_JSON_SCHEMA,
+  REVIEW_PROMPT,
   type CodeReviewResult,
   type ReviewBackend,
   type ReviewOptions,
 } from "./review-schema.ts";
 
 const DEFAULT_BASE = "main";
-
-const REVIEW_PROMPT = `Output your review as a single JSON object conforming to this schema:
-
-{schema}
-
-Populate the JSON with:
-- schema_version: "1.0"
-- status: "approved" if no issues, "changes_requested" if issues found
-- summary: brief human-readable summary
-- comment_markdown: ready-to-post PR comment in markdown
-- reviewed_ref: { base: the base branch name, head: the HEAD commit SHA }
-- findings: array of issues found (empty if approved)`;
 
 async function spawn(
   cmd: string[],
@@ -61,8 +49,7 @@ export async function reviewByCodex(options: ReviewOptions = {}): Promise<CodeRe
   const base = options.base ?? DEFAULT_BASE;
   const cwd = options.cwd;
 
-  const schemaJson = JSON.stringify(CODE_REVIEW_JSON_SCHEMA, null, 2);
-  const prompt = REVIEW_PROMPT.replaceAll("{schema}", schemaJson);
+  const prompt = REVIEW_PROMPT.replaceAll("{base}", base);
 
   const id = crypto.randomUUID();
   const outputPath = join(tmpdir(), `codex-review-output-${id}.json`);
