@@ -18,6 +18,7 @@ const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
     "posted-by": { type: "string" },
+    agent: { type: "string" },
     model: { type: "string" },
     body: { type: "string" },
     "body-file": { type: "string" },
@@ -26,7 +27,7 @@ const { values, positionals } = parseArgs({
 });
 
 const prNumber = positionals[0];
-const postedBy = values["posted-by"];
+const postedBy = values["posted-by"] || values.agent;
 const model = values.model;
 const bodyInline = values.body;
 const bodyFile = values["body-file"];

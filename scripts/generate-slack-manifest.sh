@@ -174,4 +174,6 @@ if [[ -n "$output_path" ]]; then
   echo "$manifest" > "$output_path"
   echo "" >&2
   echo "Written to $output_path" >&2
+else
+  echo "$manifest"
 fi
