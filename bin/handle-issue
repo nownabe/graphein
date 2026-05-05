@@ -24,7 +24,7 @@ import { mkdirSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { waitPr, type WaitPrResult } from "../tools/lib/wait-pr";
 
-const MAX_FIX_ROUNDS = 5;
+const MAX_CI_FIX_ROUNDS = 5;
 
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
@@ -564,9 +564,12 @@ if (enableCodexReview) {
 // ---------------------------------------------------------------------------
 
 let waitSince = new Date(prCreatedAt!);
+let round = 0;
+let ciFixCount = 0;
 
-for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
-  console.log(`\n⏳ Waiting for CI/review (round ${round}/${MAX_FIX_ROUNDS})...`);
+while (true) {
+  round++;
+  console.log(`\n⏳ Waiting for CI/review (round ${round})...`);
 
   // Keep polling until an actionable status is reached (no timeout limit).
   let status: WaitPrResult;
@@ -615,9 +618,20 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
 
   // ci_failed or has_feedback — fix it
   if (status.status === "ci_failed") {
-    console.log(`\n🔧 CI failed. Fixing (round ${round})...`);
+    ciFixCount++;
+    if (ciFixCount > MAX_CI_FIX_ROUNDS) {
+      console.error(
+        `\n⚠️  CI did not pass after ${MAX_CI_FIX_ROUNDS} fix rounds. Manual intervention needed.`,
+      );
+      console.error(`   PR: ${prUrl}`);
+      console.error(`   Logs: ${logDir}/`);
+      await cleanup();
+      process.exit(1);
+    }
+    console.log(`\n🔧 CI failed. Fixing (CI fix ${ciFixCount}/${MAX_CI_FIX_ROUNDS})...`);
   } else {
     console.log(`\n💬 Review feedback received. Addressing (round ${round})...`);
+    ciFixCount = 0;
   }
 
   const fixPrompt =
@@ -659,11 +673,3 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
 
   console.log(`   Fix round ${round} complete. Re-checking...`);
 }
-
-console.error(
-  `\n⚠️  Did not converge after ${MAX_FIX_ROUNDS} fix rounds. Manual intervention needed.`,
-);
-console.error(`   PR: ${prUrl}`);
-console.error(`   Logs: ${logDir}/`);
-await cleanup();
-process.exit(1);
