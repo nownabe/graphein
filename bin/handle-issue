@@ -64,6 +64,10 @@ async function logLine(type: string, message: string) {
 
 console.log(`📝 Logs: ${logDir}/`);
 
+// Expose env vars so PreToolUse hook can auto-approve and log tools
+process.env.GRAPHEIN_HANDLE_ISSUE = "1";
+process.env.GRAPHEIN_HANDLE_ISSUE_LOG_DIR = logDir;
+
 // ---------------------------------------------------------------------------
 // helpers
 // ---------------------------------------------------------------------------
@@ -324,8 +328,6 @@ const implementResult = await run(
     "claude",
     "-p",
     implementPrompt,
-    "--permission-mode",
-    "bypassPermissions",
     "--output-format",
     "json",
   ],
@@ -428,8 +430,6 @@ if (enableCodexReview) {
         fixPrompt,
         "--resume",
         sessionId,
-        "--permission-mode",
-        "bypassPermissions",
         "--output-format",
         "text",
       ],
@@ -473,8 +473,6 @@ if (enableCodexReview) {
       createPrPrompt,
       "--resume",
       sessionId,
-      "--permission-mode",
-      "bypassPermissions",
       "--output-format",
       "json",
     ],
@@ -646,8 +644,6 @@ while (true) {
       fixPrompt,
       "--resume",
       sessionId,
-      "--permission-mode",
-      "bypassPermissions",
       "--output-format",
       "text",
     ],
