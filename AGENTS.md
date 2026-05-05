@@ -157,12 +157,12 @@ All documentation, code comments, commit messages, issues, and pull requests mus
 
   Polls every 30s (up to ~5 min). Only reports feedback posted after the `--since` timestamp (or tool start time if omitted). The JSON output includes a `status` field: `approved`, `ci_failed`, `has_feedback`, `merged`, `closed`, or `pending`. Non-zero exit only on errors.
 
-- **`tools/comment-pr.ts`**: Post a comment on a pull request with an agent footer.
+- **`tools/comment-pr.ts`**: Post a comment on a pull request with a poster footer.
   ```bash
-  bun run tools/comment-pr.ts <pr-number> --agent <agent> [--model <model>] --body <body>
-  bun run tools/comment-pr.ts <pr-number> --agent <agent> [--model <model>] --body-file <path>
+  bun run tools/comment-pr.ts <pr-number> --posted-by <name> [--model <model>] --body <body>
+  bun run tools/comment-pr.ts <pr-number> --posted-by <name> [--model <model>] --body-file <path>
   ```
-  The comment body is read from `--body` (inline string) or `--body-file` (file path). A footer is automatically appended: `<sub>_Posted by <agent> (<model>)_</sub>` (or without model if `--model` is omitted).
+  The comment body is read from `--body` (inline string) or `--body-file` (file path). A footer is automatically appended: `<sub>_Posted by <name> (<model>)_</sub>` (or without model if `--model` is omitted).
 
 ## E2E Tests
 
