@@ -1,12 +1,14 @@
 /**
- * Code review backend using Codex CLI (`codex -q`).
+ * Code review backend using Codex CLI (`codex exec`).
  *
- * Invokes the `codex` CLI in quiet mode with a review prompt that instructs
- * it to output JSON conforming to the shared {@link CodeReviewResult} schema.
- * The `codex review` subcommand does not support `--json-schema`, so we use
- * `codex -q` with an explicit schema in the prompt instead.
+ * Invokes `codex exec` with `--output-schema` for structured output and
+ * `-o` to capture the result. The `codex review` subcommand does not
+ * support schema-constrained output, so we use `codex exec` instead.
  */
 
+import { unlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
   CODE_REVIEW_JSON_SCHEMA,
   type CodeReviewResult,
@@ -41,16 +43,12 @@ const REVIEW_PROMPT = `You are a code reviewer. Review the changes on the curren
 
 ## Output
 
-You MUST output ONLY a single JSON object (no markdown fences, no explanation) conforming to this schema:
-
-{schema}
-
-Populate the JSON output with:
+Populate the structured output with:
 - schema_version: "1.0"
 - status: "approved" if no issues, "changes_requested" if issues found
 - summary: brief human-readable summary
 - comment_markdown: ready-to-post PR comment in markdown
-- reviewed_ref: {{ base: "{base}", head: the HEAD commit SHA }}
+- reviewed_ref: { base: "{base}", head: the HEAD commit SHA }
 - findings: array of issues found (empty if approved)
 
 For reviewed_ref.head, run \`git rev-parse HEAD\` to get the current commit SHA.`;
@@ -86,25 +84,43 @@ export async function reviewByCodex(options: ReviewOptions = {}): Promise<CodeRe
   const base = options.base ?? DEFAULT_BASE;
   const cwd = options.cwd;
 
-  const schemaJson = JSON.stringify(CODE_REVIEW_JSON_SCHEMA, null, 2);
-  const prompt = REVIEW_PROMPT.replaceAll("{base}", base).replaceAll("{schema}", schemaJson);
+  const prompt = REVIEW_PROMPT.replaceAll("{base}", base);
 
-  const args = ["codex", "-q", prompt, "--full-auto"];
+  // Write the JSON schema to a temp file for --output-schema
+  const schemaPath = join(tmpdir(), `codex-review-schema-${Date.now()}.json`);
+  const outputPath = join(tmpdir(), `codex-review-output-${Date.now()}.json`);
+  await Bun.write(schemaPath, JSON.stringify(CODE_REVIEW_JSON_SCHEMA));
 
-  const result = await spawn(args, cwd);
+  try {
+    const args = [
+      "codex",
+      "exec",
+      prompt,
+      "-s",
+      "read-only",
+      "--output-schema",
+      schemaPath,
+      "-o",
+      outputPath,
+    ];
 
-  if (result.exitCode !== 0) {
-    throw new Error(`codex CLI exited with code ${result.exitCode}: ${result.stderr}`);
+    const result = await spawn(args, cwd);
+
+    if (result.exitCode !== 0) {
+      throw new Error(`codex CLI exited with code ${result.exitCode}: ${result.stderr}`);
+    }
+
+    const outputFile = Bun.file(outputPath);
+    if (!(await outputFile.exists())) {
+      throw new Error("codex CLI did not produce an output file");
+    }
+
+    const parsed: CodeReviewResult = JSON.parse(await outputFile.text());
+    return parsed;
+  } finally {
+    // Clean up temp files
+    await Promise.all([unlink(schemaPath).catch(() => {}), unlink(outputPath).catch(() => {})]);
   }
-
-  // Extract JSON from the output (codex may include surrounding text)
-  const jsonMatch = result.stdout.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("codex CLI did not produce valid JSON output");
-  }
-
-  const parsed: CodeReviewResult = JSON.parse(jsonMatch[0]);
-  return parsed;
 }
 
 export const codexReviewer: ReviewBackend = {
