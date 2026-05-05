@@ -48,6 +48,16 @@
     "defaultMode": "acceptEdits"
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun tools/hooks/handle-issue-approve.ts"
+          }
+        ]
+      }
+    ],
     "SubagentStart": [
       {
         "hooks": [
