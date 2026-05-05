@@ -571,18 +571,28 @@ for (let round = 1; round <= MAX_FIX_ROUNDS; round++) {
   // Keep polling until an actionable status is reached (no timeout limit).
   let status: WaitPrResult;
 
+  let pollCount = 0;
+
   while (true) {
+    pollCount++;
     status = await waitPr({ prNumber, since: waitSince, cwd: worktreePath });
     await logLine("wait-pr", `status=${status.status} lgtm=${status.lgtm} ci=${status.ci.state} feedback=${status.feedback.length}`);
 
-    console.log(`   Status: ${status.status}`);
-
     if (status.status !== "pending") {
+      // Clear the in-place polling line before printing the final status
+      if (pollCount > 1) {
+        process.stdout.write("\r\x1b[K");
+      }
+      console.log(`   Status: ${status.status}`);
       break;
     }
 
-    // pending — keep polling without consuming a fix round
-    console.log(`   Still pending, re-polling...`);
+    // pending — overwrite the same line with poll count
+    const elapsed = Math.round((Date.now() - waitSince.getTime()) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    const timeStr = mins > 0 ? `${mins}m${secs}s` : `${secs}s`;
+    process.stdout.write(`\r\x1b[K   ⏳ Polling... (attempt ${pollCount}, elapsed ${timeStr})`);
   }
 
   if (status.status === "approved") {
