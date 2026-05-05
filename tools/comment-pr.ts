@@ -1,15 +1,15 @@
 #!/usr/bin/env bun
 /**
- * comment-pr: Post a comment on a pull request with an agent footer.
+ * comment-pr: Post a comment on a pull request with a poster footer.
  *
  * Usage:
- *   bun run tools/comment-pr.ts <pr-number> --agent <agent> --body <body>
- *   bun run tools/comment-pr.ts <pr-number> --agent <agent> --model <model> --body-file <path>
+ *   bun run tools/comment-pr.ts <pr-number> --posted-by <name> --body <body>
+ *   bun run tools/comment-pr.ts <pr-number> --posted-by <name> --model <model> --body-file <path>
  *
  * The comment body is read from --body (inline string) or --body-file (file path).
  * A footer line is automatically appended:
- *   With --model:    <sub>_Posted by <agent> (<model>)_</sub>
- *   Without --model: <sub>_Posted by <agent>_</sub>
+ *   With --model:    <sub>_Posted by <name> (<model>)_</sub>
+ *   Without --model: <sub>_Posted by <name>_</sub>
  */
 
 import { parseArgs } from "util";
@@ -17,7 +17,7 @@ import { parseArgs } from "util";
 const { values, positionals } = parseArgs({
   args: process.argv.slice(2),
   options: {
-    agent: { type: "string" },
+    "posted-by": { type: "string" },
     model: { type: "string" },
     body: { type: "string" },
     "body-file": { type: "string" },
@@ -26,19 +26,19 @@ const { values, positionals } = parseArgs({
 });
 
 const prNumber = positionals[0];
-const agent = values.agent;
+const postedBy = values["posted-by"];
 const model = values.model;
 const bodyInline = values.body;
 const bodyFile = values["body-file"];
 
-if (!prNumber || !agent || (!bodyInline && !bodyFile)) {
+if (!prNumber || !postedBy || (!bodyInline && !bodyFile)) {
   console.error(`Usage:
-  bun run tools/comment-pr.ts <pr-number> --agent <agent> [--model <model>] --body <body>
-  bun run tools/comment-pr.ts <pr-number> --agent <agent> [--model <model>] --body-file <path>
+  bun run tools/comment-pr.ts <pr-number> --posted-by <name> [--model <model>] --body <body>
+  bun run tools/comment-pr.ts <pr-number> --posted-by <name> [--model <model>] --body-file <path>
 
 Required:
   <pr-number>    Pull request number
-  --agent        Agent name (e.g. "Claude Code")
+  --posted-by    Poster name (e.g. "bin/handle-issue")
   --body         Comment body (inline)
   --body-file    Path to a file containing the comment body
 
@@ -62,8 +62,8 @@ if (bodyFile) {
 }
 
 const footer = model
-  ? `\n\n<sub>_Posted by ${agent} (${model})_</sub>`
-  : `\n\n<sub>_Posted by ${agent}_</sub>`;
+  ? `\n\n<sub>_Posted by ${postedBy} (${model})_</sub>`
+  : `\n\n<sub>_Posted by ${postedBy}_</sub>`;
 const fullBody = commentBody.trimEnd() + footer;
 
 const proc = Bun.spawn(["gh", "pr", "comment", prNumber, "--body", fullBody], {

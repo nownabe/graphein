@@ -256,7 +256,7 @@ async function runCodexReview(cwd: string, round: number): Promise<CodexReviewOu
 async function postComment(prNumber: string, body: string): Promise<void> {
   await run([
     "bun", "run", "tools/comment-pr.ts", prNumber,
-    "--agent", "Codex",
+    "--posted-by", "bin/handle-issue",
     "--body", body,
   ]);
 }
