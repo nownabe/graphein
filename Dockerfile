@@ -43,7 +43,7 @@ ENV NODE_ENV=production
 CMD ["bun", "run", "db:migrate"]
 
 # Stage 6: Self-host image with migration (default)
-FROM oven/bun:1-slim AS runner-with-migration
+FROM oven/bun:1-distroless AS runner-with-migration
 WORKDIR /app
 
 COPY --from=migration-deps /app/node_modules node_modules
@@ -52,8 +52,8 @@ COPY src/ src/
 COPY public/favicon.svg public/favicon.svg
 COPY --from=builder /app/public/styles.css public/styles.css
 COPY drizzle/ drizzle/
-COPY docker/runner-with-migration-entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/entrypoint.ts docker/entrypoint.ts
 
 ENV NODE_ENV=production
 EXPOSE 3000
-ENTRYPOINT ["entrypoint.sh"]
+CMD ["bun", "run", "docker/entrypoint.ts"]
