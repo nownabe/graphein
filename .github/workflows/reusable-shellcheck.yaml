@@ -1,0 +1,33 @@
+name: ShellCheck
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  shellcheck:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Find shell scripts
+        id: scripts
+        run: |
+          scripts=$(find . -name '*.sh' -type f | sort)
+          if [ -z "$scripts" ]; then
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run ShellCheck
+        if: steps.scripts.outputs.found == 'true'
+        run: find . -name '*.sh' -type f -print0 | xargs -0 shellcheck

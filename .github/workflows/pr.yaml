@@ -60,6 +60,8 @@ jobs:
               - 'Dockerfile'
               - 'docker/**'
               - '.dockerignore'
+            shellcheck:
+              - '**/*.sh'
           json: true
 
   github-workflow:
@@ -110,6 +112,14 @@ jobs:
       contents: read
     uses: ./.github/workflows/reusable-dockerfile.yaml
 
+  shellcheck:
+    name: ShellCheck
+    needs: detect-changes
+    if: fromJSON(needs.detect-changes.outputs.changes).shellcheck_any_changed == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/reusable-shellcheck.yaml
+
   status-check:
     name: Pull Request Status Check
     if: always()
@@ -121,6 +131,7 @@ jobs:
       - db-migration
       - app
       - dockerfile
+      - shellcheck
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
