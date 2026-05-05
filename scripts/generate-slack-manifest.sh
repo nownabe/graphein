@@ -57,12 +57,20 @@ ask_yes_no() {
 
 yaml_string() {
   local s="$1"
-  if echo "$s" | grep -qE '[:#{}[\],&*?|>!%@`"'"'"']' || [[ "$s" != "$(echo "$s" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')" ]]; then
+  # Quote if string contains YAML-special characters or leading/trailing whitespace
+  local needs_quote=false
+  case "$s" in
+    *:* | *"#"* | *"{"* | *"}"* | *"["* | *"]"* | *","* | *"&"* | \
+    *"*"* | *"?"* | *"|"* | *">"* | *"!"* | *"%"* | *"@"* | *'`'* | \
+    *'"'* | *"'"* | " "* | *" " )
+      needs_quote=true ;;
+  esac
+  if [[ "$needs_quote" == "true" ]]; then
     local escaped
-    escaped=$(echo "$s" | sed 's/\\/\\\\/g; s/"/\\"/g')
-    echo "\"$escaped\""
+    escaped=$(printf '%s' "$s" | sed 's/\\/\\\\/g; s/"/\\"/g')
+    printf '"%s"' "$escaped"
   else
-    echo "$s"
+    printf '%s' "$s"
   fi
 }
 
