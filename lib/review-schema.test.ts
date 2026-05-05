@@ -94,6 +94,10 @@ describe("REVIEW_PROMPT", () => {
     expect(REVIEW_PROMPT).toContain("Performance");
   });
 
+  it("includes instructions for evaluating test coverage", () => {
+    expect(REVIEW_PROMPT).toContain("Test coverage");
+  });
+
   it("includes git diff instruction", () => {
     expect(REVIEW_PROMPT).toContain("git diff {base}...HEAD");
   });

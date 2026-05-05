@@ -90,6 +90,7 @@ export const REVIEW_PROMPT = `You are a code reviewer. Review the changes on the
    - **Security**: injection, XSS, auth bypass, secret exposure
    - **Edge cases**: empty inputs, concurrent access, error paths
    - **Performance**: unnecessary queries, missing indexes, O(n²) in hot paths
+   - **Test coverage**: new logic or bug fixes without corresponding tests, untested edge cases
    - **Consistency**: adherence to project conventions
 
 ## Standards
@@ -97,7 +98,7 @@ export const REVIEW_PROMPT = `You are a code reviewer. Review the changes on the
 - Be pragmatic. Only flag things that actually matter.
 - Do NOT nitpick style or formatting that linters handle.
 - Do NOT suggest adding comments, documentation, or type annotations unless something is genuinely confusing.
-- Focus on bugs, logic errors, security issues, missing error handling at boundaries, and violations of project conventions.
+- Focus on bugs, logic errors, security issues, missing error handling at boundaries, insufficient test coverage, and violations of project conventions.
 - Each issue must be actionable — say exactly what to change and where.
 
 ## Output
