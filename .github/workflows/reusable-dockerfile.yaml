@@ -19,6 +19,7 @@ jobs:
           persist-credentials: false
 
       - name: Run hadolint
+        if: hashFiles('Dockerfile') != ''
         uses: hadolint/hadolint-action@54c9adbab1582c2ef04b2016b760714a4bfde3cf # v3.1.0
         with:
           dockerfile: Dockerfile
@@ -35,6 +36,7 @@ jobs:
           persist-credentials: false
 
       - name: Run ShellCheck
+        if: hashFiles('docker/entrypoint.sh') != ''
         run: shellcheck docker/entrypoint.sh
 
   build:
@@ -55,6 +57,7 @@ jobs:
           persist-credentials: false
 
       - name: Build ${{ matrix.target }}
+        if: hashFiles('Dockerfile') != ''
         run: docker build --target ${{ matrix.target }} .
 
   grype:
@@ -70,9 +73,11 @@ jobs:
           persist-credentials: false
 
       - name: Build default image
+        if: hashFiles('Dockerfile') != ''
         run: docker build -t graphein:ci .
 
       - name: Scan image with Grype
+        if: hashFiles('Dockerfile') != ''
         uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
         with:
           image: graphein:ci
