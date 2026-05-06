@@ -573,6 +573,7 @@ while (true) {
   let status: WaitPrResult;
 
   let pollCount = 0;
+  const pollStartedAt = Date.now();
 
   while (true) {
     pollCount++;
@@ -589,7 +590,7 @@ while (true) {
     }
 
     // pending — overwrite the same line with poll count
-    const elapsed = Math.round((Date.now() - waitSince.getTime()) / 1000);
+    const elapsed = Math.round((Date.now() - pollStartedAt) / 1000);
     const mins = Math.floor(elapsed / 60);
     const secs = elapsed % 60;
     const timeStr = mins > 0 ? `${mins}m${secs}s` : `${secs}s`;

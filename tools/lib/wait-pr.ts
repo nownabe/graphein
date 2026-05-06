@@ -311,7 +311,7 @@ export async function waitPr(options: WaitPrOptions): Promise<WaitPrResult> {
 
     if (snapshotChanged(baseline, current)) {
       // Change detected — wait for related data to settle before collecting
-      console.error("Change detected, waiting for data to settle...");
+      process.stderr.write("\r\x1b[KChange detected, waiting for data to settle...\n");
       await Bun.sleep(SETTLE_DELAY_SEC * 1000);
 
       const result = await collectResult(prNumber, reviewer, since, cwd);
