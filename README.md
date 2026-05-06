@@ -18,7 +18,7 @@ The name comes from the Greek word **γραφεῖν** (graphein), meaning "to w
 Generate a manifest and create an app at [api.slack.com/apps](https://api.slack.com/apps):
 
 ```bash
-bun run slack:manifest
+./scripts/generate-slack-manifest.sh
 ```
 
 Follow the prompts to configure app name, base URL, and Socket Mode. The generated YAML can be pasted into **Create New App → From a manifest**.

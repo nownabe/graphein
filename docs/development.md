@@ -23,7 +23,7 @@ Copy the generated `https://xxxx.ngrok-free.app` URL — you'll use it as `BASE_
 
 ### 2. Create a Slack App
 
-See [README.md](../README.md#1-create-a-slack-app) for creating the Slack app. Use your ngrok URL as the base URL when running `bun run slack:manifest`.
+See [README.md](../README.md#1-create-a-slack-app) for creating the Slack app. Use your ngrok URL as the base URL when running `./scripts/generate-slack-manifest.sh`.
 
 Additionally for local development:
 
