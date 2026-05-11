@@ -2,7 +2,7 @@ import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { createRedisCacheStore } from "./redis";
 import type { CacheStore } from "./store";
 
-const TEST_REDIS_URL = process.env.TEST_REDIS_URL ?? "redis://localhost:16379";
+const TEST_REDIS_URL = process.env.TEST_REDIS_URL ?? "redis://localhost:16379/1";
 
 describe("RedisCacheStore", () => {
   let cache: CacheStore;

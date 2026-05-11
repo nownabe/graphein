@@ -44,7 +44,7 @@ Key differences from production:
 - `BASE_URL` — your ngrok URL
 - `DATABASE_URL` — default value from `.envrc.example` works with Docker
 - `CACHE_BACKEND` — `"memory"` (default) or `"redis"` for shared cache across instances
-- `REDIS_URL` — default value from `.envrc.example` works with Docker when `CACHE_BACKEND=redis`
+- `REDIS_URL` / `TEST_REDIS_URL` — default values from `.envrc.example` use Redis logical DBs `/0` and `/1`
 
 ### 4. Start Services
 
