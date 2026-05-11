@@ -5,29 +5,28 @@
  * Usage:
  *   bin/handle-issue <issue-number-or-url> [--review-agent codex|claude]
  *
- * This script controls the workflow deterministically:
+ * Workflow:
  *   1. Create a git worktree for isolated development
  *   2. Spawn claude CLI to implement the issue
- *   3. Run review loop (codex or claude), fix issues, then create PR
- *   4. Wait for CI/review (tools/wait-pr.ts)
- *   5. If fixes needed, resume the same claude session to fix
- *   6. Repeat 4-5 until approved or max retries
- *   7. Clean up the worktree
+ *   3. Run review loop (codex or claude), fix issues
+ *   4. Create PR and post review comment
+ *   5. Wait for CI/review, fix if needed, repeat until approved
+ *   6. Clean up the worktree
  *
  * Logs are written to logs/issue-<issue>/<log-type>.log
- *
- * The claude CLI uses all existing project assets (CLAUDE.md, hooks, skills, etc).
  */
 
 import { parseArgs } from "util";
 import { mkdirSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { waitPr, type WaitPrResult } from "../tools/lib/wait-pr";
-import type { CodeReviewResult } from "../tools/lib/review-schema";
+import type { CodeReviewResult, ReviewBackend } from "../tools/lib/review-schema";
 import { codexReviewer } from "../tools/lib/review-by-codex";
 import { claudeReviewer } from "../tools/lib/review-by-claude";
 
-const MAX_CI_FIX_ROUNDS = 5;
+// ---------------------------------------------------------------------------
+// CLI
+// ---------------------------------------------------------------------------
 
 const VALID_REVIEW_AGENTS = ["codex", "claude"] as const;
 type ReviewAgent = (typeof VALID_REVIEW_AGENTS)[number];
@@ -48,7 +47,16 @@ if (!issueRef || !VALID_REVIEW_AGENTS.includes(reviewAgent)) {
   process.exit(1);
 }
 
-const reviewer = reviewAgent === "claude" ? claudeReviewer : codexReviewer;
+const reviewer: ReviewBackend = reviewAgent === "claude" ? claudeReviewer : codexReviewer;
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const MAX_REVIEW_ROUNDS = 5;
+const MAX_CI_FIX_ROUNDS = 5;
+const IMPLEMENT_TIMEOUT = 43_200_000; // 12h
+const CLAUDE_TIMEOUT = 600_000; // 10min
 
 // ---------------------------------------------------------------------------
 // Logging
@@ -59,31 +67,37 @@ const issueSlug = issueRef.replace(/[^a-zA-Z0-9-]/g, "-");
 const logDir = resolve(projectRoot, "logs", `issue-${issueSlug}`);
 mkdirSync(logDir, { recursive: true });
 
-/** Append to logs/issue-<N>/<type>.log */
 async function writeLog(type: string, content: string) {
-  const file = resolve(logDir, `${type}.log`);
-  await Bun.write(file, content, { append: true });
+  await Bun.write(resolve(logDir, `${type}.log`), content, { append: true });
 }
 
 async function logLine(type: string, message: string) {
-  const line = `[${new Date().toISOString()}] ${message}\n`;
-  await writeLog(type, line);
+  await writeLog(type, `[${new Date().toISOString()}] ${message}\n`);
 }
-
-console.log(`📝 Logs: ${logDir}/`);
 
 // Expose env vars so PreToolUse hook can auto-approve and log tools
 process.env.GRAPHEIN_HANDLE_ISSUE = "1";
 process.env.GRAPHEIN_HANDLE_ISSUE_LOG_DIR = logDir;
 
 // ---------------------------------------------------------------------------
-// helpers
+// Process runner
 // ---------------------------------------------------------------------------
 
-async function run(
-  cmd: string[],
-  opts?: { timeout?: number; cwd?: string; logType?: string; onSpawn?: (pid: number) => void },
-): Promise<{ stdout: string; stderr: string; exitCode: number; pid: number }> {
+type RunOptions = {
+  timeout?: number;
+  cwd?: string;
+  logType?: string;
+  onSpawn?: (pid: number) => void;
+};
+
+type RunResult = {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  pid: number;
+};
+
+async function run(cmd: string[], opts?: RunOptions): Promise<RunResult> {
   const cmdStr = cmd.join(" ");
   const logType = opts?.logType ?? "orchestrator";
 
@@ -97,6 +111,7 @@ async function run(
   });
   await logLine("orchestrator", `pid=${proc.pid}`);
   opts?.onSpawn?.(proc.pid);
+
   const [stdout, stderr, exitCode] = await Promise.all([
     new Response(proc.stdout).text(),
     new Response(proc.stderr).text(),
@@ -105,7 +120,6 @@ async function run(
 
   await logLine("orchestrator", `exit=${exitCode} stdout=${stdout.length}B stderr=${stderr.length}B`);
 
-  // Write detailed output to the specific log type
   if (logType !== "orchestrator") {
     const header = `${"=".repeat(72)}\n[${new Date().toISOString()}] $ ${cmdStr}\nexit=${exitCode}\n${"=".repeat(72)}\n`;
     let entry = header;
@@ -113,7 +127,6 @@ async function run(
     if (stderr) entry += `--- stderr ---\n${stderr}\n`;
     await writeLog(logType, entry);
   } else {
-    // Short commands: inline into orchestrator
     if (stdout) await logLine("orchestrator", `stdout: ${stdout.slice(0, 500)}`);
     if (stderr) await logLine("orchestrator", `stderr: ${stderr.slice(0, 500)}`);
   }
@@ -121,29 +134,10 @@ async function run(
   return { stdout: stdout.trim(), stderr: stderr.trim(), exitCode, pid: proc.pid };
 }
 
-function extractPrUrl(text: string): string | null {
-  const match = text.match(/https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+/);
-  return match ? match[0] : null;
-}
-
-function extractPrNumber(url: string): string {
-  return url.split("/").pop()!;
-}
-
-function extractSessionId(jsonOutput: string): string | null {
-  try {
-    const result = JSON.parse(jsonOutput);
-    return result.session_id ?? null;
-  } catch {
-    return null;
-  }
-}
-
 // ---------------------------------------------------------------------------
 // Claude session helpers
 // ---------------------------------------------------------------------------
 
-/** Compute the Claude CLI project directory for a given cwd. */
 function claudeProjectDir(cwd: string): string | null {
   const home = process.env.HOME ?? "";
   const projectsDir = resolve(home, ".claude", "projects");
@@ -156,7 +150,6 @@ function claudeProjectDir(cwd: string): string | null {
   }
 }
 
-/** List existing .jsonl session files in a Claude project directory. */
 function listSessionFiles(cwd: string): Set<string> {
   const dir = claudeProjectDir(cwd);
   if (!dir) return new Set();
@@ -167,22 +160,18 @@ function listSessionFiles(cwd: string): Set<string> {
   }
 }
 
-/** Poll for a new session file that wasn't in knownFiles, print when found. */
-async function detectAndPrintSession(
-  cwd: string,
-  knownFiles: Set<string>,
-): Promise<string | null> {
+async function detectNewSession(cwd: string, knownFiles: Set<string>): Promise<string | null> {
   for (let i = 0; i < 60; i++) {
     const dir = claudeProjectDir(cwd);
     if (dir) {
       try {
-        const files = readdirSync(dir).filter((f) => f.endsWith(".jsonl"));
-        const newFile = files.find((f) => !knownFiles.has(f));
+        const newFile = readdirSync(dir)
+          .filter((f) => f.endsWith(".jsonl"))
+          .find((f) => !knownFiles.has(f));
         if (newFile) {
           const sessionId = newFile.replace(".jsonl", "");
-          const sessionFile = resolve(dir, newFile);
           console.log(`   Session ID: ${sessionId}`);
-          console.log(`   Session file: ${sessionFile}`);
+          console.log(`   Session file: ${resolve(dir, newFile)}`);
           return sessionId;
         }
       } catch {}
@@ -192,7 +181,6 @@ async function detectAndPrintSession(
   return null;
 }
 
-/** Print session info for a known session ID. */
 function printSessionInfo(sessionId: string, cwd: string) {
   console.log(`   Session ID: ${sessionId}`);
   const dir = claudeProjectDir(cwd);
@@ -201,26 +189,52 @@ function printSessionInfo(sessionId: string, cwd: string) {
   }
 }
 
+/** Run a claude CLI command in the worktree, resuming an existing session. */
+async function claudeResume(
+  prompt: string,
+  sessionId: string,
+  cwd: string,
+  opts: { outputFormat?: "json" | "text"; logType: string },
+): Promise<RunResult> {
+  return run(
+    ["claude", "-p", prompt, "--resume", sessionId, "--output-format", opts.outputFormat ?? "text"],
+    {
+      timeout: CLAUDE_TIMEOUT,
+      cwd,
+      logType: opts.logType,
+      onSpawn: (pid) => {
+        console.log(`   PID: ${pid}`);
+        printSessionInfo(sessionId, cwd);
+      },
+    },
+  );
+}
+
 // ---------------------------------------------------------------------------
-// Review helper
+// Utility
 // ---------------------------------------------------------------------------
 
-async function runReview(cwd: string, round: number): Promise<CodeReviewResult | null> {
-  console.log(`\n🔍 Running ${reviewAgent} review...`);
+function extractPrUrl(text: string): string | null {
+  return text.match(/https:\/\/github\.com\/[^/]+\/[^/]+\/pull\/\d+/)?.[0] ?? null;
+}
 
+function extractPrNumber(url: string): string {
+  return url.split("/").pop()!;
+}
+
+function extractSessionId(jsonOutput: string): string | null {
   try {
-    const result = await reviewer.review({ cwd });
-
-    // Save review JSON to log directory for debugging/auditing
-    const jsonLogFile = resolve(logDir, `review-${round}.json`);
-    await Bun.write(jsonLogFile, JSON.stringify(result, null, 2));
-    await logLine("orchestrator", `review round=${round} status=${result.status} findings=${result.findings.length}`);
-
-    return result;
-  } catch (err) {
-    console.error(`⚠️  ${reviewAgent} review failed, skipping.`);
-    await logLine("orchestrator", `review round=${round} error=${err}`);
+    return JSON.parse(jsonOutput).session_id ?? null;
+  } catch {
     return null;
+  }
+}
+
+function extractResultText(jsonOutput: string): string {
+  try {
+    return JSON.parse(jsonOutput).result ?? "";
+  } catch {
+    return jsonOutput;
   }
 }
 
@@ -233,99 +247,91 @@ async function postComment(prNumber: string, body: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
-// Worktree setup
+// Phase 1: Setup worktree
 // ---------------------------------------------------------------------------
 
-const worktreeName = `handle-issue-${issueRef.replace(/[^a-zA-Z0-9-]/g, "-")}`;
-const worktreeBase = `.agents/worktrees/${worktreeName}`;
+async function setupWorktree(): Promise<{ worktreePath: string; cleanup: () => Promise<void> }> {
+  const worktreeName = `handle-issue-${issueRef.replace(/[^a-zA-Z0-9-]/g, "-")}`;
+  const worktreeBase = `.agents/worktrees/${worktreeName}`;
 
-console.log(`\n🌳 Creating worktree: ${worktreeName}`);
+  console.log(`\n🌳 Creating worktree: ${worktreeName}`);
 
-await run(["git", "fetch", "origin", "main"]);
-const addResult = await run([
-  "git",
-  "worktree",
-  "add",
-  "-b",
-  worktreeName,
-  worktreeBase,
-  "origin/main",
-]);
-if (addResult.exitCode !== 0) {
-  console.error(`❌ Failed to create worktree (see ${logDir}/orchestrator.log)`);
-  process.exit(1);
-}
+  await run(["git", "fetch", "origin", "main"]);
+  const addResult = await run(["git", "worktree", "add", "-b", worktreeName, worktreeBase, "origin/main"]);
+  if (addResult.exitCode !== 0) {
+    console.error(`❌ Failed to create worktree (see ${logDir}/orchestrator.log)`);
+    process.exit(1);
+  }
 
-// Resolve the absolute path of the worktree
-const worktreePath = (await run(["git", "worktree", "list", "--porcelain"])).stdout
-  .split("\n")
-  .filter((line) => line.startsWith("worktree "))
-  .map((line) => line.replace("worktree ", ""))
-  .find((path) => path.includes(worktreeName));
+  const worktreePath = (await run(["git", "worktree", "list", "--porcelain"])).stdout
+    .split("\n")
+    .filter((line) => line.startsWith("worktree "))
+    .map((line) => line.replace("worktree ", ""))
+    .find((path) => path.includes(worktreeName));
 
-if (!worktreePath) {
-  console.error(`❌ Could not resolve worktree path (see ${logDir}/orchestrator.log)`);
-  process.exit(1);
-}
+  if (!worktreePath) {
+    console.error(`❌ Could not resolve worktree path (see ${logDir}/orchestrator.log)`);
+    process.exit(1);
+  }
 
-console.log(`   Path: ${worktreePath}`);
+  console.log(`   Path: ${worktreePath}`);
 
-// Cleanup function
-async function cleanup() {
-  console.log(`\n🧹 Cleaning up worktree...`);
-  await run(["git", "worktree", "remove", "--force", worktreePath]);
-  await run(["git", "branch", "-D", worktreeName]);
+  const cleanup = async () => {
+    console.log(`\n🧹 Cleaning up worktree...`);
+    await run(["git", "worktree", "remove", "--force", worktreePath]);
+    await run(["git", "branch", "-D", worktreeName]);
+  };
+
+  return { worktreePath, cleanup };
 }
 
 // ---------------------------------------------------------------------------
-// Phase 1: Implement
+// Phase 2: Implement
 // ---------------------------------------------------------------------------
 
-console.log(`\n📋 Implementing issue: ${issueRef}`);
+async function implement(worktreePath: string): Promise<string> {
+  console.log(`\n📋 Implementing issue: ${issueRef}`);
 
-const implementPrompt = `Handle issue ${issueRef}\n\nIMPORTANT: Do NOT create a pull request. Only implement the changes, run checks (bun run check:all), and commit. Do NOT use /pr skill or gh pr create.`;
+  const prompt = [
+    `Handle issue ${issueRef}`,
+    "",
+    "IMPORTANT: Do NOT create a pull request. Only implement the changes, run checks (bun run check:all), and commit.",
+    "Do NOT use /pr skill or gh pr create.",
+  ].join("\n");
 
-const knownSessions = listSessionFiles(worktreePath);
-let sessionDetection: Promise<string | null> | null = null;
+  const knownSessions = listSessionFiles(worktreePath);
+  let sessionDetection: Promise<string | null> | null = null;
 
-const implementResult = await run(
-  [
-    "claude",
-    "-p",
-    implementPrompt,
-    "--output-format",
-    "json",
-  ],
-  {
-    timeout: 43_200_000,
+  const result = await run(["claude", "-p", prompt, "--output-format", "json"], {
+    timeout: IMPLEMENT_TIMEOUT,
     cwd: worktreePath,
     logType: "implement",
     onSpawn: (pid) => {
       console.log(`   PID: ${pid}`);
-      sessionDetection = detectAndPrintSession(worktreePath, knownSessions);
+      sessionDetection = detectNewSession(worktreePath, knownSessions);
     },
-  },
-);
+  });
 
-await sessionDetection;
+  await sessionDetection;
 
-if (implementResult.exitCode !== 0) {
-  console.error(`❌ Implementation failed (exit code: ${implementResult.exitCode})`);
-  console.error(`   See: ${logDir}/implement.log`);
-  await cleanup();
-  process.exit(1);
-}
+  if (result.exitCode !== 0) {
+    console.error(`❌ Implementation failed (exit code: ${result.exitCode})`);
+    console.error(`   See: ${logDir}/implement.log`);
+    return "";
+  }
 
-const sessionId = extractSessionId(implementResult.stdout);
-if (!sessionId) {
-  console.error("❌ Could not extract session ID from output");
-  console.error(`   See: ${logDir}/implement.log`);
-  await cleanup();
-  process.exit(1);
+  const sessionId = extractSessionId(result.stdout);
+  if (!sessionId) {
+    console.error("❌ Could not extract session ID from output");
+    console.error(`   See: ${logDir}/implement.log`);
+    return "";
+  }
+
+  return sessionId;
 }
 
 // ---------------------------------------------------------------------------
-// Phase 2: Review (before PR creation)
+// Phase 3: Review
 // ---------------------------------------------------------------------------
 
 type ReviewRound = {
@@ -334,275 +340,305 @@ type ReviewRound = {
   fixed: boolean;
 };
 
-const reviewRounds: ReviewRound[] = [];
-const MAX_REVIEW_ROUNDS = 5;
+async function runReviewLoop(worktreePath: string, sessionId: string): Promise<ReviewRound[]> {
+  const rounds: ReviewRound[] = [];
 
-for (let reviewRound = 1; reviewRound <= MAX_REVIEW_ROUNDS; reviewRound++) {
-  console.log(`\n🔍 ${reviewAgent} review round ${reviewRound}/${MAX_REVIEW_ROUNDS}...`);
+  for (let n = 1; n <= MAX_REVIEW_ROUNDS; n++) {
+    console.log(`\n🔍 ${reviewAgent} review round ${n}/${MAX_REVIEW_ROUNDS}...`);
 
-  const review = await runReview(worktreePath, reviewRound);
+    // Run review
+    let review: CodeReviewResult;
+    try {
+      review = await reviewer.review({ cwd: worktreePath });
+      await Bun.write(resolve(logDir, `review-${n}.json`), JSON.stringify(review, null, 2));
+      await logLine("orchestrator", `review round=${n} status=${review.status} findings=${review.findings.length}`);
+    } catch (err) {
+      console.error(`⚠️  ${reviewAgent} review failed, skipping. See: ${logDir}/review-${n}.json`);
+      await logLine("orchestrator", `review round=${n} error=${err}`);
+      break;
+    }
 
-  if (!review) {
-    console.error(`⚠️  ${reviewAgent} review failed, skipping. See: ${logDir}/review-${reviewRound}.json`);
-    break;
+    // Approved — done
+    if (review.status === "approved") {
+      console.log(`   ${reviewAgent} review: approved (no issues)`);
+      rounds.push({ round: n, review, fixed: false });
+      break;
+    }
+
+    // Changes requested — fix
+    console.log(`   ${reviewAgent} review: ${review.findings.length} issue(s) found. Fixing...`);
+
+    const fixPrompt = [
+      `Code review (${reviewAgent}) found issues in the current changes. Fix them.`,
+      "",
+      `Findings:\n${JSON.stringify(review.findings, null, 2)}`,
+      "",
+      "Steps:",
+      "1. Read each finding (check location.path and location.line)",
+      "2. Make the appropriate code changes",
+      "3. Run bun run check:all",
+      "4. Commit the fixes",
+    ].join("\n");
+
+    const fixResult = await claudeResume(fixPrompt, sessionId, worktreePath, {
+      logType: `review-fix-${n}`,
+    });
+
+    if (fixResult.exitCode !== 0) {
+      console.error(`⚠️  Review fix failed, skipping. See: ${logDir}/review-fix-${n}.log`);
+      rounds.push({ round: n, review, fixed: false });
+      break;
+    }
+
+    rounds.push({ round: n, review, fixed: true });
+    console.log(`   Review fixes applied (round ${n}).`);
+
+    if (n === MAX_REVIEW_ROUNDS) {
+      console.error(`⚠️  Review did not converge after ${MAX_REVIEW_ROUNDS} rounds.`);
+    }
   }
 
-  if (review.status === "approved") {
-    console.log(`   ${reviewAgent} review: approved (no issues)`);
-    reviewRounds.push({ round: reviewRound, review, fixed: false });
-    break;
-  }
-
-  // changes_requested — fix and re-review
-  console.log(`   ${reviewAgent} review: ${review.findings.length} issue(s) found. Fixing...`);
-
-  const findingsJson = JSON.stringify(review.findings, null, 2);
-  const fixPrompt = `Code review (${reviewAgent}) found issues in the current changes. Fix them.\n\nFindings:\n${findingsJson}\n\nSteps:\n1. Read each finding (check location.path and location.line)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit the fixes`;
-
-  const fixResult = await run(
-    [
-      "claude",
-      "-p",
-      fixPrompt,
-      "--resume",
-      sessionId,
-      "--output-format",
-      "text",
-    ],
-    {
-      timeout: 600_000,
-      cwd: worktreePath,
-      logType: `review-fix-${reviewRound}`,
-      onSpawn: (pid) => {
-        console.log(`   PID: ${pid}`);
-        printSessionInfo(sessionId, worktreePath);
-      },
-    },
-  );
-
-  if (fixResult.exitCode !== 0) {
-    console.error(`⚠️  Review fix failed, skipping. See: ${logDir}/review-fix-${reviewRound}.log`);
-    reviewRounds.push({ round: reviewRound, review, fixed: false });
-    break;
-  }
-
-  reviewRounds.push({ round: reviewRound, review, fixed: true });
-  console.log(`   Review fixes applied (round ${reviewRound}).`);
-
-  if (reviewRound === MAX_REVIEW_ROUNDS) {
-    console.error(`⚠️  Review did not converge after ${MAX_REVIEW_ROUNDS} rounds.`);
-  }
+  return rounds;
 }
 
 // ---------------------------------------------------------------------------
-// Phase 2b: Create PR (after review)
+// Phase 4: Create PR
 // ---------------------------------------------------------------------------
 
-console.log(`\n📤 Creating pull request...`);
+async function createPr(
+  worktreePath: string,
+  sessionId: string,
+): Promise<{ prUrl: string; prNumber: string }> {
+  console.log(`\n📤 Creating pull request...`);
 
-const createPrPrompt = `Create a pull request for the changes you've made to handle issue ${issueRef}.\n\nIMPORTANT: When creating the PR (step 5 of /pr skill), use subagent mode:\nonly run \`gh pr create\`, do NOT run wait-pr.ts. Return the PR URL at the end of your response.`;
+  const prompt = [
+    `Create a pull request for the changes you've made to handle issue ${issueRef}.`,
+    "",
+    "IMPORTANT: When creating the PR (step 5 of /pr skill), use subagent mode:",
+    "only run `gh pr create`, do NOT run wait-pr.ts. Return the PR URL at the end of your response.",
+  ].join("\n");
 
-const createPrResult = await run(
-  [
-    "claude",
-    "-p",
-    createPrPrompt,
-    "--resume",
-    sessionId,
-    "--output-format",
-    "json",
-  ],
-  {
-    timeout: 600_000,
-    cwd: worktreePath,
+  const result = await claudeResume(prompt, sessionId, worktreePath, {
+    outputFormat: "json",
     logType: "create-pr",
-    onSpawn: (pid) => {
-      console.log(`   PID: ${pid}`);
-      printSessionInfo(sessionId, worktreePath);
-    },
-  },
-);
+  });
 
-if (createPrResult.exitCode !== 0) {
-  console.error(`❌ PR creation failed (exit code: ${createPrResult.exitCode})`);
-  console.error(`   See: ${logDir}/create-pr.log`);
-  await cleanup();
-  process.exit(1);
+  if (result.exitCode !== 0) {
+    console.error(`❌ PR creation failed (exit code: ${result.exitCode})`);
+    console.error(`   See: ${logDir}/create-pr.log`);
+    return { prUrl: "", prNumber: "" };
+  }
+
+  const prUrl = extractPrUrl(extractResultText(result.stdout));
+  if (!prUrl) {
+    console.error("❌ Could not find PR URL in output");
+    console.error(`   See: ${logDir}/create-pr.log`);
+    return { prUrl: "", prNumber: "" };
+  }
+
+  const prNumber = extractPrNumber(prUrl);
+  console.log(`\n✅ PR created: ${prUrl}`);
+  console.log(`   Session: ${sessionId}`);
+
+  return { prUrl, prNumber };
 }
 
-let resultText: string;
-try {
-  resultText = JSON.parse(createPrResult.stdout).result ?? "";
-} catch {
-  resultText = createPrResult.stdout;
-}
+// ---------------------------------------------------------------------------
+// Phase 4b: Post review comment
+// ---------------------------------------------------------------------------
 
-const url = extractPrUrl(resultText);
-if (!url) {
-  console.error("❌ Could not find PR URL in output");
-  console.error(`   See: ${logDir}/create-pr.log`);
-  await cleanup();
-  process.exit(1);
-}
-const prUrl = url;
-const prNumber = extractPrNumber(prUrl);
-console.log(`\n✅ PR created: ${prUrl}`);
-console.log(`   Session: ${sessionId}`);
+async function postReviewComment(prNumber: string, rounds: ReviewRound[]): Promise<void> {
+  if (rounds.length === 0) return;
 
-// Post consolidated review comment to the PR
-if (reviewRounds.length > 0) {
-  const lastRound = reviewRounds[reviewRounds.length - 1];
+  const lastRound = rounds[rounds.length - 1];
   const approved = lastRound.review.status === "approved";
   const agentLabel = reviewAgent === "codex" ? "Codex" : "Claude";
 
-  let commentBody = `## ${agentLabel} Review\n\n`;
+  let body = `## ${agentLabel} Review\n\n`;
 
-  if (approved && reviewRounds.length === 1) {
-    // Approved on first round — simple message
-    commentBody += lastRound.review.comment_markdown;
+  if (approved && rounds.length === 1) {
+    body += lastRound.review.comment_markdown;
   } else {
-    // Multiple rounds or not fully resolved — show per-round details
-    commentBody += approved
-      ? `Approved after ${reviewRounds.length} round(s).\n`
-      : `Not fully resolved after ${reviewRounds.length} round(s).\n`;
+    body += approved
+      ? `Approved after ${rounds.length} round(s).\n`
+      : `Not fully resolved after ${rounds.length} round(s).\n`;
 
-    for (const entry of reviewRounds) {
-      commentBody += `\n### Round ${entry.round}`;
-
+    for (const entry of rounds) {
+      body += `\n### Round ${entry.round}`;
       if (entry.review.status === "approved") {
-        commentBody += ` — ✅ Approved\n\n${entry.review.comment_markdown}\n`;
+        body += ` — ✅ Approved\n\n${entry.review.comment_markdown}\n`;
       } else {
         const status = entry.fixed ? "🔧 Fixed" : "⚠️ Not fixed";
-        commentBody += ` — ${status}\n\n`;
-        commentBody += `${entry.review.summary}\n\n`;
-        commentBody += entry.review.findings
+        body += ` — ${status}\n\n`;
+        body += `${entry.review.summary}\n\n`;
+        body += entry.review.findings
           .map(
             (f) =>
               `- **${f.severity}** (${f.category}): ${f.title} — \`${f.location.path}${f.location.line ? `:${f.location.line}` : ""}\``,
           )
           .join("\n");
-        commentBody += "\n";
+        body += "\n";
       }
     }
   }
 
-  await postComment(prNumber, commentBody);
+  await postComment(prNumber, body);
 }
 
-// Set prCreatedAt after posting review comment so the wait-pr loop
-// does not pick it up as actionable feedback.
-const prCreatedAt = new Date().toISOString();
-
 // ---------------------------------------------------------------------------
-// Phase 3: Wait and fix loop
+// Phase 5: Wait for CI/review and fix loop
 // ---------------------------------------------------------------------------
 
-let waitSince = new Date(prCreatedAt);
-let round = 0;
-let ciFixCount = 0;
+async function waitAndFix(
+  prUrl: string,
+  prNumber: string,
+  sessionId: string,
+  worktreePath: string,
+): Promise<void> {
+  let waitSince = new Date();
+  let round = 0;
+  let ciFixCount = 0;
 
-while (true) {
-  round++;
+  while (true) {
+    round++;
+
+    // --- Poll until actionable ---
+    const status = await pollUntilActionable(prNumber, waitSince, worktreePath, round);
+
+    // --- Terminal states ---
+    if (status.status === "approved") {
+      console.log(`\n🎉 PR approved: ${prUrl}`);
+      return;
+    }
+    if (status.status === "merged") {
+      console.log(`\n🎉 PR merged: ${prUrl}`);
+      return;
+    }
+    if (status.status === "closed") {
+      console.log(`\n⚠️  PR was closed: ${prUrl}`);
+      return;
+    }
+
+    // --- CI failure ---
+    if (status.status === "ci_failed") {
+      ciFixCount++;
+      if (ciFixCount > MAX_CI_FIX_ROUNDS) {
+        throw new Error(
+          `CI did not pass after ${MAX_CI_FIX_ROUNDS} fix rounds. Manual intervention needed.\n   PR: ${prUrl}\n   Logs: ${logDir}/`,
+        );
+      }
+      console.log(`\n🔧 CI failed. Fixing (CI fix ${ciFixCount}/${MAX_CI_FIX_ROUNDS})...`);
+    }
+
+    // --- Review feedback ---
+    if (status.status === "has_feedback") {
+      console.log(`\n💬 Review feedback received. Addressing (round ${round})...`);
+      ciFixCount = 0;
+    }
+
+    // --- Fix ---
+    const fixPrompt = buildFixPrompt(prUrl, status);
+    const fixResult = await claudeResume(fixPrompt, sessionId, worktreePath, {
+      logType: `fix-${round}`,
+    });
+
+    if (fixResult.exitCode !== 0) {
+      throw new Error(`Fix round ${round} failed. See: ${logDir}/fix-${round}.log`);
+    }
+
+    waitSince = new Date();
+    console.log(`   Fix round ${round} complete. Re-checking...`);
+  }
+}
+
+async function pollUntilActionable(
+  prNumber: string,
+  since: Date,
+  cwd: string,
+  round: number,
+): Promise<WaitPrResult> {
   console.log(`\n⏳ Waiting for CI/review (round ${round})...`);
-
-  // Keep polling until an actionable status is reached (no timeout limit).
-  let status: WaitPrResult;
 
   let pollCount = 0;
   const pollStartedAt = Date.now();
 
   while (true) {
     pollCount++;
-    status = await waitPr({ prNumber, since: waitSince, cwd: worktreePath });
+    const status = await waitPr({ prNumber, since, cwd });
     await logLine("wait-pr", `status=${status.status} lgtm=${status.lgtm} ci=${status.ci.state} feedback=${status.feedback.length}`);
 
     if (status.status !== "pending") {
-      // Clear the in-place polling line before printing the final status
-      if (pollCount > 1) {
-        process.stdout.write("\r\x1b[K");
-      }
+      if (pollCount > 1) process.stdout.write("\r\x1b[K");
       console.log(`   Status: ${status.status}`);
-      break;
+      return status;
     }
 
-    // pending — overwrite the same line with poll count
     const elapsed = Math.round((Date.now() - pollStartedAt) / 1000);
     const mins = Math.floor(elapsed / 60);
     const secs = elapsed % 60;
     const timeStr = mins > 0 ? `${mins}m${secs}s` : `${secs}s`;
     process.stdout.write(`\r\x1b[K   ⏳ Polling... (attempt ${pollCount}, elapsed ${timeStr})`);
   }
+}
 
-  if (status.status === "approved") {
-    console.log(`\n🎉 PR approved: ${prUrl}`);
-    await cleanup();
-    process.exit(0);
-  }
-
-  if (status.status === "merged") {
-    console.log(`\n🎉 PR merged: ${prUrl}`);
-    await cleanup();
-    process.exit(0);
-  }
-
-  if (status.status === "closed") {
-    console.log(`\n⚠️  PR was closed: ${prUrl}`);
-    await cleanup();
-    process.exit(0);
-  }
-
-  // ci_failed or has_feedback — fix it
+function buildFixPrompt(prUrl: string, status: WaitPrResult): string {
   if (status.status === "ci_failed") {
-    ciFixCount++;
-    if (ciFixCount > MAX_CI_FIX_ROUNDS) {
-      console.error(
-        `\n⚠️  CI did not pass after ${MAX_CI_FIX_ROUNDS} fix rounds. Manual intervention needed.`,
-      );
-      console.error(`   PR: ${prUrl}`);
-      console.error(`   Logs: ${logDir}/`);
-      await cleanup();
-      process.exit(1);
-    }
-    console.log(`\n🔧 CI failed. Fixing (CI fix ${ciFixCount}/${MAX_CI_FIX_ROUNDS})...`);
-  } else {
-    console.log(`\n💬 Review feedback received. Addressing (round ${round})...`);
-    ciFixCount = 0;
+    return [
+      `The PR ${prUrl} has CI failures. Fix them.`,
+      "",
+      `CI result JSON:\n${JSON.stringify(status, null, 2)}`,
+      "",
+      "Steps:",
+      "1. Extract the run ID from failed check URLs (format: .../actions/runs/<run-id>/...)",
+      "2. Get failure details: bunx @nownabe/claude-tools gh list-run-jobs <run-id> and bunx @nownabe/claude-tools gh get-job-logs <job-id>",
+      "3. Fix the issues",
+      "4. Run bun run check:all",
+      "5. Commit and push (git push)",
+    ].join("\n");
   }
 
-  const fixPrompt =
-    status.status === "ci_failed"
-      ? `The PR ${prUrl} has CI failures. Fix them.\n\nCI result JSON:\n${JSON.stringify(status, null, 2)}\n\nSteps:\n1. Extract the run ID from failed check URLs (format: .../actions/runs/<run-id>/...)\n2. Get failure details: bunx @nownabe/claude-tools gh list-run-jobs <run-id> and bunx @nownabe/claude-tools gh get-job-logs <job-id>\n3. Fix the issues\n4. Run bun run check:all\n5. Commit and push (git push)`
-      : `The PR ${prUrl} has review feedback. Address it.\n\nFeedback JSON:\n${JSON.stringify(status, null, 2)}\n\nSteps:\n1. Read each feedback item (check path and line fields for review_comments)\n2. Make the appropriate code changes\n3. Run bun run check:all\n4. Commit and push (git push)`;
+  return [
+    `The PR ${prUrl} has review feedback. Address it.`,
+    "",
+    `Feedback JSON:\n${JSON.stringify(status, null, 2)}`,
+    "",
+    "Steps:",
+    "1. Read each feedback item (check path and line fields for review_comments)",
+    "2. Make the appropriate code changes",
+    "3. Run bun run check:all",
+    "4. Commit and push (git push)",
+  ].join("\n");
+}
 
-  const fixResult = await run(
-    [
-      "claude",
-      "-p",
-      fixPrompt,
-      "--resume",
-      sessionId,
-      "--output-format",
-      "text",
-    ],
-    {
-      timeout: 600_000,
-      cwd: worktreePath,
-      logType: `fix-${round}`,
-      onSpawn: (pid) => {
-        console.log(`   PID: ${pid}`);
-        printSessionInfo(sessionId, worktreePath);
-      },
-    },
-  );
+// ===========================================================================
+// Main orchestration
+// ===========================================================================
 
-  if (fixResult.exitCode !== 0) {
-    console.error(`❌ Fix round ${round} failed. See: ${logDir}/fix-${round}.log`);
-    await cleanup();
-    process.exit(1);
+console.log(`📝 Logs: ${logDir}/`);
+
+const { worktreePath, cleanup } = await setupWorktree();
+
+try {
+  // Phase 2: Implement the issue
+  const sessionId = await implement(worktreePath);
+  if (!sessionId) {
+    throw new Error("Implementation phase failed");
   }
 
-  // Advance baseline so already-addressed feedback is not re-reported
-  waitSince = new Date();
+  // Phase 3: Review loop (fix issues before PR)
+  const reviewRounds = await runReviewLoop(worktreePath, sessionId);
 
-  console.log(`   Fix round ${round} complete. Re-checking...`);
+  // Phase 4: Create PR
+  const { prUrl, prNumber } = await createPr(worktreePath, sessionId);
+  if (!prUrl) {
+    throw new Error("PR creation failed");
+  }
+
+  // Phase 4b: Post review comment to PR
+  await postReviewComment(prNumber, reviewRounds);
+
+  // Phase 5: Wait for CI/review and fix
+  await waitAndFix(prUrl, prNumber, sessionId, worktreePath);
+} finally {
+  await cleanup();
 }
