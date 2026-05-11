@@ -354,7 +354,9 @@ async function runReviewLoop(worktreePath: string, sessionId: string): Promise<R
       await Bun.write(resolve(logDir, `review-${n}.json`), JSON.stringify(review, null, 2));
       await logLine("orchestrator", `review round=${n} status=${review.status} findings=${review.findings.length}`);
     } catch (err) {
-      console.error(`⚠️  ${reviewAgent} review failed, skipping. See: ${logDir}/review-${n}.json`);
+      const errLog = `review-${n}.error.log`;
+      await writeLog(errLog, String(err instanceof Error ? err.stack ?? err.message : err));
+      console.error(`⚠️  ${reviewAgent} review failed, skipping. See: ${logDir}/${errLog}`);
       await logLine("orchestrator", `review round=${n} error=${err}`);
       break;
     }
