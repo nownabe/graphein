@@ -12,7 +12,7 @@
     "css": "tailwindcss -i src/views/global.css -o public/styles.css --watch",
     "css:build": "tailwindcss -i src/views/global.css -o public/styles.css --minify",
     "test": "bun test",
-    "test:tools": "bun test --test-root ./lib",
+    "test:tools": "bun test --test-root ./tools/lib",
     "test:integration": "bun test --test-root ./test/integration --preload ./test/integration/helpers/setup.ts --max-concurrency 1",
     "test:e2e": "playwright test",
     "typecheck": "tsc --noEmit",
