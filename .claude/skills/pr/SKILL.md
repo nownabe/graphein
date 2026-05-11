@@ -49,7 +49,7 @@ If any check fails, fix the issues and re-run. Do NOT skip checks or push with f
 
 ## 3. Local Code Review
 
-Run the `/code-review` skill to perform an automated local code review before pushing.
+Run the `/review-by-claude` skill to perform an automated local code review before pushing.
 
 If there are actionable findings, fix them, re-run `bun run check:all`, and commit before proceeding.
 
