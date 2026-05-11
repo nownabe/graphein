@@ -11,30 +11,32 @@ export interface RedisCacheStoreOptions {
 /**
  * Redis-backed cache store. Suitable for multi-instance deployments where
  * caches and rate-limit counters must be shared across processes.
+ *
+ * The returned promise resolves only after the initial connection succeeds,
+ * so callers can catch startup failures synchronously. Runtime reconnection
+ * errors are logged but not fatal (ioredis reconnects automatically).
  */
-export function createRedisCacheStore(options: RedisCacheStoreOptions): CacheStore {
+export async function createRedisCacheStore(options: RedisCacheStoreOptions): Promise<CacheStore> {
   const prefix = options.keyPrefix ?? "graphein:";
   const redis = new Redis(options.url, { lazyConnect: true, keyPrefix: prefix });
 
-  // Connect eagerly so connection errors surface early.
-  const ready = redis.connect().catch((err) => {
+  // Log runtime connection errors (e.g. transient disconnects). ioredis will
+  // attempt to reconnect automatically; attaching a handler prevents unhandled
+  // rejection / uncaught exception crashes.
+  redis.on("error", (err) => {
     console.error("[cache:redis] connection error", err);
-    throw err;
   });
 
-  async function ensureReady() {
-    await ready;
-  }
+  // Await the initial connection so that startup fails fast on bad config.
+  await redis.connect();
 
   return {
     async get(key) {
-      await ensureReady();
       const val = await redis.get(key);
       return val ?? undefined;
     },
 
     async set(key, value, ttlMs) {
-      await ensureReady();
       if (ttlMs != null) {
         await redis.set(key, value, "PX", ttlMs);
       } else {
@@ -43,12 +45,10 @@ export function createRedisCacheStore(options: RedisCacheStoreOptions): CacheSto
     },
 
     async delete(key) {
-      await ensureReady();
       await redis.del(key);
     },
 
     async increment(key, ttlMs) {
-      await ensureReady();
       const next = await redis.incr(key);
       // Set TTL only on first increment (when the counter was just created)
       if (next === 1 && ttlMs != null) {
