@@ -1,4 +1,5 @@
 import type { Database } from "./infrastructure/db/client";
+import type { CacheStore } from "./infrastructure/cache/store";
 import type { SessionHelpers } from "./application/auth/session";
 import type { UserService } from "./application/users/service";
 import type { TaskService } from "./application/tasks/service";
@@ -16,6 +17,7 @@ export type ResolveChannelName = (channelId: string) => Promise<string | undefin
 
 export interface HonoAppConfig {
   db: Database;
+  cache: CacheStore;
   devMode: boolean;
   baseUrl: string;
   slackClientId: string;

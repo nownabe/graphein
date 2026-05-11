@@ -10,6 +10,7 @@ import { createApiKeyService } from "../../../src/application/api-keys/service";
 import { createKudosService } from "../../../src/application/kudos/service";
 import { createOAuthService } from "../../../src/application/oauth/service";
 import { createSessionHelpers } from "../../../src/application/auth/session";
+import { createMemoryCacheStore } from "../../../src/infrastructure/cache/memory";
 import { TEST_DATABASE_URL } from "./setup";
 
 const JWT_SECRET = "test-secret";
@@ -30,6 +31,7 @@ export function createTestApp() {
 
   const app = createHonoApp({
     db,
+    cache: createMemoryCacheStore(),
     devMode: false,
     baseUrl: BASE_URL,
     slackClientId: "",

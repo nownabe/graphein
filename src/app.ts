@@ -121,8 +121,10 @@ export function createHonoApp(config: HonoAppConfig) {
   app.use("*", csrfMw);
 
   // API auth + rate limiting for /api/v1/* (excluding doc and reference)
-  const { authMiddleware: apiAuth, rateLimitMiddleware: apiRateLimit } =
-    createApiMiddleware(apiKeyService);
+  const { authMiddleware: apiAuth, rateLimitMiddleware: apiRateLimit } = createApiMiddleware(
+    apiKeyService,
+    config.cache,
+  );
   const isApiDocPath = (url: string) => {
     const path = new URL(url).pathname;
     return path === "/api/v1/doc" || path === "/api/v1/reference";
@@ -275,7 +277,7 @@ export function createHonoApp(config: HonoAppConfig) {
   // time, so sharing an instance across concurrent requests is unsafe.
   // Since Graphein runs in stateless mode (no sessions, no subscriptions),
   // per-request instantiation is the correct approach.
-  const mcpRateLimiter = createRateLimiter();
+  const mcpRateLimiter = createRateLimiter(config.cache);
   app.use("/mcp", contextStorage());
   const mcpResourceUrl = `${config.baseUrl}/mcp`;
   app.all("/mcp", async (c) => {
@@ -312,7 +314,7 @@ export function createHonoApp(config: HonoAppConfig) {
 
     // Rate limiting keyed by user ID (60 req/min)
     const userId = (tokenInfo.extra as { sub: string }).sub;
-    const { remaining, resetAt } = mcpRateLimiter.check(userId);
+    const { remaining, resetAt } = await mcpRateLimiter.check(userId);
     const resetAtSeconds = Math.ceil(resetAt / 1000);
     if (remaining < 0) {
       const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000));

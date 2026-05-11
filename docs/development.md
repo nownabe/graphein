@@ -43,6 +43,8 @@ Key differences from production:
 - `SLACK_APP_TOKEN` — required for Socket Mode (`xapp-...`)
 - `BASE_URL` — your ngrok URL
 - `DATABASE_URL` — default value from `.envrc.example` works with Docker
+- `CACHE_BACKEND` — `"memory"` (default) or `"redis"` for shared cache across instances
+- `REDIS_URL` — Redis connection URL (required when `CACHE_BACKEND=redis`)
 
 ### 4. Start Services
 

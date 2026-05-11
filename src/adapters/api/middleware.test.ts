@@ -6,6 +6,7 @@ import {
   createRateLimiter,
 } from "./middleware";
 import type { ApiKeyService } from "../../application/api-keys/service";
+import { createMemoryCacheStore } from "../../infrastructure/cache/memory";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -38,7 +39,7 @@ const MOCK_USER = {
 function buildApp(apiKeyService: ApiKeyService) {
   const app = new Hono();
   const authMiddleware = createApiAuthMiddleware(apiKeyService);
-  const rateLimiter = createRateLimiter();
+  const rateLimiter = createRateLimiter(createMemoryCacheStore());
   const rateLimitMiddleware = createApiRateLimitMiddleware(rateLimiter);
 
   app.use("/api/*", authMiddleware);
@@ -249,7 +250,7 @@ describe("API rate limiting", () => {
     // Use a standalone rate limiter to exhaust the limit
     const app = new Hono();
     const authMiddleware = createApiAuthMiddleware(service);
-    const rateLimiter = createRateLimiter();
+    const rateLimiter = createRateLimiter(createMemoryCacheStore());
     const rateLimitMiddleware = createApiRateLimitMiddleware(rateLimiter);
 
     app.use("/api/*", authMiddleware);
@@ -285,7 +286,7 @@ describe("API rate limiting", () => {
 
     const app = new Hono();
     const authMiddleware = createApiAuthMiddleware(service);
-    const rateLimiter = createRateLimiter();
+    const rateLimiter = createRateLimiter(createMemoryCacheStore());
     const rateLimitMiddleware = createApiRateLimitMiddleware(rateLimiter);
 
     app.use("/api/*", authMiddleware);
@@ -326,7 +327,7 @@ describe("Composed middleware with path exclusion (mirrors app.ts)", () => {
   function buildManualApp(apiKeyService: ApiKeyService) {
     const app = new Hono();
     const authMiddleware = createApiAuthMiddleware(apiKeyService);
-    const rateLimiter = createRateLimiter();
+    const rateLimiter = createRateLimiter(createMemoryCacheStore());
     const rateLimitMiddleware = createApiRateLimitMiddleware(rateLimiter);
 
     app.use("/api/*", async (c, next) => {
@@ -402,41 +403,39 @@ describe("Composed middleware with path exclusion (mirrors app.ts)", () => {
 // ---------------------------------------------------------------------------
 
 describe("createRateLimiter", () => {
-  test("resets count on new window boundary", () => {
-    const rateLimiter = createRateLimiter();
+  test("resets count on new window boundary", async () => {
+    const rateLimiter = createRateLimiter(createMemoryCacheStore());
     const keyHash = "abc123";
 
     // Fill up to the limit
     for (let i = 0; i < 60; i++) {
-      rateLimiter.check(keyHash);
+      await rateLimiter.check(keyHash);
     }
 
     // Next check should be over limit in the same window
-    const result = rateLimiter.check(keyHash);
+    const result = await rateLimiter.check(keyHash);
     expect(result.remaining).toBe(-1);
   });
 
-  test("returns correct resetAt timestamp", () => {
-    const rateLimiter = createRateLimiter();
-    const result = rateLimiter.check("test-key");
+  test("returns correct resetAt timestamp", async () => {
+    const rateLimiter = createRateLimiter(createMemoryCacheStore());
+    const result = await rateLimiter.check("test-key");
 
     const currentWindow = Math.floor(Date.now() / 60_000);
     const expectedReset = (currentWindow + 1) * 60_000;
     expect(result.resetAt).toBe(expectedReset);
   });
 
-  test("stale entries are evicted on access in new window", () => {
-    // This test verifies the lazy cleanup behavior:
-    // when a key is accessed in a new window, the old entry is replaced
-    const rateLimiter = createRateLimiter();
-    const keyHash = "stale-key";
+  test("decrements remaining on successive checks", async () => {
+    const rateLimiter = createRateLimiter(createMemoryCacheStore());
+    const keyHash = "test-key";
 
     // First access
-    const result1 = rateLimiter.check(keyHash);
+    const result1 = await rateLimiter.check(keyHash);
     expect(result1.remaining).toBe(59);
 
     // Second access in the same window
-    const result2 = rateLimiter.check(keyHash);
+    const result2 = await rateLimiter.check(keyHash);
     expect(result2.remaining).toBe(58);
   });
 });
