@@ -1,5 +1,6 @@
 import { createHonoApp } from "./app";
 import { createDb } from "./infrastructure/db/client";
+import { cacheConfigFromEnv, createCacheStore } from "./infrastructure/cache/factory";
 import { createUserService } from "./application/users/service";
 import { createTaskService } from "./application/tasks/service";
 import { createSnippetService } from "./application/snippets/service";
@@ -28,6 +29,10 @@ const slackSocketMode = process.env.SLACK_SOCKET_MODE === "true";
 const baseUrl = requireEnv("BASE_URL");
 const timezone = process.env.APP_TIMEZONE ?? "UTC";
 
+// Create cache store (in-memory by default, Redis when CACHE_BACKEND=redis)
+const cacheConfig = cacheConfigFromEnv();
+const cache = await createCacheStore(cacheConfig);
+
 // Create core services
 const db = createDb(requireEnv("DATABASE_URL"));
 const userService = createUserService(db);
@@ -53,12 +58,13 @@ const { boltApp, receiver } = createBolt(
   },
   { userService, taskService, snippetService, kudosService, usergroupService, geminiClient },
 );
-const buildMrkdwnLabels = createLabelBuilder(boltApp, userService);
-const slackLabelResolver = createSlackLabelResolver(boltApp.client);
+const buildMrkdwnLabels = createLabelBuilder(boltApp, userService, cache);
+const slackLabelResolver = createSlackLabelResolver(boltApp.client, cache);
 
 // Create Hono app
 const app = createHonoApp({
   db,
+  cache,
   devMode,
   baseUrl,
   slackClientId: requireEnv("SLACK_CLIENT_ID"),

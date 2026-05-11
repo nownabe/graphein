@@ -10,6 +10,7 @@ import type { App } from "@slack/bolt";
 import { createSlackLabelResolver } from "./helpers";
 import type { MrkdwnOptions } from "./mrkdwn";
 import type { UserService } from "../../application/users/service";
+import type { CacheStore } from "../../infrastructure/cache/store";
 
 export function extractSlackEntityIds(text: string): {
   users: string[];
@@ -29,11 +30,11 @@ export function extractSlackEntityIds(text: string): {
   };
 }
 
-export function createLabelBuilder(boltApp: App, userService: UserService) {
+export function createLabelBuilder(boltApp: App, userService: UserService, cache?: CacheStore) {
   let _slackResolver: ReturnType<typeof createSlackLabelResolver> | null = null;
   function slackResolver() {
     if (!_slackResolver) {
-      _slackResolver = createSlackLabelResolver(boltApp.client);
+      _slackResolver = createSlackLabelResolver(boltApp.client, cache);
     }
     return _slackResolver;
   }

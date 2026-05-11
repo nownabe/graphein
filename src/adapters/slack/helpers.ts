@@ -1,4 +1,5 @@
 import type { WebClient } from "@slack/web-api";
+import type { CacheStore } from "../../infrastructure/cache/store";
 
 interface SlackMention {
   slackUserId: string;
@@ -52,54 +53,121 @@ export async function hydrateMentionLabels(
     });
 }
 
-// Adapter that wraps a Slack WebClient as a MentionLabelResolver. Results are
-// memoized per-instance so repeated lookups in the same call only hit the API
-// once.
-export function createSlackLabelResolver(client: WebClient): MentionLabelResolver {
-  const userCache = new Map<string, string | undefined>();
-  const channelCache = new Map<string, string | undefined>();
-  let usergroupIndex: Map<string, string> | null = null;
+// Default TTL for Slack label cache entries (1 hour).
+const LABEL_CACHE_TTL_MS = 60 * 60 * 1000;
+
+// Adapter that wraps a Slack WebClient as a MentionLabelResolver.
+//
+// When a `CacheStore` is provided the results are persisted there with a TTL so
+// they survive restarts and are shared across instances. Without a store the
+// resolver falls back to in-memory Maps (suitable for short-lived, per-request
+// use in bolt.ts).
+export function createSlackLabelResolver(
+  client: WebClient,
+  cache?: CacheStore,
+): MentionLabelResolver {
+  // Lightweight in-memory maps used when no external cache is provided.
+  const localUserCache = new Map<string, string | undefined>();
+  const localChannelCache = new Map<string, string | undefined>();
+  let localUsergroupIndex: Map<string, string> | null = null;
+
+  // Helpers to interact with either the CacheStore or local maps.
+  async function getCached(
+    prefix: string,
+    id: string,
+    localMap: Map<string, string | undefined>,
+  ): Promise<{ hit: boolean; value: string | undefined }> {
+    if (cache) {
+      const v = await cache.get(`slack:${prefix}:${id}`);
+      if (v !== undefined) return { hit: true, value: v };
+      return { hit: false, value: undefined };
+    }
+    if (localMap.has(id)) return { hit: true, value: localMap.get(id) };
+    return { hit: false, value: undefined };
+  }
+
+  async function setCached(
+    prefix: string,
+    id: string,
+    value: string,
+    localMap: Map<string, string | undefined>,
+  ): Promise<void> {
+    if (cache) {
+      await cache.set(`slack:${prefix}:${id}`, value, LABEL_CACHE_TTL_MS);
+    } else {
+      localMap.set(id, value);
+    }
+  }
 
   return {
     async user(id) {
-      if (userCache.has(id)) return userCache.get(id);
+      const { hit, value } = await getCached("user", id, localUserCache);
+      if (hit) return value;
       try {
         const r = await client.users.info({ user: id });
         const p = r.user?.profile;
         const name = p?.display_name || p?.real_name || undefined;
-        if (name) userCache.set(id, name);
+        if (name) await setCached("user", id, name, localUserCache);
         return name;
       } catch {
         return undefined;
       }
     },
     async channel(id) {
-      if (channelCache.has(id)) return channelCache.get(id);
+      const { hit, value } = await getCached("channel", id, localChannelCache);
+      if (hit) return value;
       try {
         const r = await client.conversations.info({ channel: id });
         const name = (r.channel as { name?: string } | undefined)?.name;
-        if (name) channelCache.set(id, name);
+        if (name) await setCached("channel", id, name, localChannelCache);
         return name;
       } catch {
         return undefined;
       }
     },
     async usergroup(id) {
-      if (!usergroupIndex) {
-        usergroupIndex = new Map();
+      if (cache) {
+        const cached = await cache.get(`slack:usergroup:${id}`);
+        if (cached !== undefined) return cached;
+
+        // Check if the full index was already loaded in this TTL window.
+        const indexLoaded = await cache.get("slack:usergroup:_index_loaded");
+        if (!indexLoaded) {
+          try {
+            const r = await client.usergroups.list({ include_disabled: true });
+            for (const g of r.usergroups ?? []) {
+              if (g.id) {
+                const name = g.handle || g.name;
+                if (name) await cache.set(`slack:usergroup:${g.id}`, name, LABEL_CACHE_TTL_MS);
+              }
+            }
+            await cache.set("slack:usergroup:_index_loaded", "1", LABEL_CACHE_TTL_MS);
+          } catch {
+            // leave cache empty
+          }
+          // Re-read after populating
+          const v = await cache.get(`slack:usergroup:${id}`);
+          return v ?? undefined;
+        }
+        return undefined;
+      }
+
+      // Local fallback
+      if (!localUsergroupIndex) {
+        localUsergroupIndex = new Map();
         try {
           const r = await client.usergroups.list({ include_disabled: true });
           for (const g of r.usergroups ?? []) {
             if (g.id) {
               const name = g.handle || g.name;
-              if (name) usergroupIndex.set(g.id, name);
+              if (name) localUsergroupIndex.set(g.id, name);
             }
           }
         } catch {
           // leave index empty
         }
       }
-      return usergroupIndex.get(id);
+      return localUsergroupIndex.get(id);
     },
   };
 }

@@ -1,6 +1,7 @@
 import { createMiddleware } from "hono/factory";
 import type { ApiKeyService, ApiKeyRole } from "../../application/api-keys/service";
 import type { users } from "../../infrastructure/db/schema";
+import type { CacheStore } from "../../infrastructure/cache/store";
 
 // ---------------------------------------------------------------------------
 // Context variable types for API-authenticated requests
@@ -35,41 +36,30 @@ export function extractBearerToken(header: string | undefined): string | null {
 }
 
 // ---------------------------------------------------------------------------
-// Rate limiter (fixed-window, in-memory)
+// Rate limiter (fixed-window, backed by CacheStore)
 // ---------------------------------------------------------------------------
-
-interface RateLimitEntry {
-  count: number;
-  windowStart: number;
-}
 
 const RATE_LIMIT = 60;
 const WINDOW_MS = 60_000;
 
-export function createRateLimiter() {
-  const windows = new Map<string, RateLimitEntry>();
-
+export function createRateLimiter(cache: CacheStore) {
   /**
    * Check and increment the request count for a given key hash.
    * Returns the remaining requests, or -1 if the limit is exceeded.
    */
-  function check(keyHash: string): { remaining: number; resetAt: number } {
+  async function check(keyHash: string): Promise<{ remaining: number; resetAt: number }> {
     const currentWindow = Math.floor(Date.now() / WINDOW_MS);
     const resetAt = (currentWindow + 1) * WINDOW_MS;
+    const ttlMs = resetAt - Date.now();
 
-    const entry = windows.get(keyHash);
-    if (!entry || entry.windowStart !== currentWindow) {
-      // New window or stale entry -- reset
-      windows.set(keyHash, { count: 1, windowStart: currentWindow });
-      return { remaining: RATE_LIMIT - 1, resetAt };
-    }
+    const cacheKey = `ratelimit:${currentWindow}:${keyHash}`;
+    const count = await cache.increment(cacheKey, ttlMs);
 
-    entry.count += 1;
-    if (entry.count > RATE_LIMIT) {
+    if (count > RATE_LIMIT) {
       return { remaining: -1, resetAt };
     }
 
-    return { remaining: RATE_LIMIT - entry.count, resetAt };
+    return { remaining: RATE_LIMIT - count, resetAt };
   }
 
   return { check };
@@ -119,7 +109,7 @@ export function createApiAuthMiddleware(apiKeyService: ApiKeyService) {
 export function createApiRateLimitMiddleware(rateLimiter: ReturnType<typeof createRateLimiter>) {
   return createMiddleware(async (c, next) => {
     const keyHash = c.get("apiKeyHash");
-    const { remaining, resetAt } = rateLimiter.check(keyHash);
+    const { remaining, resetAt } = await rateLimiter.check(keyHash);
     const resetAtSeconds = Math.ceil(resetAt / 1000);
 
     if (remaining < 0) {
@@ -149,9 +139,9 @@ export function createApiRateLimitMiddleware(rateLimiter: ReturnType<typeof crea
 // Composed middleware: auth -> rate limit
 // ---------------------------------------------------------------------------
 
-export function createApiMiddleware(apiKeyService: ApiKeyService) {
+export function createApiMiddleware(apiKeyService: ApiKeyService, cache: CacheStore) {
   const authMiddleware = createApiAuthMiddleware(apiKeyService);
-  const rateLimiter = createRateLimiter();
+  const rateLimiter = createRateLimiter(cache);
   const rateLimitMiddleware = createApiRateLimitMiddleware(rateLimiter);
 
   return { authMiddleware, rateLimitMiddleware, rateLimiter };
