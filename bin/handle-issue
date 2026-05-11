@@ -523,10 +523,9 @@ async function waitAndFix(
     if (status.status === "ci_failed") {
       ciFixCount++;
       if (ciFixCount > MAX_CI_FIX_ROUNDS) {
-        console.error(`\n⚠️  CI did not pass after ${MAX_CI_FIX_ROUNDS} fix rounds. Manual intervention needed.`);
-        console.error(`   PR: ${prUrl}`);
-        console.error(`   Logs: ${logDir}/`);
-        process.exit(1);
+        throw new Error(
+          `CI did not pass after ${MAX_CI_FIX_ROUNDS} fix rounds. Manual intervention needed.\n   PR: ${prUrl}\n   Logs: ${logDir}/`,
+        );
       }
       console.log(`\n🔧 CI failed. Fixing (CI fix ${ciFixCount}/${MAX_CI_FIX_ROUNDS})...`);
     }
@@ -544,8 +543,7 @@ async function waitAndFix(
     });
 
     if (fixResult.exitCode !== 0) {
-      console.error(`❌ Fix round ${round} failed. See: ${logDir}/fix-${round}.log`);
-      process.exit(1);
+      throw new Error(`Fix round ${round} failed. See: ${logDir}/fix-${round}.log`);
     }
 
     waitSince = new Date();
@@ -624,8 +622,7 @@ try {
   // Phase 2: Implement the issue
   const sessionId = await implement(worktreePath);
   if (!sessionId) {
-    await cleanup();
-    process.exit(1);
+    throw new Error("Implementation phase failed");
   }
 
   // Phase 3: Review loop (fix issues before PR)
@@ -634,8 +631,7 @@ try {
   // Phase 4: Create PR
   const { prUrl, prNumber } = await createPr(worktreePath, sessionId);
   if (!prUrl) {
-    await cleanup();
-    process.exit(1);
+    throw new Error("PR creation failed");
   }
 
   // Phase 4b: Post review comment to PR
