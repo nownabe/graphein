@@ -29,7 +29,7 @@ jobs:
       redis:
         image: redis:7
         ports:
-          - 6379:6379
+          - 16379:6379
         options: >-
           --health-cmd "redis-cli ping"
           --health-interval 10s
@@ -54,8 +54,6 @@ jobs:
 
       - name: Test
         run: bun test
-        env:
-          TEST_REDIS_URL: redis://localhost:6379
 
       - name: Integration test
         run: bun run test:integration

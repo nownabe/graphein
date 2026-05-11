@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "db:up": "docker compose up -d db db-test db-e2e",
+    "db:up": "docker compose up -d db db-test db-e2e redis",
     "db:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

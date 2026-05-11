@@ -2,17 +2,14 @@ import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { createRedisCacheStore } from "./redis";
 import type { CacheStore } from "./store";
 
-const TEST_REDIS_URL = process.env.TEST_REDIS_URL;
+const TEST_REDIS_URL = process.env.TEST_REDIS_URL ?? "redis://localhost:16379";
 
-// Skip the entire suite when no Redis URL is configured (e.g. local dev
-// without Redis running). CI sets TEST_REDIS_URL so these tests always run
-// there.
-describe.skipIf(!TEST_REDIS_URL)("RedisCacheStore", () => {
+describe("RedisCacheStore", () => {
   let cache: CacheStore;
 
   beforeEach(async () => {
     cache = await createRedisCacheStore({
-      url: TEST_REDIS_URL!,
+      url: TEST_REDIS_URL,
       keyPrefix: `graphein:test:${crypto.randomUUID()}:`,
     });
   });

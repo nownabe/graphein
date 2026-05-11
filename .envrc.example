@@ -1,6 +1,7 @@
 export JWT_SECRET=xxx
 export BASE_URL=https://xxx.ngrok-free.app
 export DATABASE_URL=postgres://graphein:graphein@localhost:15432/graphein
+export REDIS_URL=redis://localhost:16379
 export APP_TIMEZONE=""
 
 export SLACK_BOT_TOKEN=xoxb-xxx

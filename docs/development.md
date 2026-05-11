@@ -44,13 +44,13 @@ Key differences from production:
 - `BASE_URL` — your ngrok URL
 - `DATABASE_URL` — default value from `.envrc.example` works with Docker
 - `CACHE_BACKEND` — `"memory"` (default) or `"redis"` for shared cache across instances
-- `REDIS_URL` — Redis connection URL (required when `CACHE_BACKEND=redis`)
+- `REDIS_URL` — default value from `.envrc.example` works with Docker when `CACHE_BACKEND=redis`
 
 ### 4. Start Services
 
 ```bash
 bun install
-bun run db:up        # Start PostgreSQL (dev + test + e2e databases)
+bun run db:up        # Start PostgreSQL (dev + test + e2e databases) and Redis
 bun run db:migrate   # Apply migrations
 bun run css:build    # Initial CSS build
 bun run dev          # Start dev server with auto-reload
