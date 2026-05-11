@@ -49,9 +49,9 @@ If any check fails, fix the issues and re-run. Do NOT skip checks or push with f
 
 ## 3. Local Code Review
 
-Run the `/code-review` skill to perform an automated local code review before pushing. This will loop up to 5 rounds of review and fix until approved.
+Run the `/code-review` skill to perform an automated local code review before pushing.
 
-If the review does not converge (not approved after 5 rounds), STOP and inform the user.
+If there are actionable findings, fix them, re-run `bun run check:all`, and commit before proceeding.
 
 ## 4. Push
 
