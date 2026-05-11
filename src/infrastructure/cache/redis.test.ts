@@ -1,4 +1,4 @@
-import { describe, test, expect, beforeEach, afterAll } from "bun:test";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
 import { createRedisCacheStore } from "./redis";
 import type { CacheStore } from "./store";
 
@@ -13,11 +13,11 @@ describe.skipIf(!TEST_REDIS_URL)("RedisCacheStore", () => {
   beforeEach(async () => {
     cache = await createRedisCacheStore({
       url: TEST_REDIS_URL!,
-      keyPrefix: `graphein:test:${Date.now()}:`,
+      keyPrefix: `graphein:test:${crypto.randomUUID()}:`,
     });
   });
 
-  afterAll(async () => {
+  afterEach(async () => {
     await cache?.close();
   });
 
