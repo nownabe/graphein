@@ -5,7 +5,7 @@ description: >-
   Use when the user specifies a GitHub Issue number or URL to work on.
 skills:
   - pr
-  - code-review
+  - review-by-claude
 ---
 
 # Implement GitHub Issue

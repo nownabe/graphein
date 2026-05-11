@@ -23,9 +23,9 @@ import { parseArgs } from "util";
 import { mkdirSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { waitPr, type WaitPrResult } from "../tools/lib/wait-pr";
-import type { CodeReviewResult } from "../lib/review-schema";
-import { codexReviewer } from "../lib/review-by-codex";
-import { claudeReviewer } from "../lib/review-by-claude";
+import type { CodeReviewResult } from "../tools/lib/review-schema";
+import { codexReviewer } from "../tools/lib/review-by-codex";
+import { claudeReviewer } from "../tools/lib/review-by-claude";
 
 const MAX_CI_FIX_ROUNDS = 5;
 
