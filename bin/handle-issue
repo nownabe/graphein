@@ -262,13 +262,34 @@ async function postComment(prNumber: string, body: string): Promise<void> {
 // Phase 1: Setup worktree
 // ---------------------------------------------------------------------------
 
-async function setupWorktree(): Promise<{ worktreePath: string; cleanup: () => Promise<void> }> {
+async function setupWorktree(): Promise<{ worktreePath: string; resuming: boolean; cleanup: () => Promise<void> }> {
   const worktreeName = `handle-issue-${issueRef.replace(/[^a-zA-Z0-9-]/g, "-")}`;
   const worktreeBase = `.agents/worktrees/${worktreeName}`;
 
+  await run(["git", "fetch", "origin", "main"]);
+
+  // Check if worktree already exists (e.g. from a previous interrupted run)
+  const existingWorktree = (await run(["git", "worktree", "list", "--porcelain"])).stdout
+    .split("\n")
+    .filter((line) => line.startsWith("worktree "))
+    .map((line) => line.replace("worktree ", ""))
+    .find((path) => path.includes(worktreeName));
+
+  if (existingWorktree) {
+    console.log(`\n🌳 Reusing existing worktree: ${worktreeName}`);
+    console.log(`   Path: ${existingWorktree}`);
+
+    const cleanup = async () => {
+      console.log(`\n🧹 Cleaning up worktree...`);
+      await run(["git", "worktree", "remove", "--force", existingWorktree]);
+      await run(["git", "branch", "-D", worktreeName]);
+    };
+
+    return { worktreePath: existingWorktree, resuming: true, cleanup };
+  }
+
   console.log(`\n🌳 Creating worktree: ${worktreeName}`);
 
-  await run(["git", "fetch", "origin", "main"]);
   const addResult = await run(["git", "worktree", "add", "-b", worktreeName, worktreeBase, "origin/main"]);
   if (addResult.exitCode !== 0) {
     console.error(`❌ Failed to create worktree (see ${logDir}/orchestrator.log)`);
@@ -294,22 +315,32 @@ async function setupWorktree(): Promise<{ worktreePath: string; cleanup: () => P
     await run(["git", "branch", "-D", worktreeName]);
   };
 
-  return { worktreePath, cleanup };
+  return { worktreePath, resuming: false, cleanup };
 }
 
 // ---------------------------------------------------------------------------
 // Phase 2: Implement
 // ---------------------------------------------------------------------------
 
-async function implement(worktreePath: string): Promise<string> {
-  console.log(`\n📋 Implementing issue: ${issueRef}`);
+async function implement(worktreePath: string, resuming: boolean): Promise<string> {
+  console.log(`\n📋 Implementing issue: ${issueRef}${resuming ? " (resuming)" : ""}`);
 
-  const prompt = [
-    `Handle issue ${issueRef}`,
-    "",
+  const lines = [`Handle issue ${issueRef}`, ""];
+
+  if (resuming) {
+    lines.push(
+      "IMPORTANT: A previous attempt may have been interrupted. Before starting, assess the current state of the worktree by checking git log, git status, and any existing changes.",
+      "If there is existing progress, continue from where it left off rather than starting over.",
+      "",
+    );
+  }
+
+  lines.push(
     "IMPORTANT: Do NOT create a pull request. Only implement the changes, run checks (bun run check:all), and commit.",
     "Do NOT use /pr skill or gh pr create.",
-  ].join("\n");
+  );
+
+  const prompt = lines.join("\n");
 
   const knownSessions = listSessionFiles(worktreePath);
   let sessionDetection: Promise<string | null> | null = null;
@@ -631,13 +662,13 @@ function buildFixPrompt(prUrl: string, status: WaitPrResult): string {
 async function main() {
   console.log(`📝 Logs: ${logDir}/`);
 
-  const { worktreePath, cleanup } = await setupWorktree();
+  const { worktreePath, resuming, cleanup } = await setupWorktree();
 
   writeHandleIssueConfig(worktreePath);
 
   try {
     // Phase 2: Implement the issue
-    const sessionId = await implement(worktreePath);
+    const sessionId = await implement(worktreePath, resuming);
     if (!sessionId) {
       throw new Error("Implementation phase failed");
     }
