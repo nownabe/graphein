@@ -114,104 +114,11 @@ Populate the JSON output with:
 For reviewed_ref.head, run \`git rev-parse HEAD\` to get the current commit SHA.`;
 
 // ---------------------------------------------------------------------------
-// JSON Schema (mirrors the TypeScript types above)
+// JSON Schema (loaded from the shared JSON file)
 // ---------------------------------------------------------------------------
 
-export const CODE_REVIEW_JSON_SCHEMA = {
-  $schema: "https://json-schema.org/draft/2020-12/schema",
-  title: "CodeReviewResult",
-  type: "object",
-  properties: {
-    schema_version: {
-      type: "string",
-      const: "1.0",
-    },
-    status: {
-      type: "string",
-      enum: ["approved", "changes_requested"],
-    },
-    summary: {
-      type: "string",
-      description: "Short human-readable summary of the review result.",
-    },
-    comment_markdown: {
-      type: "string",
-      description: "Ready-to-post PR comment in markdown. Derivative of the structured findings.",
-    },
-    reviewed_ref: {
-      type: "object",
-      properties: {
-        base: { type: "string" },
-        head: { type: "string" },
-      },
-      required: ["base", "head"],
-      additionalProperties: false,
-    },
-    findings: {
-      type: "array",
-      items: {
-        type: "object",
-        properties: {
-          title: {
-            type: "string",
-            description: "Concise one-line finding title.",
-          },
-          severity: {
-            type: "string",
-            enum: ["high", "medium", "low"],
-          },
-          category: {
-            type: "string",
-            enum: [
-              "correctness",
-              "regression",
-              "security",
-              "performance",
-              "reliability",
-              "missing_test",
-            ],
-          },
-          description: {
-            type: "string",
-            description: "What is wrong and why it matters.",
-          },
-          suggested_fix: {
-            type: ["string", "null"],
-            description: "Concrete fix direction for the implementation agent.",
-          },
-          confidence: {
-            type: "string",
-            enum: ["high", "medium", "low"],
-          },
-          location: {
-            type: "object",
-            properties: {
-              path: { type: "string" },
-              line: { type: ["integer", "null"] },
-              end_line: { type: ["integer", "null"] },
-            },
-            required: ["path", "line", "end_line"],
-            additionalProperties: false,
-          },
-          snippet: {
-            type: ["string", "null"],
-            description: "Optional short code excerpt for human context.",
-          },
-        },
-        required: [
-          "title",
-          "severity",
-          "category",
-          "description",
-          "suggested_fix",
-          "confidence",
-          "location",
-          "snippet",
-        ],
-        additionalProperties: false,
-      },
-    },
-  },
-  required: ["schema_version", "status", "summary", "comment_markdown", "reviewed_ref", "findings"],
-  additionalProperties: false,
-} as const;
+import { resolve } from "node:path";
+
+export const REVIEW_SCHEMA_PATH = resolve(import.meta.dirname, "review-schema.json");
+
+export { default as CODE_REVIEW_JSON_SCHEMA } from "./review-schema.json";

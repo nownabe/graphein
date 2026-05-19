@@ -1,9 +1,9 @@
 /**
- * Code review backend using Codex CLI (`codex exec review`).
+ * Code review backend using Codex CLI (`codex exec`).
  *
- * Invokes `codex exec review --base <base> -o <file>` with a custom prompt
- * that instructs the model to output JSON conforming to the shared
- * {@link CodeReviewResult} schema.
+ * Invokes `codex exec --output-schema <schema> -o <file> <prompt>` to produce
+ * a structured JSON review conforming to the shared {@link CodeReviewResult}
+ * schema.
  */
 
 import { unlink } from "node:fs/promises";
@@ -11,6 +11,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   REVIEW_PROMPT,
+  REVIEW_SCHEMA_PATH,
   type CodeReviewResult,
   type ReviewBackend,
   type ReviewOptions,
@@ -55,7 +56,12 @@ export async function reviewByCodex(options: ReviewOptions = {}): Promise<CodeRe
   const outputPath = join(tmpdir(), `codex-review-output-${id}.json`);
 
   try {
-    const args = ["codex", "exec", "review", prompt, "--base", base, "-o", outputPath];
+    const args = [
+      "codex", "exec",
+      "--output-schema", REVIEW_SCHEMA_PATH,
+      "-o", outputPath,
+      prompt,
+    ];
 
     const result = await spawn(args, cwd);
 
@@ -72,7 +78,7 @@ export async function reviewByCodex(options: ReviewOptions = {}): Promise<CodeRe
     // Extract JSON from the output (codex may include surrounding text)
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error("codex CLI output does not contain valid JSON");
+      throw new Error(`codex CLI output does not contain valid JSON: ${text.slice(0, 500)}`);
     }
 
     const parsed: CodeReviewResult = JSON.parse(jsonMatch[0]);
