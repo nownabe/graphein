@@ -165,6 +165,8 @@ function buildReviewPrompt(pr: PullRequest): string {
     `Head branch: ${pr.headRefName}`,
     `Head commit: ${pr.headRefOid}`,
     "",
+    `Run \`git diff origin/${pr.baseRefName}...HEAD\` to see the changes and review only those changes.`,
+    "",
     "Only report actionable bugs, regressions, security issues, or missing edge cases.",
     "Ignore style, formatting, naming, and other nits that automated tooling already covers.",
     "",
@@ -242,7 +244,7 @@ async function syncWorktreeToPrHead(pr: PullRequest, worktreePath: string): Prom
 async function runCodexReview(pr: PullRequest, worktreePath: string): Promise<ReviewOutput> {
   const prompt = buildReviewPrompt(pr);
   const result = await run(
-    ["codex", "review", "--base", `origin/${pr.baseRefName}`, prompt],
+    ["codex", "review", prompt],
     { cwd: worktreePath, timeout: 300_000 },
   );
 
