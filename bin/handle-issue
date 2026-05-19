@@ -629,9 +629,10 @@ async function main() {
       throw new Error("Implementation phase failed");
     }
 
-    // Check if any changes were made
+    // Check if any changes were made (committed, staged, or untracked)
     const diffResult = await run(["git", "diff", "origin/main", "--quiet"], { cwd: worktreePath });
-    if (diffResult.exitCode === 0) {
+    const statusResult = await run(["git", "status", "--porcelain"], { cwd: worktreePath });
+    if (diffResult.exitCode === 0 && statusResult.stdout === "") {
       console.log(`\nℹ️  No changes were made. The issue may already be resolved.`);
       return;
     }
