@@ -58,14 +58,30 @@ export async function reviewByClaude(options: ReviewOptions = {}): Promise<CodeR
   }
 
   const envelope = JSON.parse(result.stdout) as {
+    type?: string;
+    subtype?: string;
+    result?: string;
+    is_error?: boolean;
     structured_output?: CodeReviewResult;
   };
 
-  if (!envelope.structured_output) {
-    throw new Error("claude CLI response missing structured_output field");
+  if (envelope.structured_output) {
+    return envelope.structured_output;
   }
 
-  return envelope.structured_output;
+  // When the model produces text instead of structured output, the response
+  // lands in `result` as a plain string.  Try to parse it as JSON.
+  if (envelope.result) {
+    try {
+      return JSON.parse(envelope.result) as CodeReviewResult;
+    } catch {
+      // fall through to the error below
+    }
+  }
+
+  throw new Error(
+    `claude CLI response missing structured_output field (type=${envelope.type}, subtype=${envelope.subtype}, is_error=${envelope.is_error}, result=${envelope.result?.slice(0, 200)})`,
+  );
 }
 
 export const claudeReviewer: ReviewBackend = {

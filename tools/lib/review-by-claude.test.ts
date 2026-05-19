@@ -83,8 +83,23 @@ describe("reviewByClaude", () => {
     await expect(reviewByClaude()).rejects.toThrow("claude CLI exited with code 1: auth error");
   });
 
-  it("throws when structured_output is missing from envelope", async () => {
-    const envelope = JSON.stringify({ result: "something else" });
+  it("falls back to parsing result field as JSON when structured_output is missing", async () => {
+    const envelope = JSON.stringify({ result: JSON.stringify(APPROVED_RESULT) });
+    spawnSpy = mockSpawn(envelope);
+
+    const { reviewByClaude } = await import("./review-by-claude.ts");
+    const result = await reviewByClaude();
+
+    expect(result).toEqual(APPROVED_RESULT);
+  });
+
+  it("throws with diagnostic info when structured_output and result are both unusable", async () => {
+    const envelope = JSON.stringify({
+      type: "result",
+      subtype: "success",
+      is_error: false,
+      result: "not json",
+    });
     spawnSpy = mockSpawn(envelope);
 
     const { reviewByClaude } = await import("./review-by-claude.ts");
