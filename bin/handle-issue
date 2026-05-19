@@ -617,31 +617,42 @@ function buildFixPrompt(prUrl: string, status: WaitPrResult): string {
 // Main orchestration
 // ===========================================================================
 
-console.log(`📝 Logs: ${logDir}/`);
+async function main() {
+  console.log(`📝 Logs: ${logDir}/`);
 
-const { worktreePath, cleanup } = await setupWorktree();
+  const { worktreePath, cleanup } = await setupWorktree();
 
-try {
-  // Phase 2: Implement the issue
-  const sessionId = await implement(worktreePath);
-  if (!sessionId) {
-    throw new Error("Implementation phase failed");
+  try {
+    // Phase 2: Implement the issue
+    const sessionId = await implement(worktreePath);
+    if (!sessionId) {
+      throw new Error("Implementation phase failed");
+    }
+
+    // Check if any changes were made
+    const diffResult = await run(["git", "diff", "origin/main", "--quiet"], { cwd: worktreePath });
+    if (diffResult.exitCode === 0) {
+      console.log(`\nℹ️  No changes were made. The issue may already be resolved.`);
+      return;
+    }
+
+    // Phase 3: Review loop (fix issues before PR)
+    const reviewRounds = await runReviewLoop(worktreePath, sessionId);
+
+    // Phase 4: Create PR
+    const { prUrl, prNumber } = await createPr(worktreePath, sessionId);
+    if (!prUrl) {
+      throw new Error("PR creation failed");
+    }
+
+    // Phase 4b: Post review comment to PR
+    await postReviewComment(prNumber, reviewRounds);
+
+    // Phase 5: Wait for CI/review and fix
+    await waitAndFix(prUrl, prNumber, sessionId, worktreePath);
+  } finally {
+    await cleanup();
   }
-
-  // Phase 3: Review loop (fix issues before PR)
-  const reviewRounds = await runReviewLoop(worktreePath, sessionId);
-
-  // Phase 4: Create PR
-  const { prUrl, prNumber } = await createPr(worktreePath, sessionId);
-  if (!prUrl) {
-    throw new Error("PR creation failed");
-  }
-
-  // Phase 4b: Post review comment to PR
-  await postReviewComment(prNumber, reviewRounds);
-
-  // Phase 5: Wait for CI/review and fix
-  await waitAndFix(prUrl, prNumber, sessionId, worktreePath);
-} finally {
-  await cleanup();
 }
+
+await main();
