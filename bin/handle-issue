@@ -17,7 +17,7 @@
  */
 
 import { parseArgs } from "util";
-import { mkdirSync, readdirSync } from "fs";
+import { mkdirSync, readdirSync, writeFileSync, unlinkSync } from "fs";
 import { appendFile } from "node:fs/promises";
 import { resolve } from "path";
 import { waitPr, type WaitPrResult } from "../tools/lib/wait-pr";
@@ -76,9 +76,20 @@ async function logLine(type: string, message: string) {
   await writeLog(type, `[${new Date().toISOString()}] ${message}\n`);
 }
 
-// Expose env vars so PreToolUse hook can auto-approve and log tools
-process.env.GRAPHEIN_HANDLE_ISSUE = "1";
-process.env.GRAPHEIN_HANDLE_ISSUE_LOG_DIR = logDir;
+// Write config file so PreToolUse hook can detect handle-issue sessions and
+// know where to log. Environment variables are not reliably propagated to hook
+// subprocesses by Claude CLI, so we use a file-based mechanism.
+function writeHandleIssueConfig(worktreePath: string): void {
+  writeFileSync(
+    resolve(worktreePath, ".handle-issue.json"),
+    JSON.stringify({ logDir }) + "\n",
+  );
+}
+function removeHandleIssueConfig(worktreePath: string): void {
+  try {
+    unlinkSync(resolve(worktreePath, ".handle-issue.json"));
+  } catch {}
+}
 
 // ---------------------------------------------------------------------------
 // Process runner
@@ -622,6 +633,8 @@ async function main() {
 
   const { worktreePath, cleanup } = await setupWorktree();
 
+  writeHandleIssueConfig(worktreePath);
+
   try {
     // Phase 2: Implement the issue
     const sessionId = await implement(worktreePath);
@@ -652,6 +665,7 @@ async function main() {
     // Phase 5: Wait for CI/review and fix
     await waitAndFix(prUrl, prNumber, sessionId, worktreePath);
   } finally {
+    removeHandleIssueConfig(worktreePath);
     await cleanup();
   }
 }
