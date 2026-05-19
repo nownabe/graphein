@@ -94,7 +94,12 @@ describe("reviewByClaude", () => {
   });
 
   it("throws with diagnostic info when structured_output and result are both unusable", async () => {
-    const envelope = JSON.stringify({ type: "result", subtype: "success", is_error: false, result: "not json" });
+    const envelope = JSON.stringify({
+      type: "result",
+      subtype: "success",
+      is_error: false,
+      result: "not json",
+    });
     spawnSpy = mockSpawn(envelope);
 
     const { reviewByClaude } = await import("./review-by-claude.ts");
