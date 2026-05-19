@@ -69,13 +69,22 @@ export async function reviewByClaude(options: ReviewOptions = {}): Promise<CodeR
     return envelope.structured_output;
   }
 
-  // When the model produces text instead of structured output, the response
-  // lands in `result` as a plain string.  Try to parse it as JSON.
+  // When the model produces text instead of structured output (e.g. multi-turn
+  // agent conversations), try to extract JSON from the result field.
   if (envelope.result) {
+    // Try direct parse first
     try {
       return JSON.parse(envelope.result) as CodeReviewResult;
     } catch {
-      // fall through to the error below
+      // Try extracting a JSON object from within the text
+      const jsonMatch = envelope.result.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        try {
+          return JSON.parse(jsonMatch[0]) as CodeReviewResult;
+        } catch {
+          // fall through
+        }
+      }
     }
   }
 
