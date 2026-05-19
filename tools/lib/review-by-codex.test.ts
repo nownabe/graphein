@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, mock, spyOn } from "bun:test";
-import { existsSync, writeFileSync } from "node:fs";
+import { existsSync, unlinkSync, writeFileSync } from "node:fs";
 import type { CodeReviewResult } from "./review-schema.ts";
 
 const APPROVED_RESULT: CodeReviewResult = {
@@ -85,10 +85,11 @@ describe("reviewByCodex", () => {
     const args = spawnSpy.mock.calls[0][0] as string[];
     expect(args[0]).toBe("codex");
     expect(args[1]).toBe("exec");
-    expect(args[2]).toBe("review");
-    expect(args).toContain("--base");
-    expect(args[args.indexOf("--base") + 1]).toBe("develop");
+    expect(args).toContain("--output-schema");
     expect(args).toContain("-o");
+    // The prompt (last positional arg) should contain the base branch
+    const lastArg = args[args.length - 1];
+    expect(lastArg).toContain("develop");
   });
 
   it("throws when CLI exits with non-zero code", async () => {
@@ -172,14 +173,16 @@ describe("reviewByCodex", () => {
     }
   });
 
-  it("defaults base to main when not specified", async () => {
+  it("includes prompt with base branch in args", async () => {
     spawnSpy = mockSpawn(JSON.stringify(APPROVED_RESULT));
 
     const { reviewByCodex } = await import("./review-by-codex.ts");
     await reviewByCodex();
 
     const args = spawnSpy.mock.calls[0][0] as string[];
-    expect(args[args.indexOf("--base") + 1]).toBe("main");
+    // The prompt is the last arg and should reference the default base "main"
+    const lastArg = args[args.length - 1];
+    expect(lastArg).toContain("main");
   });
 
   it("passes cwd option to spawn", async () => {
