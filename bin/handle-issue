@@ -273,7 +273,7 @@ async function setupWorktree(): Promise<{ worktreePath: string; resuming: boolea
     .split("\n")
     .filter((line) => line.startsWith("worktree "))
     .map((line) => line.replace("worktree ", ""))
-    .find((path) => path.includes(worktreeName));
+    .find((path) => path.endsWith(`/${worktreeName}`));
 
   if (existingWorktree) {
     console.log(`\n🌳 Reusing existing worktree: ${worktreeName}`);
@@ -300,7 +300,7 @@ async function setupWorktree(): Promise<{ worktreePath: string; resuming: boolea
     .split("\n")
     .filter((line) => line.startsWith("worktree "))
     .map((line) => line.replace("worktree ", ""))
-    .find((path) => path.includes(worktreeName));
+    .find((path) => path.endsWith(`/${worktreeName}`));
 
   if (!worktreePath) {
     console.error(`❌ Could not resolve worktree path (see ${logDir}/orchestrator.log)`);
