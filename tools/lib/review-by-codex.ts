@@ -56,12 +56,7 @@ export async function reviewByCodex(options: ReviewOptions = {}): Promise<CodeRe
   const outputPath = join(tmpdir(), `codex-review-output-${id}.json`);
 
   try {
-    const args = [
-      "codex", "exec",
-      "--output-schema", REVIEW_SCHEMA_PATH,
-      "-o", outputPath,
-      prompt,
-    ];
+    const args = ["codex", "exec", "--output-schema", REVIEW_SCHEMA_PATH, "-o", outputPath, prompt];
 
     const result = await spawn(args, cwd);
 
