@@ -27,5 +27,6 @@ playwright-report/
 # Agent worktrees
 .agents/worktrees/
 
-# handle-issue logs
+# handle-issue runtime
 logs/
+.handle-issue.json

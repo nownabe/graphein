@@ -2,20 +2,26 @@
 /**
  * PreToolUse hook: auto-approve all tools in handle-issue sessions.
  *
- * Logs every tool invocation as JSONL to ${GRAPHEIN_HANDLE_ISSUE_LOG_DIR}/tools.jsonl
- * with structured metadata including whether the tool is already in the
- * settings.json allow list.
+ * Logs every tool invocation as JSONL to <logDir>/tools.jsonl with structured
+ * metadata including whether the tool is already in the settings.json allow
+ * list. The log directory is read from `.handle-issue.json` written by
+ * bin/handle-issue.
  *
- * When GRAPHEIN_HANDLE_ISSUE is unset, exits silently (no decision output)
- * so normal permission rules apply.
+ * When `.handle-issue.json` does not exist, exits silently (no decision
+ * output) so normal permission rules apply.
  */
 
-import { readFileSync, appendFileSync, mkdirSync } from "fs";
+import { readFileSync, appendFileSync, mkdirSync, existsSync } from "fs";
 import { resolve } from "path";
 
-if (!process.env.GRAPHEIN_HANDLE_ISSUE) {
+// Detect handle-issue session via config file written by bin/handle-issue.
+// Environment variables are not reliably propagated to hook subprocesses by
+// Claude CLI, so we use a file-based mechanism instead.
+const configPath = resolve(".handle-issue.json");
+if (!existsSync(configPath)) {
   process.exit(0);
 }
+const handleIssueConfig: { logDir: string } = JSON.parse(readFileSync(configPath, "utf-8"));
 
 const input = JSON.parse(readFileSync("/dev/stdin", "utf-8"));
 const toolName: string = input.tool_name ?? "unknown";
@@ -95,7 +101,7 @@ const record = {
   ...(toolName === "Grep" && { pattern: toolInput.pattern }),
 };
 
-const logDir = process.env.GRAPHEIN_HANDLE_ISSUE_LOG_DIR ?? ".";
+const logDir = handleIssueConfig.logDir;
 mkdirSync(logDir, { recursive: true });
 appendFileSync(resolve(logDir, "tools.jsonl"), JSON.stringify(record) + "\n");
 
