@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "@google/genai": "^2.0.0",
-    "@hono/mcp": "^0.2.5",
+    "@hono/mcp": "^0.3.0",
     "@hono/zod-openapi": "^1.2.4",
     "@modelcontextprotocol/sdk": "^1.29.0",
     "@scalar/hono-api-reference": "^0.10.7",
