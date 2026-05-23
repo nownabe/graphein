@@ -98,4 +98,29 @@ describe("createCustomEmojiResolver", () => {
     expect(b).toBe("https://emoji.example.com/shipit.png");
     expect(listCallCount).toBe(1);
   });
+
+  it("retries emoji.list after a transient failure", async () => {
+    let callCount = 0;
+    const fakeClient = {
+      emoji: {
+        list: async () => {
+          callCount++;
+          if (callCount === 1) throw new Error("transient");
+          return { emoji: { custom: "https://emoji.example.com/custom.gif" } };
+        },
+      },
+    };
+
+    const resolver = createCustomEmojiResolver(fakeClient as never);
+
+    // First call fails — should return undefined, not cache the failure.
+    const first = await resolver("custom");
+    expect(first).toBeUndefined();
+    expect(callCount).toBe(1);
+
+    // Second call retries the API and succeeds.
+    const second = await resolver("custom");
+    expect(second).toBe("https://emoji.example.com/custom.gif");
+    expect(callCount).toBe(2);
+  });
 });

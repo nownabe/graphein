@@ -87,17 +87,20 @@ export function createCustomEmojiResolver(client: WebClient, cache?: CacheStore)
     }
 
     // Fetch from Slack API.
-    const index = new Map<string, string>();
+    let index: Map<string, string>;
     try {
       const result = await client.emoji.list();
+      index = new Map<string, string>();
       for (const [name, value] of Object.entries(result.emoji ?? {})) {
         index.set(name, value);
       }
     } catch {
-      // Return empty index on failure.
+      // Return empty map for this lookup without marking the index as loaded,
+      // so subsequent requests can retry the API call.
+      return new Map();
     }
 
-    // Persist to cache.
+    // Persist to cache only after a successful fetch.
     if (cache) {
       for (const [name, value] of index) {
         await cache.set(`slack:emoji:${name}`, value, EMOJI_CACHE_TTL_MS);
