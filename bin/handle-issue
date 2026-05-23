@@ -10,7 +10,8 @@
  *   2. Spawn claude CLI to implement the issue
  *   3. Run review loop (codex or claude), fix issues
  *   4. Create PR and post review comment
- *   5. Wait for CI/review, fix if needed, repeat until approved
+ *   5a. Wait for CI to pass, fix failures if needed
+ *   5b. Wait for review/merge, address feedback if needed
  *   6. Clean up the worktree
  *
  * Logs are written to logs/issue-<issue>/<log-type>.log
@@ -535,24 +536,79 @@ async function postReviewComment(prNumber: string, rounds: ReviewRound[]): Promi
 }
 
 // ---------------------------------------------------------------------------
-// Phase 5: Wait for CI/review and fix loop
+// Phase 5a: Wait for CI to pass (fix failures up to MAX_CI_FIX_ROUNDS)
 // ---------------------------------------------------------------------------
 
-async function waitAndFix(
+async function waitForCi(
   prUrl: string,
   prNumber: string,
   sessionId: string,
   worktreePath: string,
-): Promise<void> {
+): Promise<WaitPrResult> {
   let waitSince = new Date();
-  let round = 0;
   let ciFixCount = 0;
 
   while (true) {
-    round++;
+    const status = await pollUntilActionable(prNumber, waitSince, worktreePath, "CI");
 
-    // --- Poll until actionable ---
-    const status = await pollUntilActionable(prNumber, waitSince, worktreePath, round);
+    // Terminal states — bubble up immediately
+    if (status.status === "approved" || status.status === "merged" || status.status === "closed") {
+      return status;
+    }
+
+    // CI passed (pending = waiting for review, has_feedback = feedback already arrived)
+    if (status.ci.state === "success") {
+      console.log(`\n✅ CI passed.`);
+      return status;
+    }
+
+    // CI failure — fix and retry
+    if (status.status === "ci_failed") {
+      ciFixCount++;
+      if (ciFixCount > MAX_CI_FIX_ROUNDS) {
+        throw new Error(
+          `CI did not pass after ${MAX_CI_FIX_ROUNDS} fix rounds. Manual intervention needed.\n   PR: ${prUrl}\n   Logs: ${logDir}/`,
+        );
+      }
+      console.log(`\n🔧 CI failed. Fixing (CI fix ${ciFixCount}/${MAX_CI_FIX_ROUNDS})...`);
+
+      const fixPrompt = buildFixPrompt(prUrl, status);
+      const fixResult = await claudeResume(fixPrompt, sessionId, worktreePath, {
+        logType: `ci-fix-${ciFixCount}`,
+      });
+
+      if (fixResult.exitCode !== 0) {
+        throw new Error(`CI fix ${ciFixCount} failed. See: ${logDir}/ci-fix-${ciFixCount}.log`);
+      }
+
+      waitSince = new Date();
+      console.log(`   CI fix ${ciFixCount} complete. Re-checking...`);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Phase 5b: Wait for review/merge (address feedback as needed)
+// ---------------------------------------------------------------------------
+
+async function waitForReviewMerge(
+  prUrl: string,
+  prNumber: string,
+  sessionId: string,
+  worktreePath: string,
+  /** If the CI phase already returned actionable feedback, start from it. */
+  initialStatus?: WaitPrResult,
+): Promise<void> {
+  let waitSince = new Date();
+  let round = 0;
+
+  // If the CI phase already collected feedback, process it first
+  let status = initialStatus;
+
+  while (true) {
+    if (!status) {
+      status = await pollUntilActionable(prNumber, waitSince, worktreePath, "review");
+    }
 
     // --- Terminal states ---
     if (status.status === "approved") {
@@ -568,45 +624,41 @@ async function waitAndFix(
       return;
     }
 
-    // --- CI failure ---
-    if (status.status === "ci_failed") {
-      ciFixCount++;
-      if (ciFixCount > MAX_CI_FIX_ROUNDS) {
-        throw new Error(
-          `CI did not pass after ${MAX_CI_FIX_ROUNDS} fix rounds. Manual intervention needed.\n   PR: ${prUrl}\n   Logs: ${logDir}/`,
-        );
-      }
-      console.log(`\n🔧 CI failed. Fixing (CI fix ${ciFixCount}/${MAX_CI_FIX_ROUNDS})...`);
-    }
+    // --- Actionable states ---
+    round++;
 
-    // --- Review feedback ---
     if (status.status === "has_feedback") {
       console.log(`\n💬 Review feedback received. Addressing (round ${round})...`);
-      ciFixCount = 0;
+    } else if (status.status === "ci_failed") {
+      console.log(`\n🔧 CI failed after review fix. Fixing (round ${round})...`);
     }
 
-    // --- Fix ---
     const fixPrompt = buildFixPrompt(prUrl, status);
     const fixResult = await claudeResume(fixPrompt, sessionId, worktreePath, {
-      logType: `fix-${round}`,
+      logType: `review-fix-${round}`,
     });
 
     if (fixResult.exitCode !== 0) {
-      throw new Error(`Fix round ${round} failed. See: ${logDir}/fix-${round}.log`);
+      throw new Error(`Review fix round ${round} failed. See: ${logDir}/review-fix-${round}.log`);
     }
 
     waitSince = new Date();
-    console.log(`   Fix round ${round} complete. Re-checking...`);
+    status = undefined;
+    console.log(`   Review fix round ${round} complete. Re-checking...`);
   }
 }
+
+// ---------------------------------------------------------------------------
+// Polling helper
+// ---------------------------------------------------------------------------
 
 async function pollUntilActionable(
   prNumber: string,
   since: Date,
   cwd: string,
-  round: number,
+  phase: string,
 ): Promise<WaitPrResult> {
-  console.log(`\n⏳ Waiting for CI/review (round ${round})...`);
+  console.log(`\n⏳ Waiting for ${phase}...`);
 
   let pollCount = 0;
   const pollStartedAt = Date.now();
@@ -614,7 +666,7 @@ async function pollUntilActionable(
   while (true) {
     pollCount++;
     const status = await waitPr({ prNumber, since, cwd });
-    await logLine("wait-pr", `status=${status.status} lgtm=${status.lgtm} ci=${status.ci.state} feedback=${status.feedback.length}`);
+    await logLine("wait-pr", `phase=${phase} status=${status.status} lgtm=${status.lgtm} ci=${status.ci.state} feedback=${status.feedback.length}`);
 
     if (status.status !== "pending") {
       if (pollCount > 1) process.stdout.write("\r\x1b[K");
@@ -786,8 +838,22 @@ async function main() {
     // Phase 4b: Post review comment to PR
     await postReviewComment(prNumber, reviewRounds);
 
-    // Phase 5: Wait for CI/review and fix
-    await waitAndFix(prUrl, prNumber, sessionId, worktreePath);
+    // Phase 5a: Wait for CI to pass
+    const ciResult = await waitForCi(prUrl, prNumber, sessionId, worktreePath);
+
+    // Phase 5b: Wait for review/merge
+    // If CI phase returned with feedback already present, pass it through
+    const initialReviewStatus =
+      ciResult.status === "has_feedback" ? ciResult : undefined;
+    if (ciResult.status !== "approved" && ciResult.status !== "merged" && ciResult.status !== "closed") {
+      await waitForReviewMerge(prUrl, prNumber, sessionId, worktreePath, initialReviewStatus);
+    } else if (ciResult.status === "approved") {
+      console.log(`\n🎉 PR approved: ${prUrl}`);
+    } else if (ciResult.status === "merged") {
+      console.log(`\n🎉 PR merged: ${prUrl}`);
+    } else {
+      console.log(`\n⚠️  PR was closed: ${prUrl}`);
+    }
   } finally {
     removeHandleIssueConfig(worktreePath);
     if (shouldCleanup) {
