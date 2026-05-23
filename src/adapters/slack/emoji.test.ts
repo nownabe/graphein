@@ -14,9 +14,16 @@ describe("resolveStandardEmoji", () => {
     expect(resolveStandardEmoji("not_a_real_emoji_xyz")).toBeUndefined();
   });
 
-  it("resolves compound emoji names", () => {
-    // gemoji uses underscores for compound names, not hyphens
+  it("resolves compound emoji names with underscores", () => {
     expect(resolveStandardEmoji("woman_cartwheeling")).toBe("🤸‍♀️");
+  });
+
+  it("resolves hyphenated Slack emoji names by normalizing to underscores", () => {
+    expect(resolveStandardEmoji("woman-cartwheeling")).toBe("🤸‍♀️");
+    // Verify the hyphen form returns the same result as the underscore form
+    expect(resolveStandardEmoji("woman-cartwheeling")).toBe(
+      resolveStandardEmoji("woman_cartwheeling"),
+    );
   });
 });
 

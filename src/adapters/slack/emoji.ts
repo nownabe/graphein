@@ -41,7 +41,7 @@ for (const [name, emoji] of Object.entries(SLACK_ALIASES)) {
 
 /** Look up a standard emoji by shortcode name. Returns undefined for unknown names. */
 export function resolveStandardEmoji(name: string): string | undefined {
-  return standardEmojiMap.get(name);
+  return standardEmojiMap.get(name) ?? standardEmojiMap.get(name.replace(/-/g, "_"));
 }
 
 // ---------- Custom workspace emoji ----------
@@ -102,16 +102,16 @@ export function createCustomEmojiResolver(client: WebClient, cache?: CacheStore)
     // Check cache first.
     if (cache) {
       const cached = await cache.get(`slack:emoji:${name}`);
-      if (cached !== undefined) return resolveAliasChain(cached, name);
+      if (cached !== undefined) return resolveAliasChain(cached);
     }
 
     const index = await ensureIndex();
     const value = index.get(name);
     if (!value) return undefined;
-    return resolveAliasChain(value, name);
+    return resolveAliasChain(value);
   };
 
-  function resolveAliasChain(value: string, _originalName: string): string | undefined {
+  async function resolveAliasChain(value: string): Promise<string | undefined> {
     // Custom emoji values are either a URL or an alias like "alias:other_name".
     let current = value;
     for (let depth = 0; depth < 5; depth++) {
@@ -120,7 +120,8 @@ export function createCustomEmojiResolver(client: WebClient, cache?: CacheStore)
       // Check if the alias target is a standard emoji.
       const standard = resolveStandardEmoji(aliasTarget);
       if (standard) return undefined; // Let the standard path handle it.
-      const next = localIndex?.get(aliasTarget);
+      // Try local index first, then fall back to cache for cold processes.
+      const next = localIndex?.get(aliasTarget) ?? (await cache?.get(`slack:emoji:${aliasTarget}`));
       if (!next) return undefined;
       current = next;
     }
