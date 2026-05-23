@@ -18,8 +18,9 @@
   // Limit concurrent PRs to avoid overwhelming CI and reviewers
   prConcurrentLimit: 5,
 
-  // Require manual merge for all PRs by default
-  automerge: false,
+  // Automerge all PRs after CI passes
+  automerge: true,
+  platformAutomerge: true,
 
   // Wait 7 days after publish before creating PRs to avoid compromised packages
   minimumReleaseAge: "7 days",
@@ -29,8 +30,6 @@
     enabled: true,
     addLabels: ["deps/security"],
     schedule: ["at any time"],
-    automerge: true,
-    platformAutomerge: true,
     assignees: ["nownabe"],
   },
 
@@ -68,8 +67,6 @@
       matchUpdateTypes: ["minor", "patch"],
       groupName: "npm production dependencies (non-major)",
       schedule: ["before 6am on monday"],
-      automerge: true,
-      platformAutomerge: true,
     },
 
     // Group all non-major dev dependency updates
@@ -79,8 +76,6 @@
       matchUpdateTypes: ["minor", "patch"],
       groupName: "npm dev dependencies (non-major)",
       schedule: ["before 6am on monday"],
-      automerge: true,
-      platformAutomerge: true,
     },
 
     // Major updates get individual PRs for careful review
@@ -88,6 +83,7 @@
       matchManagers: ["npm"],
       matchUpdateTypes: ["major"],
       addLabels: ["deps/major"],
+      automerge: false,
       schedule: ["before 6am on monday"],
     },
 
@@ -97,13 +93,12 @@
       matchUpdateTypes: ["minor", "patch", "digest"],
       groupName: "github actions (non-major)",
       schedule: ["before 6am on monday"],
-      automerge: true,
-      platformAutomerge: true,
     },
     {
       matchManagers: ["github-actions"],
       matchUpdateTypes: ["major"],
       addLabels: ["deps/major"],
+      automerge: false,
       schedule: ["before 6am on monday"],
     },
 
@@ -115,21 +110,22 @@
       matchUpdateTypes: ["minor", "patch"],
       groupName: "mise tools (non-major)",
       schedule: ["before 6am on monday"],
-      automerge: true,
-      platformAutomerge: true,
       postUpgradeTasks: {
         commands: ["mise lock"],
         fileFilters: ["mise.lock"],
+        installTools: { mise: {} },
       },
     },
     {
       matchManagers: ["mise"],
       matchUpdateTypes: ["major"],
       addLabels: ["deps/major"],
+      automerge: false,
       schedule: ["before 6am on monday"],
       postUpgradeTasks: {
         commands: ["mise lock"],
         fileFilters: ["mise.lock"],
+        installTools: { mise: {} },
       },
     },
   ],
