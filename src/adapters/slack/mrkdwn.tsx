@@ -407,6 +407,7 @@ export interface MrkdwnOptions {
   users?: Record<string, string>;
   channels?: Record<string, string>;
   usergroups?: Record<string, string>;
+  emoji?: Record<string, import("./emoji").ResolvedEmoji>;
 }
 
 export function Mrkdwn({ text, options }: { text: string; options?: MrkdwnOptions }) {
@@ -536,7 +537,24 @@ function renderInlineNode(node: InlineNode, opts: MrkdwnOptions) {
       }
       return <span>{text}</span>;
     }
-    case "emoji":
+    case "emoji": {
+      const resolved = opts.emoji?.[node.name];
+      if (resolved?.type === "unicode") {
+        return <span class="emoji">{resolved.value}</span>;
+      }
+      if (resolved?.type === "url") {
+        return (
+          <img
+            src={resolved.value}
+            alt={`:${node.name}:`}
+            title={`:${node.name}:`}
+            class="emoji-custom inline-block align-text-bottom"
+            width="20"
+            height="20"
+          />
+        );
+      }
       return <span>{`:${node.name}:`}</span>;
+    }
   }
 }

@@ -8,6 +8,7 @@
 
 import type { App } from "@slack/bolt";
 import { createSlackLabelResolver } from "./helpers";
+import { createCustomEmojiResolver, resolveEmojiMap } from "./emoji";
 import type { MrkdwnOptions } from "./mrkdwn";
 import type { UserService } from "../../application/users/service";
 import type { CacheStore } from "../../infrastructure/cache/store";
@@ -16,17 +17,21 @@ export function extractSlackEntityIds(text: string): {
   users: string[];
   channels: string[];
   usergroups: string[];
+  emoji: string[];
 } {
   const users = new Set<string>();
   const channels = new Set<string>();
   const usergroups = new Set<string>();
+  const emoji = new Set<string>();
   for (const m of text.matchAll(/<@(U[A-Z0-9]+)(?:\|[^>]*)?>/g)) users.add(m[1]);
   for (const m of text.matchAll(/<#(C[A-Z0-9]+)(?:\|[^>]*)?>/g)) channels.add(m[1]);
   for (const m of text.matchAll(/<!subteam\^(S[A-Z0-9]+)(?:\|[^>]*)?>/g)) usergroups.add(m[1]);
+  for (const m of text.matchAll(/:([a-z0-9_+-]+):/g)) emoji.add(m[1]);
   return {
     users: [...users],
     channels: [...channels],
     usergroups: [...usergroups],
+    emoji: [...emoji],
   };
 }
 
@@ -39,12 +44,21 @@ export function createLabelBuilder(boltApp: App, userService: UserService, cache
     return _slackResolver;
   }
 
+  let _customEmojiResolver: ReturnType<typeof createCustomEmojiResolver> | null = null;
+  function customEmojiResolver() {
+    if (!_customEmojiResolver) {
+      _customEmojiResolver = createCustomEmojiResolver(boltApp.client, cache);
+    }
+    return _customEmojiResolver;
+  }
+
   return async function buildMrkdwnLabels(
     texts: (string | null | undefined)[],
   ): Promise<MrkdwnOptions> {
     const userIds = new Set<string>();
     const channelIds = new Set<string>();
     const usergroupIds = new Set<string>();
+    const emojiNames = new Set<string>();
 
     for (const t of texts) {
       if (!t) continue;
@@ -52,6 +66,7 @@ export function createLabelBuilder(boltApp: App, userService: UserService, cache
       for (const id of ids.users) userIds.add(id);
       for (const id of ids.channels) channelIds.add(id);
       for (const id of ids.usergroups) usergroupIds.add(id);
+      for (const name of ids.emoji) emojiNames.add(name);
     }
 
     const users: Record<string, string> = {};
@@ -80,6 +95,9 @@ export function createLabelBuilder(boltApp: App, userService: UserService, cache
       }),
     );
 
-    return { users, channels, usergroups };
+    const emoji =
+      emojiNames.size > 0 ? await resolveEmojiMap([...emojiNames], customEmojiResolver()) : {};
+
+    return { users, channels, usergroups, emoji };
   };
 }

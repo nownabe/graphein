@@ -34,6 +34,7 @@
     "@slack/bolt": "^4.2.0",
     "@slack/web-api": "^7.9.0",
     "drizzle-orm": "^0.45.0",
+    "gemoji": "^8.1.0",
     "hono": "^4.7.0",
     "hono-rate-limiter": "^0.5.3",
     "ioredis": "^5.6.1",

@@ -645,4 +645,31 @@ describe("Mrkdwn JSX renderer", () => {
     const html = render("<mailto:a@b.com|email>");
     expect(html).toContain('href="mailto:a@b.com"');
   });
+
+  it("renders unicode emoji when resolved", () => {
+    const html = render(":thumbsup:", {
+      emoji: { thumbsup: { type: "unicode", value: "👍" } },
+    });
+    expect(html).toContain("👍");
+    expect(html).not.toContain(":thumbsup:");
+  });
+
+  it("renders custom emoji as img when resolved to URL", () => {
+    const html = render(":partyparrot:", {
+      emoji: {
+        partyparrot: {
+          type: "url",
+          value: "https://emoji.slack-edge.com/partyparrot.gif",
+        },
+      },
+    });
+    expect(html).toContain("<img");
+    expect(html).toContain('src="https://emoji.slack-edge.com/partyparrot.gif"');
+    expect(html).toContain('alt=":partyparrot:"');
+  });
+
+  it("falls back to raw shortcode when emoji is not resolved", () => {
+    const html = render(":unknown_emoji:");
+    expect(html).toContain(":unknown_emoji:");
+  });
 });
