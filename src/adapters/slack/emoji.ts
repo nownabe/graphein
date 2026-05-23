@@ -60,10 +60,21 @@ const EMOJI_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
  */
 export function createCustomEmojiResolver(client: WebClient, cache?: CacheStore) {
   let localIndex: Map<string, string> | null = null;
+  let inflight: Promise<Map<string, string>> | null = null;
 
   async function ensureIndex(): Promise<Map<string, string>> {
     if (localIndex) return localIndex;
+    if (inflight) return inflight;
 
+    inflight = loadIndex();
+    try {
+      return await inflight;
+    } finally {
+      inflight = null;
+    }
+  }
+
+  async function loadIndex(): Promise<Map<string, string>> {
     // Try loading from cache.
     if (cache) {
       const loaded = await cache.get("slack:emoji:_index_loaded");

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "bun:test";
-import { resolveStandardEmoji, resolveEmoji, resolveEmojiMap } from "./emoji";
+import {
+  resolveStandardEmoji,
+  resolveEmoji,
+  resolveEmojiMap,
+  createCustomEmojiResolver,
+} from "./emoji";
 
 describe("resolveStandardEmoji", () => {
   it("resolves common emoji shortcodes", () => {
@@ -66,5 +71,31 @@ describe("resolveEmojiMap", () => {
     expect(result.rocket).toEqual({ type: "unicode", value: "🚀" });
     expect(result.custom).toEqual({ type: "url", value: "https://example.com/custom.png" });
     expect(result.unknown).toBeUndefined();
+  });
+});
+
+describe("createCustomEmojiResolver", () => {
+  it("calls emoji.list only once for concurrent lookups", async () => {
+    let listCallCount = 0;
+    const fakeClient = {
+      emoji: {
+        list: async () => {
+          listCallCount++;
+          return {
+            emoji: {
+              partyparrot: "https://emoji.example.com/partyparrot.gif",
+              shipit_custom: "https://emoji.example.com/shipit.png",
+            },
+          };
+        },
+      },
+    };
+
+    const resolver = createCustomEmojiResolver(fakeClient as never);
+    const [a, b] = await Promise.all([resolver("partyparrot"), resolver("shipit_custom")]);
+
+    expect(a).toBe("https://emoji.example.com/partyparrot.gif");
+    expect(b).toBe("https://emoji.example.com/shipit.png");
+    expect(listCallCount).toBe(1);
   });
 });
