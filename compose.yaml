@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:17
+    image: postgres:18
     ports:
       - "15432:5432"
     environment:
@@ -11,7 +11,7 @@ services:
       - pgdata:/var/lib/postgresql/data
 
   db-test:
-    image: postgres:17
+    image: postgres:18
     ports:
       - "15433:5432"
     environment:
@@ -20,7 +20,7 @@ services:
       POSTGRES_DB: graphein_test
 
   db-e2e:
-    image: postgres:17
+    image: postgres:18
     ports:
       - "15434:5432"
     environment:
