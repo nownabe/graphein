@@ -78,7 +78,7 @@
       schedule: ["before 6am on monday"],
     },
 
-    // Major updates get individual PRs for careful review
+    // Major updates get individual PRs with a label for visibility
     {
       matchManagers: ["npm"],
       matchUpdateTypes: ["major"],
@@ -86,7 +86,7 @@
       schedule: ["before 6am on monday"],
     },
 
-    // GitHub Actions: group non-major, individual for major
+    // GitHub Actions: group non-major, individual PRs for major
     {
       matchManagers: ["github-actions"],
       matchUpdateTypes: ["minor", "patch", "digest"],
