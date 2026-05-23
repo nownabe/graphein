@@ -383,7 +383,14 @@ type ReviewRound = {
   fixed: boolean;
 };
 
-async function runReviewLoop(worktreePath: string, sessionId: string): Promise<ReviewRound[]> {
+type ReviewLoopResult = {
+  rounds: ReviewRound[];
+  converged: boolean;
+  /** Why the review loop stopped without approval. */
+  reason?: string;
+};
+
+async function runReviewLoop(worktreePath: string, sessionId: string): Promise<ReviewLoopResult> {
   const rounds: ReviewRound[] = [];
 
   for (let n = 1; n <= MAX_REVIEW_ROUNDS; n++) {
@@ -400,14 +407,14 @@ async function runReviewLoop(worktreePath: string, sessionId: string): Promise<R
       await writeLog(errLog, String(err instanceof Error ? err.stack ?? err.message : err));
       console.error(`⚠️  ${reviewAgent} review failed, skipping. See: ${logDir}/${errLog}`);
       await logLine("orchestrator", `review round=${n} error=${err}`);
-      break;
+      return { rounds, converged: false, reason: `Review process crashed on round ${n}: ${err instanceof Error ? err.message : String(err)}` };
     }
 
     // Approved — done
     if (review.status === "approved") {
       console.log(`   ${reviewAgent} review: approved (no issues)`);
       rounds.push({ round: n, review, fixed: false });
-      break;
+      return { rounds, converged: true };
     }
 
     // Changes requested — fix
@@ -432,18 +439,15 @@ async function runReviewLoop(worktreePath: string, sessionId: string): Promise<R
     if (fixResult.exitCode !== 0) {
       console.error(`⚠️  Review fix failed, skipping. See: ${logDir}/review-fix-${n}.log`);
       rounds.push({ round: n, review, fixed: false });
-      break;
+      return { rounds, converged: false, reason: `Fix attempt failed on round ${n} (exit code ${fixResult.exitCode}). See review-fix-${n}.log` };
     }
 
     rounds.push({ round: n, review, fixed: true });
     console.log(`   Review fixes applied (round ${n}).`);
-
-    if (n === MAX_REVIEW_ROUNDS) {
-      console.error(`⚠️  Review did not converge after ${MAX_REVIEW_ROUNDS} rounds.`);
-    }
   }
 
-  return rounds;
+  console.error(`⚠️  Review did not converge after ${MAX_REVIEW_ROUNDS} rounds.`);
+  return { rounds, converged: false, reason: `Review did not converge after ${MAX_REVIEW_ROUNDS} rounds — issues were still found in the final round` };
 }
 
 // ---------------------------------------------------------------------------
@@ -655,6 +659,71 @@ function buildFixPrompt(prUrl: string, status: WaitPrResult): string {
   ].join("\n");
 }
 
+// ---------------------------------------------------------------------------
+// Handover summary
+// ---------------------------------------------------------------------------
+
+async function writeHandover(
+  worktreePath: string,
+  branchName: string,
+  sessionId: string,
+  reviewResult: ReviewLoopResult,
+): Promise<string> {
+  const lines: string[] = [
+    "# Handover Summary",
+    "",
+    `**Issue:** ${issueRef}`,
+    `**Date:** ${new Date().toISOString()}`,
+    `**Status:** Review did not converge`,
+    `**Reason:** ${reviewResult.reason ?? "Unknown"}`,
+    "",
+    "## Environment",
+    "",
+    `- **Worktree path:** ${worktreePath}`,
+    `- **Branch:** ${branchName}`,
+    `- **Session ID:** ${sessionId}`,
+    `- **Review agent:** ${reviewAgent}`,
+    `- **Review rounds:** ${reviewResult.rounds.length}/${MAX_REVIEW_ROUNDS}`,
+    `- **Logs:** ${logDir}/`,
+    "",
+    "## Review Progress",
+    "",
+  ];
+
+  for (const entry of reviewResult.rounds) {
+    if (entry.review.status === "approved") {
+      lines.push(`### Round ${entry.round} — Approved`);
+      lines.push("");
+      lines.push(entry.review.comment_markdown);
+    } else {
+      const status = entry.fixed ? "Fixed" : "Not fixed";
+      lines.push(`### Round ${entry.round} — ${status}`);
+      lines.push("");
+      lines.push(entry.review.summary);
+      lines.push("");
+      lines.push("**Findings:**");
+      lines.push("");
+      for (const f of entry.review.findings) {
+        const loc = `${f.location.path}${f.location.line ? `:${f.location.line}` : ""}`;
+        lines.push(`- **${f.severity}** (${f.category}): ${f.title} — \`${loc}\``);
+        if (f.description) lines.push(`  ${f.description}`);
+      }
+    }
+    lines.push("");
+  }
+
+  lines.push("## Resume");
+  lines.push("");
+  lines.push("```bash");
+  lines.push(`bin/handle-issue ${issueRef}`);
+  lines.push("```");
+  lines.push("");
+
+  const handoverPath = resolve(logDir, "handover.md");
+  await Bun.write(handoverPath, lines.join("\n"));
+  return handoverPath;
+}
+
 // ===========================================================================
 // Main orchestration
 // ===========================================================================
@@ -665,6 +734,8 @@ async function main() {
   const { worktreePath, resuming, cleanup } = await setupWorktree();
 
   writeHandleIssueConfig(worktreePath);
+
+  let shouldCleanup = true;
 
   try {
     // Phase 2: Implement the issue
@@ -682,7 +753,29 @@ async function main() {
     }
 
     // Phase 3: Review loop (fix issues before PR)
-    const reviewRounds = await runReviewLoop(worktreePath, sessionId);
+    const { rounds: reviewRounds, converged, reason } = await runReviewLoop(worktreePath, sessionId);
+
+    if (!converged) {
+      shouldCleanup = false;
+      const branchName = `handle-issue-${issueRef.replace(/[^a-zA-Z0-9-]/g, "-")}`;
+      const reviewResult = { rounds: reviewRounds, converged, reason };
+      const handoverPath = await writeHandover(worktreePath, branchName, sessionId, reviewResult);
+      console.log(`\n${"=".repeat(72)}`);
+      console.log(`⚠️  Review did not converge. Worktree preserved for manual inspection.`);
+      console.log(``);
+      console.log(`   Reason:        ${reason ?? "Unknown"}`);
+      console.log(`   Worktree path: ${worktreePath}`);
+      console.log(`   Branch:        ${branchName}`);
+      console.log(`   Session ID:    ${sessionId}`);
+      console.log(`   Review rounds: ${reviewRounds.length}/${MAX_REVIEW_ROUNDS}`);
+      console.log(`   Handover:      ${handoverPath}`);
+      console.log(`   Logs:          ${logDir}/`);
+      console.log(``);
+      console.log(`To resume:`);
+      console.log(`   bin/handle-issue ${issueRef}`);
+      console.log(`${"=".repeat(72)}`);
+      return;
+    }
 
     // Phase 4: Create PR
     const { prUrl, prNumber } = await createPr(worktreePath, sessionId);
@@ -697,7 +790,9 @@ async function main() {
     await waitAndFix(prUrl, prNumber, sessionId, worktreePath);
   } finally {
     removeHandleIssueConfig(worktreePath);
-    await cleanup();
+    if (shouldCleanup) {
+      await cleanup();
+    }
   }
 }
 
