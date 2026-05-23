@@ -108,6 +108,8 @@
     },
 
     // mise tool versions
+    // Workaround: run `mise lock` after mise.toml updates until Renovate
+    // natively supports mise lockfile maintenance (renovatebot/renovate#40568).
     {
       matchManagers: ["mise"],
       matchUpdateTypes: ["minor", "patch"],
@@ -115,12 +117,20 @@
       schedule: ["before 6am on monday"],
       automerge: true,
       platformAutomerge: true,
+      postUpgradeTasks: {
+        commands: ["mise lock"],
+        fileFilters: ["mise.lock"],
+      },
     },
     {
       matchManagers: ["mise"],
       matchUpdateTypes: ["major"],
       addLabels: ["deps/major"],
       schedule: ["before 6am on monday"],
+      postUpgradeTasks: {
+        commands: ["mise lock"],
+        fileFilters: ["mise.lock"],
+      },
     },
   ],
 }
