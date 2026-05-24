@@ -11,7 +11,7 @@
 
 import postgres from "postgres";
 import { drizzle } from "drizzle-orm/postgres-js";
-import { eq, like, inArray, sql as rawSql } from "drizzle-orm";
+import { like, inArray } from "drizzle-orm";
 import * as schema from "../src/infrastructure/db/schema";
 
 const DATABASE_URL =
@@ -376,7 +376,10 @@ async function cleanDemoData() {
 async function seedDemoData() {
   // Insert users
   console.log("Inserting demo users...");
-  const insertedUsers = await db.insert(schema.users).values(demoUsers).returning({ id: schema.users.id });
+  const insertedUsers = await db
+    .insert(schema.users)
+    .values(demoUsers)
+    .returning({ id: schema.users.id });
   const userIds = insertedUsers.map((u) => u.id);
   console.log(`  Inserted ${userIds.length} users`);
 
