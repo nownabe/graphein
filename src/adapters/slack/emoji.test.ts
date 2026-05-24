@@ -81,6 +81,42 @@ describe("resolveEmojiMap", () => {
     expect(result.custom).toEqual({ type: "url", value: "https://example.com/custom.png" });
     expect(result.unknown).toBeUndefined();
   });
+
+  it("resolves custom emoji via Slack API (emoji.list) end-to-end", async () => {
+    let apiCalled = false;
+    const fakeClient = {
+      emoji: {
+        list: async () => {
+          apiCalled = true;
+          return {
+            emoji: {
+              partyparrot: "https://emoji.slack-edge.com/T123/partyparrot/abc.gif",
+              my_thumbsup: "alias:thumbsup",
+            },
+          };
+        },
+      },
+    };
+
+    const customResolver = createCustomEmojiResolver(fakeClient as never);
+    const result = await resolveEmojiMap(
+      ["rocket", "partyparrot", "my_thumbsup", "unknown"],
+      customResolver,
+    );
+
+    expect(apiCalled).toBe(true);
+    // Standard emoji resolved via gemoji
+    expect(result.rocket).toEqual({ type: "unicode", value: "🚀" });
+    // Custom emoji resolved via Slack API → image URL
+    expect(result.partyparrot).toEqual({
+      type: "url",
+      value: "https://emoji.slack-edge.com/T123/partyparrot/abc.gif",
+    });
+    // Custom alias to standard emoji → unicode
+    expect(result.my_thumbsup).toEqual({ type: "unicode", value: "👍" });
+    // Unknown emoji not resolved
+    expect(result.unknown).toBeUndefined();
+  });
 });
 
 describe("createCustomEmojiResolver", () => {
@@ -139,6 +175,29 @@ describe("createCustomEmojiResolver", () => {
     const resolver = createCustomEmojiResolver(fakeClient as never);
     const result = await resolver("custom_thumbsup");
     expect(result).toBe("👍");
+  });
+
+  it("resolves custom emoji with URL via emoji.list API call", async () => {
+    let apiCalled = false;
+    const fakeClient = {
+      emoji: {
+        list: async () => {
+          apiCalled = true;
+          return {
+            emoji: {
+              partyparrot: "https://emoji.slack-edge.com/T123/partyparrot/abc.gif",
+              company_logo: "https://emoji.slack-edge.com/T123/company_logo/def.png",
+            },
+          };
+        },
+      },
+    };
+
+    const resolver = createCustomEmojiResolver(fakeClient as never);
+    const result = await resolver("partyparrot");
+
+    expect(apiCalled).toBe(true);
+    expect(result).toBe("https://emoji.slack-edge.com/T123/partyparrot/abc.gif");
   });
 
   it("retries emoji.list after a transient failure", async () => {
