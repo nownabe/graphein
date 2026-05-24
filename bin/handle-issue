@@ -674,6 +674,14 @@ async function pollUntilActionable(
       return status;
     }
 
+    // In CI phase, also return once CI finishes — the overall status may still
+    // be "pending" (no LGTM/feedback yet), but the CI wait is done.
+    if (phase === "CI" && status.ci.state !== "pending") {
+      if (pollCount > 1) process.stdout.write("\r\x1b[K");
+      console.log(`   Status: ${status.status} (CI ${status.ci.state})`);
+      return status;
+    }
+
     const elapsed = Math.round((Date.now() - pollStartedAt) / 1000);
     const mins = Math.floor(elapsed / 60);
     const secs = elapsed % 60;
