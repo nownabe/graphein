@@ -57,8 +57,7 @@ describe("resolveEmoji", () => {
   it("resolves custom alias to standard emoji as unicode type", async () => {
     // When a custom emoji is an alias to a standard emoji, the custom resolver
     // returns the unicode character. resolveEmoji should wrap it as unicode type.
-    const customResolver = async (name: string) =>
-      name === "custom_thumbsup" ? "👍" : undefined;
+    const customResolver = async (name: string) => (name === "custom_thumbsup" ? "👍" : undefined);
 
     const result = await resolveEmoji("custom_thumbsup", customResolver);
     expect(result).toEqual({ type: "unicode", value: "👍" });
