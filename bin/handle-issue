@@ -549,7 +549,7 @@ async function waitForCi(
   let ciFixCount = 0;
 
   while (true) {
-    const status = await pollUntilActionable(prNumber, waitSince, worktreePath, "CI");
+    const status = await pollUntilCiFinished(prNumber, waitSince, worktreePath);
 
     // Terminal states — bubble up immediately
     if (status.status === "approved" || status.status === "merged" || status.status === "closed") {
@@ -607,7 +607,7 @@ async function waitForReviewMerge(
 
   while (true) {
     if (!status) {
-      status = await pollUntilActionable(prNumber, waitSince, worktreePath, "review");
+      status = await pollUntilActionable(prNumber, waitSince, worktreePath);
     }
 
     // --- Terminal states ---
@@ -652,13 +652,12 @@ async function waitForReviewMerge(
 // Polling helper
 // ---------------------------------------------------------------------------
 
-async function pollUntilActionable(
+async function pollUntilCiFinished(
   prNumber: string,
   since: Date,
   cwd: string,
-  phase: string,
 ): Promise<WaitPrResult> {
-  console.log(`\n⏳ Waiting for ${phase}...`);
+  console.log(`\n⏳ Waiting for CI...`);
 
   let pollCount = 0;
   const pollStartedAt = Date.now();
@@ -666,19 +665,48 @@ async function pollUntilActionable(
   while (true) {
     pollCount++;
     const status = await waitPr({ prNumber, since, cwd });
-    await logLine("wait-pr", `phase=${phase} status=${status.status} lgtm=${status.lgtm} ci=${status.ci.state} feedback=${status.feedback.length}`);
+    await logLine("wait-pr", `phase=CI status=${status.status} lgtm=${status.lgtm} ci=${status.ci.state} feedback=${status.feedback.length}`);
 
+    // Any non-pending overall status (approved, merged, closed, ci_failed, has_feedback)
     if (status.status !== "pending") {
       if (pollCount > 1) process.stdout.write("\r\x1b[K");
       console.log(`   Status: ${status.status}`);
       return status;
     }
 
-    // In CI phase, also return once CI finishes — the overall status may still
-    // be "pending" (no LGTM/feedback yet), but the CI wait is done.
-    if (phase === "CI" && status.ci.state !== "pending") {
+    // CI finished (success or failure) — return so waitForCi can handle the result
+    if (status.ci.state !== "pending") {
       if (pollCount > 1) process.stdout.write("\r\x1b[K");
-      console.log(`   Status: ${status.status} (CI ${status.ci.state})`);
+      console.log(`   CI finished: ${status.ci.state}`);
+      return status;
+    }
+
+    const elapsed = Math.round((Date.now() - pollStartedAt) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    const timeStr = mins > 0 ? `${mins}m${secs}s` : `${secs}s`;
+    process.stdout.write(`\r\x1b[K   ⏳ Polling... (attempt ${pollCount}, elapsed ${timeStr})`);
+  }
+}
+
+async function pollUntilActionable(
+  prNumber: string,
+  since: Date,
+  cwd: string,
+): Promise<WaitPrResult> {
+  console.log(`\n⏳ Waiting for review...`);
+
+  let pollCount = 0;
+  const pollStartedAt = Date.now();
+
+  while (true) {
+    pollCount++;
+    const status = await waitPr({ prNumber, since, cwd });
+    await logLine("wait-pr", `phase=review status=${status.status} lgtm=${status.lgtm} ci=${status.ci.state} feedback=${status.feedback.length}`);
+
+    if (status.status !== "pending") {
+      if (pollCount > 1) process.stdout.write("\r\x1b[K");
+      console.log(`   Status: ${status.status}`);
       return status;
     }
 
