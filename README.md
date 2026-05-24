@@ -1,8 +1,17 @@
 # Graphein
 
-Graphein converts Slack messages into trackable tasks. Users trigger a message shortcut in Slack, confirm details in a modal, and the task appears in a server-rendered web UI.
+Graphein captures work from Slack — tasks, snippets, and kudos — and surfaces them in a server-rendered web UI. It also exposes a REST API with OpenAPI documentation and an MCP (Model Context Protocol) server for AI tool integration.
 
 The name comes from the Greek word **γραφεῖν** (graphein), meaning "to write" — turning spoken words into written action.
+
+## Features
+
+- **Tasks** — Convert Slack messages into trackable tasks via a message shortcut. Gemini extracts the title and deadline automatically. Assign to individual users or usergroups with per-assignee completion tracking.
+- **Snippets** — Collect status updates from monitored Slack channels. Admins configure which channels to watch.
+- **Kudos** — Collect recognition and appreciation messages from monitored Slack channels. Admins configure which channels to watch.
+- **REST API** — JSON API at `/api/v1` authenticated via API keys. Includes an OpenAPI spec at `/api/v1/doc` and a Scalar reference UI at `/api/v1/reference`.
+- **MCP Server** — Model Context Protocol endpoint at `/mcp` with full OAuth 2.0 authorization. Provides tools for tasks, snippets, kudos, and admin operations.
+- **Admin** — User management (promote/demote), snippet and kudos channel monitoring configuration, and application settings.
 
 ## Requirements
 
@@ -37,6 +46,7 @@ After creating the app:
 | `SLACK_SIGNING_SECRET` | Slack request signing secret. Found in your Slack App's **Basic Information → App Credentials** section |
 | `SLACK_CLIENT_ID`      | Slack OAuth client ID. Found in your Slack App's **Basic Information → App Credentials** section        |
 | `SLACK_CLIENT_SECRET`  | Slack OAuth client secret. Found in your Slack App's **Basic Information → App Credentials** section    |
+| `SLACK_TEAM_ID`        | Slack workspace (team) ID. Found in your Slack workspace's **Settings & administration** page           |
 | `GEMINI_API_KEY`       | Google Gemini API key. Generate at [Google AI Studio](https://aistudio.google.com/apikey)               |
 | `JWT_SECRET`           | Secret key for signing session and MCP OAuth tokens. Generate with `openssl rand -hex 32`               |
 | `BASE_URL`             | Public URL where Graphein is hosted (e.g., `https://graphein.example.com`)                              |
