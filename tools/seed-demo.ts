@@ -23,7 +23,8 @@ const cleanOnly = args.includes("--clean");
 const queryClient = postgres(DATABASE_URL);
 const db = drizzle(queryClient, { schema });
 
-const DEMO_SLACK_PREFIX = "UDEMO";
+const DEMO_USER_PREFIX = "UDEMO";
+const DEMO_GROUP_PREFIX = "SDEMO";
 
 // --- Demo users ---
 
@@ -70,6 +71,29 @@ const demoUsers = [
   },
 ];
 
+// --- Demo usergroups ---
+
+const demoUsergroups = [
+  {
+    slackUsergroupId: "SDEMO001",
+    name: "Engineering",
+    handle: "engineering",
+    memberIndices: [0, 1, 2, 3], // Alice, Bob, Carol, Dave
+  },
+  {
+    slackUsergroupId: "SDEMO002",
+    name: "Design",
+    handle: "design",
+    memberIndices: [2, 4], // Carol, Erin
+  },
+  {
+    slackUsergroupId: "SDEMO003",
+    name: "Backend",
+    handle: "backend",
+    memberIndices: [1, 3], // Bob, Dave
+  },
+];
+
 // --- Demo tasks ---
 
 function daysAgo(n: number): Date {
@@ -88,7 +112,7 @@ const demoTasks = [
   {
     title: "Update onboarding documentation",
     description:
-      "<@UDEMO001|Alice Johnson> could you update the onboarding docs? The current version is missing the new SSO setup steps. cc <@UDEMO002|Bob Smith>",
+      "<!subteam^SDEMO001|@engineering> could you update the onboarding docs? The current version is missing the new SSO setup steps. cc <@UDEMO002|Bob Smith>",
     archived: false,
     deadline: daysFromNow(7),
     slackMessageTs: "1700000001.000100",
@@ -130,7 +154,7 @@ const demoTasks = [
   {
     title: "Migrate staging DB to new cluster",
     description:
-      "The staging Postgres cluster is being decommissioned end of month. <@UDEMO002|Bob Smith> please coordinate the migration with infra.",
+      "The staging Postgres cluster is being decommissioned end of month. <!subteam^SDEMO003|@backend> please coordinate the migration with infra.",
     archived: false,
     deadline: daysFromNow(14),
     slackMessageTs: "1700000004.000400",
@@ -244,7 +268,7 @@ const demoTasks = [
   {
     title: "Design system color token audit",
     description:
-      "We have 47 one-off hex colors in the codebase. <@UDEMO005|Erin Tanaka> consolidated them into the design token system.",
+      "We have 47 one-off hex colors in the codebase. <!subteam^SDEMO002|@design> consolidated them into the design token system.",
     archived: true,
     deadline: daysAgo(15),
     slackMessageTs: "1700000012.001200",
@@ -262,23 +286,25 @@ const demoTasks = [
 const demoSnippets = [
   {
     content:
-      "Today I finished the API rate limiting implementation and opened PR #42 for review. Also started looking into the mobile redirect issue — might be related to SameSite cookie defaults in iOS 17.",
+      "Today I finished the API rate limiting implementation and opened PR #42 for review. Also started looking into the mobile redirect issue — might be related to SameSite cookie defaults in iOS 17. Heads up <!subteam^SDEMO001|@engineering>.",
     postedAt: daysAgo(1),
     slackMessageTs: "1700100001.000100",
     slackChannelId: "CDEMO03",
     slackPermalink: "https://demo-workspace.slack.com/archives/CDEMO03/p1700100001000100",
     postedByIndex: 1, // Bob
     mentionedUserIndices: [0, 2], // Alice, Carol
+    mentionedGroupIndices: [0], // Engineering
   },
   {
     content:
-      "Wrapped up the Japanese translations for the main navigation and task list pages. Settings page translations are next — will finish by end of week.",
+      "Wrapped up the Japanese translations for the main navigation and task list pages. Settings page translations are next — will finish by end of week. cc <!subteam^SDEMO002|@design>",
     postedAt: daysAgo(1),
     slackMessageTs: "1700100002.000200",
     slackChannelId: "CDEMO03",
     slackPermalink: "https://demo-workspace.slack.com/archives/CDEMO03/p1700100002000200",
     postedByIndex: 4, // Erin
     mentionedUserIndices: [2], // Carol
+    mentionedGroupIndices: [1], // Design
   },
   {
     content:
@@ -289,6 +315,7 @@ const demoSnippets = [
     slackPermalink: "https://demo-workspace.slack.com/archives/CDEMO03/p1700100003000300",
     postedByIndex: 3, // Dave
     mentionedUserIndices: [4], // Erin
+    mentionedGroupIndices: [],
   },
 ];
 
@@ -306,6 +333,7 @@ const demoKudos = [
         message:
           "Huge shoutout to <@UDEMO002|Bob Smith> for the thorough rate limiting implementation — clean code, great test coverage, and solid documentation :tada:",
         mentionedUserIndices: [1], // Bob
+        mentionedGroupIndices: [],
       },
     ],
   },
@@ -320,11 +348,13 @@ const demoKudos = [
         message:
           "Thanks <@UDEMO003|Carol Williams> for jumping on the mobile redirect bug so quickly — users were really feeling that one :pray:",
         mentionedUserIndices: [2], // Carol
+        mentionedGroupIndices: [],
       },
       {
         message:
-          "Also kudos to <@UDEMO005|Erin Tanaka> for the i18n work — the Japanese translations look great :sparkles:",
-        mentionedUserIndices: [4], // Erin
+          "Big props to <!subteam^SDEMO002|@design> for the i18n work — the Japanese translations look great :sparkles:",
+        mentionedUserIndices: [],
+        mentionedGroupIndices: [1], // Design
       },
     ],
   },
@@ -339,38 +369,45 @@ async function cleanDemoData() {
   const demoUserRows = await db
     .select({ id: schema.users.id })
     .from(schema.users)
-    .where(like(schema.users.slackUserId, `${DEMO_SLACK_PREFIX}%`));
-
-  if (demoUserRows.length === 0) {
-    console.log("  No demo data found.");
-    return;
-  }
+    .where(like(schema.users.slackUserId, `${DEMO_USER_PREFIX}%`));
 
   const userIds = demoUserRows.map((u) => u.id);
 
-  // Delete tasks created by demo users (cascade handles assignees/owners)
-  const deletedTasks = await db
-    .delete(schema.tasks)
-    .where(inArray(schema.tasks.createdById, userIds));
-  console.log(`  Deleted ${deletedTasks.count} tasks`);
+  if (userIds.length > 0) {
+    // Delete tasks created by demo users (cascade handles assignees/owners)
+    const deletedTasks = await db
+      .delete(schema.tasks)
+      .where(inArray(schema.tasks.createdById, userIds));
+    console.log(`  Deleted ${deletedTasks.count} tasks`);
 
-  // Delete snippets posted by demo users (cascade handles mentions)
-  const deletedSnippets = await db
-    .delete(schema.snippets)
-    .where(inArray(schema.snippets.postedById, userIds));
-  console.log(`  Deleted ${deletedSnippets.count} snippets`);
+    // Delete snippets posted by demo users (cascade handles mentions)
+    const deletedSnippets = await db
+      .delete(schema.snippets)
+      .where(inArray(schema.snippets.postedById, userIds));
+    console.log(`  Deleted ${deletedSnippets.count} snippets`);
 
-  // Delete kudos posted by demo users (cascade handles entries and mentions)
-  const deletedKudos = await db
-    .delete(schema.kudos)
-    .where(inArray(schema.kudos.postedById, userIds));
-  console.log(`  Deleted ${deletedKudos.count} kudos`);
+    // Delete kudos posted by demo users (cascade handles entries and mentions)
+    const deletedKudos = await db
+      .delete(schema.kudos)
+      .where(inArray(schema.kudos.postedById, userIds));
+    console.log(`  Deleted ${deletedKudos.count} kudos`);
 
-  // Delete demo users
-  const deletedUsers = await db
-    .delete(schema.users)
-    .where(like(schema.users.slackUserId, `${DEMO_SLACK_PREFIX}%`));
-  console.log(`  Deleted ${deletedUsers.count} users`);
+    // Delete demo users (cascade handles usergroup_members)
+    const deletedUsers = await db
+      .delete(schema.users)
+      .where(like(schema.users.slackUserId, `${DEMO_USER_PREFIX}%`));
+    console.log(`  Deleted ${deletedUsers.count} users`);
+  }
+
+  // Delete demo usergroups (cascade handles usergroup_members)
+  const deletedGroups = await db
+    .delete(schema.usergroups)
+    .where(like(schema.usergroups.slackUsergroupId, `${DEMO_GROUP_PREFIX}%`));
+  console.log(`  Deleted ${deletedGroups.count} usergroups`);
+
+  if (userIds.length === 0 && deletedGroups.count === 0) {
+    console.log("  No demo data found.");
+  }
 }
 
 async function seedDemoData() {
@@ -382,6 +419,35 @@ async function seedDemoData() {
     .returning({ id: schema.users.id });
   const userIds = insertedUsers.map((u) => u.id);
   console.log(`  Inserted ${userIds.length} users`);
+
+  // Insert usergroups
+  console.log("Inserting demo usergroups...");
+  const insertedGroups = await db
+    .insert(schema.usergroups)
+    .values(
+      demoUsergroups.map((g) => ({
+        slackUsergroupId: g.slackUsergroupId,
+        name: g.name,
+        handle: g.handle,
+        membersSyncedAt: new Date(),
+      })),
+    )
+    .returning({ id: schema.usergroups.id });
+  const groupIds = insertedGroups.map((g) => g.id);
+
+  // Insert usergroup members
+  for (let gi = 0; gi < demoUsergroups.length; gi++) {
+    const group = demoUsergroups[gi];
+    if (group.memberIndices.length > 0) {
+      await db.insert(schema.usergroupMembers).values(
+        group.memberIndices.map((idx) => ({
+          usergroupId: groupIds[gi],
+          userId: userIds[idx],
+        })),
+      );
+    }
+  }
+  console.log(`  Inserted ${demoUsergroups.length} usergroups with members`);
 
   // Insert tasks
   console.log("Inserting demo tasks...");
@@ -446,6 +512,15 @@ async function seedDemoData() {
         })),
       );
     }
+
+    if (snip.mentionedGroupIndices.length > 0) {
+      await db.insert(schema.snippetMentionedUsergroups).values(
+        snip.mentionedGroupIndices.map((idx) => ({
+          snippetId: insertedSnippet.id,
+          usergroupId: groupIds[idx],
+        })),
+      );
+    }
   }
   console.log(`  Inserted ${demoSnippets.length} snippets`);
 
@@ -477,6 +552,15 @@ async function seedDemoData() {
           entry.mentionedUserIndices.map((idx) => ({
             kudosEntryId: insertedEntry.id,
             userId: userIds[idx],
+          })),
+        );
+      }
+
+      if (entry.mentionedGroupIndices.length > 0) {
+        await db.insert(schema.kudosEntryMentionedUsergroups).values(
+          entry.mentionedGroupIndices.map((idx) => ({
+            kudosEntryId: insertedEntry.id,
+            usergroupId: groupIds[idx],
           })),
         );
       }
