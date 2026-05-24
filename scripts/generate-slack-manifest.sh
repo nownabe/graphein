@@ -87,6 +87,7 @@ build_manifest() {
   local bot_scopes="    - channels:history
     - channels:read
     - chat:write
+    - emoji:read
     - reactions:write
     - users:read
     - users:read.email

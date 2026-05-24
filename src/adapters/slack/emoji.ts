@@ -94,9 +94,11 @@ export function createCustomEmojiResolver(client: WebClient, cache?: CacheStore)
       for (const [name, value] of Object.entries(result.emoji ?? {})) {
         index.set(name, value);
       }
-    } catch {
-      // Return empty map for this lookup without marking the index as loaded,
-      // so subsequent requests can retry the API call.
+    } catch (err) {
+      // Log the error so missing scopes (e.g. emoji:read) are visible.
+      // Return empty map without marking the index as loaded so subsequent
+      // requests can retry the API call.
+      console.warn("[emoji] Failed to fetch emoji.list from Slack:", err);
       return new Map();
     }
 
