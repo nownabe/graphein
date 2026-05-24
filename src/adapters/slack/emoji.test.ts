@@ -54,6 +54,16 @@ describe("resolveEmoji", () => {
     expect(result).toBeUndefined();
   });
 
+  it("resolves custom alias to standard emoji as unicode type", async () => {
+    // When a custom emoji is an alias to a standard emoji, the custom resolver
+    // returns the unicode character. resolveEmoji should wrap it as unicode type.
+    const customResolver = async (name: string) =>
+      name === "custom_thumbsup" ? "👍" : undefined;
+
+    const result = await resolveEmoji("custom_thumbsup", customResolver);
+    expect(result).toEqual({ type: "unicode", value: "👍" });
+  });
+
   it("prefers standard emoji over custom resolver", async () => {
     const customResolver = async (_name: string) => "https://example.com/custom.png";
 
@@ -97,6 +107,39 @@ describe("createCustomEmojiResolver", () => {
     expect(a).toBe("https://emoji.example.com/partyparrot.gif");
     expect(b).toBe("https://emoji.example.com/shipit.png");
     expect(listCallCount).toBe(1);
+  });
+
+  it("resolves alias to another custom emoji", async () => {
+    const fakeClient = {
+      emoji: {
+        list: async () => ({
+          emoji: {
+            my_parrot: "alias:partyparrot",
+            partyparrot: "https://emoji.example.com/partyparrot.gif",
+          },
+        }),
+      },
+    };
+
+    const resolver = createCustomEmojiResolver(fakeClient as never);
+    const result = await resolver("my_parrot");
+    expect(result).toBe("https://emoji.example.com/partyparrot.gif");
+  });
+
+  it("resolves alias to a standard emoji by returning the unicode value", async () => {
+    const fakeClient = {
+      emoji: {
+        list: async () => ({
+          emoji: {
+            custom_thumbsup: "alias:thumbsup",
+          },
+        }),
+      },
+    };
+
+    const resolver = createCustomEmojiResolver(fakeClient as never);
+    const result = await resolver("custom_thumbsup");
+    expect(result).toBe("👍");
   });
 
   it("retries emoji.list after a transient failure", async () => {
