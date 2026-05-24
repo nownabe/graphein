@@ -7,11 +7,10 @@ The name comes from the Greek word **γραφεῖν** (graphein), meaning "to w
 ## Features
 
 - **Tasks** — Convert Slack messages into trackable tasks via a message shortcut. Gemini extracts the title and deadline automatically. Assign to individual users or usergroups with per-assignee completion tracking.
-- **Snippets** — Capture code snippets from monitored Slack channels. Admins configure which channels to watch.
+- **Snippets** — Automatically capture Slack messages that mention users or usergroups from monitored channels. Admins configure which channels to watch.
 - **Kudos** — Collect recognition and appreciation messages from monitored Slack channels. Admins configure which channels to watch.
 - **REST API** — JSON API at `/api/v1` authenticated via API keys. Includes an OpenAPI spec at `/api/v1/doc` and a Scalar reference UI at `/api/v1/reference`.
 - **MCP Server** — Model Context Protocol endpoint at `/mcp` with full OAuth 2.0 authorization. Provides tools for tasks, snippets, kudos, and admin operations.
-- **API Keys** — Self-serve API key generation and revocation via the web UI at `/settings/api-keys`.
 - **Admin** — User management (promote/demote), snippet and kudos channel monitoring configuration, and application settings.
 
 ## Requirements
