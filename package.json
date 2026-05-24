@@ -22,6 +22,7 @@
     "check:format": "oxfmt --check",
     "check:lint": "oxlint --deny-warnings",
     "check:workflows": "actionlint && ghalint run && zizmor .github/workflows/",
+    "db:seed-demo": "bun run tools/seed-demo.ts",
     "slack:manifest": "bash scripts/generate-slack-manifest.sh",
     "postinstall": "playwright install chromium"
   },
