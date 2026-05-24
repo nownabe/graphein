@@ -112,7 +112,7 @@ const demoTasks = [
   {
     title: "Update onboarding documentation",
     description:
-      "<!subteam^SDEMO001|@engineering> could you update the onboarding docs? The current version is missing the new SSO setup steps. cc <@UDEMO002|Bob Smith>",
+      "<!subteam^SDEMO001|engineering> could you update the onboarding docs? The current version is missing the new SSO setup steps. cc <@UDEMO002|Bob Smith>",
     archived: false,
     deadline: daysFromNow(7),
     slackMessageTs: "1700000001.000100",
@@ -154,7 +154,7 @@ const demoTasks = [
   {
     title: "Migrate staging DB to new cluster",
     description:
-      "The staging Postgres cluster is being decommissioned end of month. <!subteam^SDEMO003|@backend> please coordinate the migration with infra.",
+      "The staging Postgres cluster is being decommissioned end of month. <!subteam^SDEMO003|backend> please coordinate the migration with infra.",
     archived: false,
     deadline: daysFromNow(14),
     slackMessageTs: "1700000004.000400",
@@ -268,7 +268,7 @@ const demoTasks = [
   {
     title: "Design system color token audit",
     description:
-      "We have 47 one-off hex colors in the codebase. <!subteam^SDEMO002|@design> consolidated them into the design token system.",
+      "We have 47 one-off hex colors in the codebase. <!subteam^SDEMO002|design> consolidated them into the design token system.",
     archived: true,
     deadline: daysAgo(15),
     slackMessageTs: "1700000012.001200",
@@ -286,7 +286,7 @@ const demoTasks = [
 const demoSnippets = [
   {
     content:
-      "Today I finished the API rate limiting implementation and opened PR #42 for review. Also started looking into the mobile redirect issue — might be related to SameSite cookie defaults in iOS 17. Heads up <!subteam^SDEMO001|@engineering>.",
+      "Today I finished the API rate limiting implementation and opened PR #42 for review. Also started looking into the mobile redirect issue — might be related to SameSite cookie defaults in iOS 17. Heads up <!subteam^SDEMO001|engineering>.",
     postedAt: daysAgo(1),
     slackMessageTs: "1700100001.000100",
     slackChannelId: "CDEMO03",
@@ -297,7 +297,7 @@ const demoSnippets = [
   },
   {
     content:
-      "Wrapped up the Japanese translations for the main navigation and task list pages. Settings page translations are next — will finish by end of week. cc <!subteam^SDEMO002|@design>",
+      "Wrapped up the Japanese translations for the main navigation and task list pages. Settings page translations are next — will finish by end of week. cc <!subteam^SDEMO002|design>",
     postedAt: daysAgo(1),
     slackMessageTs: "1700100002.000200",
     slackChannelId: "CDEMO03",
@@ -352,7 +352,7 @@ const demoKudos = [
       },
       {
         message:
-          "Big props to <!subteam^SDEMO002|@design> for the i18n work — the Japanese translations look great :sparkles:",
+          "Big props to <!subteam^SDEMO002|design> for the i18n work — the Japanese translations look great :sparkles:",
         mentionedUserIndices: [],
         mentionedGroupIndices: [1], // Design
       },
