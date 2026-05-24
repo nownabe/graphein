@@ -452,6 +452,67 @@ async function runReviewLoop(worktreePath: string, sessionId: string): Promise<R
 }
 
 // ---------------------------------------------------------------------------
+// Phase 3b: Final checks before PR creation
+// ---------------------------------------------------------------------------
+
+const MAX_FINAL_CHECK_ROUNDS = 3;
+
+async function runFinalChecks(worktreePath: string, sessionId: string): Promise<void> {
+  console.log(`\n🔎 Running final check:all before PR creation...`);
+
+  for (let attempt = 1; attempt <= MAX_FINAL_CHECK_ROUNDS; attempt++) {
+    const checkResult = await run(["bun", "run", "check:all"], {
+      cwd: worktreePath,
+      logType: `final-check-${attempt}`,
+    });
+
+    if (checkResult.exitCode === 0) {
+      console.log(`   ✅ check:all passed.`);
+      return;
+    }
+
+    console.log(`   ❌ check:all failed (attempt ${attempt}/${MAX_FINAL_CHECK_ROUNDS}). Fixing...`);
+
+    const fixPrompt = [
+      "bun run check:all failed. Fix the issues and ensure all checks pass.",
+      "",
+      `stdout:\n${checkResult.stdout.slice(-3000)}`,
+      "",
+      `stderr:\n${checkResult.stderr.slice(-3000)}`,
+      "",
+      "Steps:",
+      "1. Analyze the errors above",
+      "2. Fix the issues",
+      "3. Commit the fixes",
+    ].join("\n");
+
+    const fixResult = await claudeResume(fixPrompt, sessionId, worktreePath, {
+      logType: `final-check-fix-${attempt}`,
+    });
+
+    if (fixResult.exitCode !== 0) {
+      throw new Error(
+        `Final check fix attempt ${attempt} failed. See: ${logDir}/final-check-fix-${attempt}.log`,
+      );
+    }
+  }
+
+  // One last attempt after all fix rounds
+  const lastCheck = await run(["bun", "run", "check:all"], {
+    cwd: worktreePath,
+    logType: `final-check-last`,
+  });
+
+  if (lastCheck.exitCode !== 0) {
+    throw new Error(
+      `check:all still failing after ${MAX_FINAL_CHECK_ROUNDS} fix rounds. Manual intervention needed.\n   Logs: ${logDir}/`,
+    );
+  }
+
+  console.log(`   ✅ check:all passed.`);
+}
+
+// ---------------------------------------------------------------------------
 // Phase 4: Create PR
 // ---------------------------------------------------------------------------
 
@@ -864,6 +925,9 @@ async function main() {
       console.log(`${"=".repeat(72)}`);
       return;
     }
+
+    // Phase 3b: Final check:all before PR creation
+    await runFinalChecks(worktreePath, sessionId);
 
     // Phase 4: Create PR
     const { prUrl, prNumber } = await createPr(worktreePath, sessionId);
