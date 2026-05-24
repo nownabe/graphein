@@ -623,7 +623,7 @@ Per API key, **60 requests per minute** using a fixed-window algorithm.
 
 ### Storage
 
-In-memory `Map<string, { count: number; windowStart: number }>` keyed by API key hash. This is simple and sufficient for a single-process deployment. No external store (Redis etc.) is needed.
+In-memory `Map<string, { count: number; windowStart: number }>` keyed by API key hash. This is simple and sufficient for a single-process deployment. No external store (Valkey etc.) is needed.
 
 - On each request, compute the current window (`Math.floor(Date.now() / 60000)`)
 - If the key's `windowStart` matches, increment `count`; otherwise reset to `{ count: 1, windowStart: current }`

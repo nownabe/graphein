@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun run --watch src/index.ts",
     "start": "bun run src/index.ts",
-    "db:up": "docker compose up -d db db-test db-e2e redis",
+    "db:up": "docker compose up -d db db-test db-e2e valkey",
     "db:down": "docker compose down",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
@@ -37,7 +37,7 @@
     "gemoji": "^8.1.0",
     "hono": "^4.7.0",
     "hono-rate-limiter": "^0.5.3",
-    "ioredis": "^5.6.1",
+    "iovalkey": "^0.3.3",
     "postgres": "^3.4.5",
     "zod": "^4.3.6"
   },

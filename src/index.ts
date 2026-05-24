@@ -29,7 +29,7 @@ const slackSocketMode = process.env.SLACK_SOCKET_MODE === "true";
 const baseUrl = requireEnv("BASE_URL");
 const timezone = process.env.APP_TIMEZONE ?? "UTC";
 
-// Create cache store (in-memory by default, Redis when CACHE_BACKEND=redis)
+// Create cache store (in-memory by default, Valkey when CACHE_BACKEND=valkey)
 const cacheConfig = cacheConfigFromEnv();
 const cache = await createCacheStore(cacheConfig);
 
