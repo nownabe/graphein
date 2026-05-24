@@ -14,18 +14,20 @@
 import { readFileSync, appendFileSync, mkdirSync, existsSync } from "fs";
 import { resolve } from "path";
 
+const input = JSON.parse(readFileSync("/dev/stdin", "utf-8"));
+const toolName: string = input.tool_name ?? "unknown";
+const toolInput: Record<string, unknown> = input.tool_input ?? {};
+
 // Detect handle-issue session via config file written by bin/handle-issue.
 // Environment variables are not reliably propagated to hook subprocesses by
 // Claude CLI, so we use a file-based mechanism instead.
-const configPath = resolve(".handle-issue.json");
+// Use `input.cwd` (the session's working directory) to resolve the config path,
+// since the hook's cwd is the main repo root, not the worktree.
+const configPath = resolve(input.cwd ?? ".", ".handle-issue.json");
 if (!existsSync(configPath)) {
   process.exit(0);
 }
 const handleIssueConfig: { logDir: string } = JSON.parse(readFileSync(configPath, "utf-8"));
-
-const input = JSON.parse(readFileSync("/dev/stdin", "utf-8"));
-const toolName: string = input.tool_name ?? "unknown";
-const toolInput: Record<string, unknown> = input.tool_input ?? {};
 
 // ---------------------------------------------------------------------------
 // Permission key (mirrors settings.json allow-list format)
