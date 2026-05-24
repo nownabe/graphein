@@ -16,7 +16,9 @@ export interface ValkeyCacheStoreOptions {
  * so callers can catch startup failures synchronously. Runtime reconnection
  * errors are logged but not fatal (iovalkey reconnects automatically).
  */
-export async function createValkeyCacheStore(options: ValkeyCacheStoreOptions): Promise<CacheStore> {
+export async function createValkeyCacheStore(
+  options: ValkeyCacheStoreOptions,
+): Promise<CacheStore> {
   const prefix = options.keyPrefix ?? "graphein:";
   const valkey = new Valkey(options.url, { lazyConnect: true, keyPrefix: prefix });
 
