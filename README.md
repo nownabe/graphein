@@ -1,6 +1,6 @@
 # Graphein
 
-Graphein captures work from Slack — tasks, code snippets, and kudos — and surfaces them in a server-rendered web UI. It also exposes a REST API with OpenAPI documentation and an MCP (Model Context Protocol) server for AI tool integration.
+Graphein captures work from Slack — tasks, snippets, and kudos — and surfaces them in a server-rendered web UI. It also exposes a REST API with OpenAPI documentation and an MCP (Model Context Protocol) server for AI tool integration.
 
 The name comes from the Greek word **γραφεῖν** (graphein), meaning "to write" — turning spoken words into written action.
 
