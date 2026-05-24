@@ -54,6 +54,15 @@ describe("resolveEmoji", () => {
     expect(result).toBeUndefined();
   });
 
+  it("resolves custom alias to standard emoji as unicode type", async () => {
+    // When a custom emoji is an alias to a standard emoji, the custom resolver
+    // returns the unicode character. resolveEmoji should wrap it as unicode type.
+    const customResolver = async (name: string) => (name === "custom_thumbsup" ? "👍" : undefined);
+
+    const result = await resolveEmoji("custom_thumbsup", customResolver);
+    expect(result).toEqual({ type: "unicode", value: "👍" });
+  });
+
   it("prefers standard emoji over custom resolver", async () => {
     const customResolver = async (_name: string) => "https://example.com/custom.png";
 
@@ -70,6 +79,42 @@ describe("resolveEmojiMap", () => {
     const result = await resolveEmojiMap(["rocket", "custom", "unknown"], customResolver);
     expect(result.rocket).toEqual({ type: "unicode", value: "🚀" });
     expect(result.custom).toEqual({ type: "url", value: "https://example.com/custom.png" });
+    expect(result.unknown).toBeUndefined();
+  });
+
+  it("resolves custom emoji via Slack API (emoji.list) end-to-end", async () => {
+    let apiCalled = false;
+    const fakeClient = {
+      emoji: {
+        list: async () => {
+          apiCalled = true;
+          return {
+            emoji: {
+              partyparrot: "https://emoji.slack-edge.com/T123/partyparrot/abc.gif",
+              my_thumbsup: "alias:thumbsup",
+            },
+          };
+        },
+      },
+    };
+
+    const customResolver = createCustomEmojiResolver(fakeClient as never);
+    const result = await resolveEmojiMap(
+      ["rocket", "partyparrot", "my_thumbsup", "unknown"],
+      customResolver,
+    );
+
+    expect(apiCalled).toBe(true);
+    // Standard emoji resolved via gemoji
+    expect(result.rocket).toEqual({ type: "unicode", value: "🚀" });
+    // Custom emoji resolved via Slack API → image URL
+    expect(result.partyparrot).toEqual({
+      type: "url",
+      value: "https://emoji.slack-edge.com/T123/partyparrot/abc.gif",
+    });
+    // Custom alias to standard emoji → unicode
+    expect(result.my_thumbsup).toEqual({ type: "unicode", value: "👍" });
+    // Unknown emoji not resolved
     expect(result.unknown).toBeUndefined();
   });
 });
@@ -97,6 +142,62 @@ describe("createCustomEmojiResolver", () => {
     expect(a).toBe("https://emoji.example.com/partyparrot.gif");
     expect(b).toBe("https://emoji.example.com/shipit.png");
     expect(listCallCount).toBe(1);
+  });
+
+  it("resolves alias to another custom emoji", async () => {
+    const fakeClient = {
+      emoji: {
+        list: async () => ({
+          emoji: {
+            my_parrot: "alias:partyparrot",
+            partyparrot: "https://emoji.example.com/partyparrot.gif",
+          },
+        }),
+      },
+    };
+
+    const resolver = createCustomEmojiResolver(fakeClient as never);
+    const result = await resolver("my_parrot");
+    expect(result).toBe("https://emoji.example.com/partyparrot.gif");
+  });
+
+  it("resolves alias to a standard emoji by returning the unicode value", async () => {
+    const fakeClient = {
+      emoji: {
+        list: async () => ({
+          emoji: {
+            custom_thumbsup: "alias:thumbsup",
+          },
+        }),
+      },
+    };
+
+    const resolver = createCustomEmojiResolver(fakeClient as never);
+    const result = await resolver("custom_thumbsup");
+    expect(result).toBe("👍");
+  });
+
+  it("resolves custom emoji with URL via emoji.list API call", async () => {
+    let apiCalled = false;
+    const fakeClient = {
+      emoji: {
+        list: async () => {
+          apiCalled = true;
+          return {
+            emoji: {
+              partyparrot: "https://emoji.slack-edge.com/T123/partyparrot/abc.gif",
+              company_logo: "https://emoji.slack-edge.com/T123/company_logo/def.png",
+            },
+          };
+        },
+      },
+    };
+
+    const resolver = createCustomEmojiResolver(fakeClient as never);
+    const result = await resolver("partyparrot");
+
+    expect(apiCalled).toBe(true);
+    expect(result).toBe("https://emoji.slack-edge.com/T123/partyparrot/abc.gif");
   });
 
   it("retries emoji.list after a transient failure", async () => {

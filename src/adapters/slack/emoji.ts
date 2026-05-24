@@ -94,9 +94,11 @@ export function createCustomEmojiResolver(client: WebClient, cache?: CacheStore)
       for (const [name, value] of Object.entries(result.emoji ?? {})) {
         index.set(name, value);
       }
-    } catch {
-      // Return empty map for this lookup without marking the index as loaded,
-      // so subsequent requests can retry the API call.
+    } catch (err) {
+      // Log the error so missing scopes (e.g. emoji:read) are visible.
+      // Return empty map without marking the index as loaded so subsequent
+      // requests can retry the API call.
+      console.warn("[emoji] Failed to fetch emoji.list from Slack:", err);
       return new Map();
     }
 
@@ -133,7 +135,7 @@ export function createCustomEmojiResolver(client: WebClient, cache?: CacheStore)
       const aliasTarget = current.slice("alias:".length);
       // Check if the alias target is a standard emoji.
       const standard = resolveStandardEmoji(aliasTarget);
-      if (standard) return undefined; // Let the standard path handle it.
+      if (standard) return standard; // Return the unicode value directly.
       // Try local index first, then fall back to cache for cold processes.
       const next = localIndex?.get(aliasTarget) ?? (await cache?.get(`slack:emoji:${aliasTarget}`));
       if (!next) return undefined;
@@ -157,8 +159,15 @@ export async function resolveEmoji(
   if (unicode) return { type: "unicode", value: unicode };
 
   if (customResolver) {
-    const url = await customResolver(name);
-    if (url) return { type: "url", value: url };
+    const value = await customResolver(name);
+    if (value) {
+      // Custom emoji URLs start with http(s). Anything else is a unicode
+      // character returned when a custom alias resolved to a standard emoji.
+      if (/^https?:\/\//.test(value)) {
+        return { type: "url", value };
+      }
+      return { type: "unicode", value };
+    }
   }
 
   return undefined;

@@ -47,7 +47,7 @@ export function createTestApp() {
     apiKeyService,
     oauthService,
     jwtSecret: JWT_SECRET,
-    buildMrkdwnLabels: async () => ({ users: {}, channels: {}, usergroups: {} }),
+    buildMrkdwnLabels: async () => ({ users: {}, channels: {}, usergroups: {}, emoji: {} }),
     resolveChannelName: async () => undefined,
     timezone: "Asia/Tokyo",
   });
