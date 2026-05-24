@@ -1,15 +1,15 @@
 import { describe, test, expect, beforeEach, afterEach } from "bun:test";
-import { createRedisCacheStore } from "./redis";
+import { createValkeyCacheStore } from "./valkey";
 import type { CacheStore } from "./store";
 
-const TEST_REDIS_URL = process.env.TEST_REDIS_URL ?? "redis://localhost:16379/1";
+const TEST_VALKEY_URL = process.env.TEST_VALKEY_URL ?? "redis://localhost:16379/1";
 
-describe("RedisCacheStore", () => {
+describe("ValkeyCacheStore", () => {
   let cache: CacheStore;
 
   beforeEach(async () => {
-    cache = await createRedisCacheStore({
-      url: TEST_REDIS_URL,
+    cache = await createValkeyCacheStore({
+      url: TEST_VALKEY_URL,
       keyPrefix: `graphein:test:${crypto.randomUUID()}:`,
     });
   });

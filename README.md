@@ -49,8 +49,8 @@ Optional:
 | `APP_TIMEZONE`      | Timezone for deadline display                                                      | `UTC`    |
 | `SLACK_SOCKET_MODE` | Use Socket Mode instead of HTTP (`true`/`false`)                                   | `false`  |
 | `SLACK_APP_TOKEN`   | Required only if `SLACK_SOCKET_MODE=true` (`xapp-...`)                             | —        |
-| `CACHE_BACKEND`     | Cache backend: `memory` (in-process) or `redis` (shared)                           | `memory` |
-| `REDIS_URL`         | Redis connection URL, e.g. `redis://localhost:16379/0`. Required when using Redis. | —        |
+| `CACHE_BACKEND`     | Cache backend: `memory` (in-process) or `valkey` (shared)                             | `memory` |
+| `VALKEY_URL`        | Valkey connection URL, e.g. `redis://localhost:16379/0`. Required when using Valkey.  | —        |
 
 ### 3. Run
 

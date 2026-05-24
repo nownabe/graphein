@@ -6,7 +6,7 @@ describe("cacheConfigFromEnv", () => {
 
   afterEach(() => {
     process.env.CACHE_BACKEND = originalEnv.CACHE_BACKEND;
-    process.env.REDIS_URL = originalEnv.REDIS_URL;
+    process.env.VALKEY_URL = originalEnv.VALKEY_URL;
   });
 
   test("defaults to memory backend", () => {
@@ -15,12 +15,12 @@ describe("cacheConfigFromEnv", () => {
     expect(config.backend).toBe("memory");
   });
 
-  test("accepts redis backend with REDIS_URL", () => {
-    process.env.CACHE_BACKEND = "redis";
-    process.env.REDIS_URL = "redis://localhost:6379";
+  test("accepts valkey backend with VALKEY_URL", () => {
+    process.env.CACHE_BACKEND = "valkey";
+    process.env.VALKEY_URL = "redis://localhost:6379";
     const config = cacheConfigFromEnv();
-    expect(config.backend).toBe("redis");
-    expect(config.redisUrl).toBe("redis://localhost:6379");
+    expect(config.backend).toBe("valkey");
+    expect(config.valkeyUrl).toBe("redis://localhost:6379");
   });
 
   test("throws on invalid backend value", () => {
@@ -28,10 +28,10 @@ describe("cacheConfigFromEnv", () => {
     expect(() => cacheConfigFromEnv()).toThrow("Invalid CACHE_BACKEND");
   });
 
-  test("throws when redis backend missing REDIS_URL", () => {
-    process.env.CACHE_BACKEND = "redis";
-    delete process.env.REDIS_URL;
-    expect(() => cacheConfigFromEnv()).toThrow("REDIS_URL is required");
+  test("throws when valkey backend missing VALKEY_URL", () => {
+    process.env.CACHE_BACKEND = "valkey";
+    delete process.env.VALKEY_URL;
+    expect(() => cacheConfigFromEnv()).toThrow("VALKEY_URL is required");
   });
 });
 

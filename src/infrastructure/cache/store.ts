@@ -1,6 +1,6 @@
 // Common cache interface for key-value storage with optional TTL.
 //
-// Implementations: MemoryCacheStore (in-process Map), RedisCacheStore (shared Redis).
+// Implementations: MemoryCacheStore (in-process Map), ValkeyCacheStore (shared Valkey).
 
 export interface CacheStore {
   /** Get a value by key. Returns `undefined` on miss. */
