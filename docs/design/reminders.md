@@ -55,16 +55,13 @@ composition root in `src/index.ts`:
 src/index.ts
   └─ startReminderScheduler({ cache, reminderService, enabled })
         every REMINDER_TICK (default 15 min):
-          1. acquire distributed lock via CacheStore (SET NX EX)  ← dedupes replicas
+          1. acquire distributed lock via CacheStore  ← dedupes replicas
           2. if not acquired: skip this tick
           3. reminderService.runDue(now)
-          4. release lock
+          4. release lock (delete the key)
 ```
 
-The Valkey-backed lock (`SET reminders:lock <id> NX EX <ttl>`) means that even
-if Graphein is scaled to multiple instances, only one runs a given tick — no
-duplicate DMs. With the in-memory cache (single instance) the lock is trivially
-held by that instance.
+The lock reuses the existing `CacheStore` atomic primitive: `increment("reminders:lock:<tickBucket>", ttlMs)` returns `1` only for the first caller in that bucket (the TTL is set on creation), so exactly one instance wins the tick. This means that even if Graphein is scaled to multiple instances, only one runs a given tick — no duplicate DMs. With the in-memory cache (single instance) the lock is trivially held by that instance.
 
 The 15-minute cadence is fixed; the *runner* decides who is "due now" based on
 each user's local send hour, so preferences don't change the tick rate.
