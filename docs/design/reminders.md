@@ -189,9 +189,9 @@ subset** of them.
   throttling and per-user opt-out** (`reminderPreferences.enabled`) — an admin
   asking everyone to finish a task should reach them. Deactivated users
   (`users.deactivatedAt`) are still skipped.
-- Manual sends **do not** update `lastRemindedAt` / `reminderStage`; those track
-  the automatic deadline lifecycle only, and a manual nudge shouldn't suppress
-  the next automatic one.
+- Manual sends **do not** update `lastRemindedAt`; it tracks the automatic
+  deadline lifecycle only, and a manual nudge shouldn't suppress the next
+  automatic one.
 - Archived tasks cannot be the target (returns `not_found`/validation error).
 
 ### Authorization
@@ -260,18 +260,25 @@ export const reminderPreferences = pgTable("reminder_preferences", {
 ### Altered table: `task_assignees`
 
 Automatic deadline reminders are per assignee, so delivery state lives on the
-assignment row:
+assignment row — a single nullable timestamp:
 
 ```ts
-// added columns
+// added column
 lastRemindedAt: timestamp("last_reminded_at", { withTimezone: true }),
-reminderStage: text("reminder_stage").notNull().default("none"), // none|upcoming|overdue
 ```
 
-`reminderStage` records lifecycle progress so we send exactly one "upcoming"
-nudge, then transition to throttled "overdue" nudges without repeating the
-upcoming one. An index on `tasks.deadline` (partial: `WHERE archived = false`)
-keeps the per-tick candidate scan cheap.
+We deliberately **do not** add a separate `reminder_stage` column. The
+upcoming/overdue lifecycle is derivable from `lastRemindedAt` compared to the
+task's `deadline`, because upcoming nudges are always sent *before* the deadline
+and overdue nudges *at or after* it:
+
+- upcoming already sent ⟺ `lastRemindedAt != null && lastRemindedAt < deadline`
+- overdue already sent ⟺ `lastRemindedAt != null && lastRemindedAt >= deadline`
+
+This keeps the "send upcoming exactly once, then throttle overdue to once/24h"
+behavior without denormalized state to keep consistent. An index on
+`tasks.deadline` (partial: `WHERE archived = false`) keeps the per-tick
+candidate scan cheap.
 
 ### Global toggle and env
 
@@ -428,8 +435,8 @@ runDue(now):
       if not (prefs.enabled and prefs.deadlineEnabled): continue
       decision = reminderPolicy.deadlineDecision(assignment, task, prefs, now)
       switch decision:
-        "upcoming":  send upcoming DM; stage=upcoming; lastRemindedAt=now
-        "overdue":   send overdue DM;  stage=overdue;  lastRemindedAt=now
+        "upcoming":  send upcoming DM; lastRemindedAt=now
+        "overdue":   send overdue DM;  lastRemindedAt=now
         "none":      skip
 
     # Periodic digest — per user
@@ -442,16 +449,19 @@ runDue(now):
     releaseLock()
 ```
 
-`reminderPolicy.deadlineDecision` (domain, pure):
+`reminderPolicy.deadlineDecision` (domain, pure) — derived purely from
+`lastRemindedAt` vs `deadline`:
 
-- `now ≥ deadline` and (`stage != overdue` or `lastRemindedAt` older than 24h) → `overdue`
-- `0 < deadline − now ≤ leadHours` and `stage == none` → `upcoming`
+- `now ≥ deadline` and (`lastRemindedAt` is null, or `lastRemindedAt < deadline`
+  (last send was the upcoming one → fire the first overdue immediately), or
+  `lastRemindedAt ≤ now − 24h` (throttle subsequent overdue)) → `overdue`
+- `0 < deadline − now ≤ leadHours` and `lastRemindedAt` is null → `upcoming`
 - otherwise → `none`
 
 ### Idempotency
 
-`lastRemindedAt` / `reminderStage` (per assignment) and `lastDigestAt` (per
-user) gate every automatic send, so overlapping or retried ticks never spam.
+`lastRemindedAt` (per assignment) and `lastDigestAt` (per user) gate every
+automatic send, so overlapping or retried ticks never spam.
 Combined with the cache lock — taken inside `runDue` and therefore shared by
 both the internal tick and the external endpoint — at-most-one delivery per
 logical event holds across restarts, replicas, and scheduler modes.
@@ -463,11 +473,11 @@ logical event holds across restarts, replicas, and scheduler modes.
 | Case | Handling |
 | --- | --- |
 | Task has no deadline | No deadline reminder; still appears in the digest; can still be a manual-reminder target |
-| Multiple assignees | Auto: sent to each *incomplete* assignee independently, each with its own `lastRemindedAt` / `reminderStage`. Manual: all incomplete assignees by default, or the chosen subset |
+| Multiple assignees | Auto: sent to each *incomplete* assignee independently, each with its own `lastRemindedAt`. Manual: all incomplete assignees by default, or the chosen subset |
 | Some assignees done, others not | Done assignees skipped (per-assignee `done`) for both automatic and manual |
 | Manual `userIds` includes a done/non-assignee | Rejected with `422 validation_error` |
 | Task archived | Excluded from automatic selection; manual send rejected |
-| Deadline edited | `reminderStage` reset to `none` on deadline change so the new window re-triggers an upcoming nudge |
+| Deadline edited | `lastRemindedAt` reset to null on deadline change so the new window re-triggers an upcoming nudge |
 | User opted out (`enabled=false`) | Skipped for automatic; **manual admin sends still reach them** (explicit override) |
 | Deactivated user (`users.deactivatedAt`) | Skipped in all paths |
 | No open IM with bot | `chat.postMessage` to the user ID opens the IM; transient failures logged, retried next tick (auto) / reported in `skipped` (manual) |
@@ -493,7 +503,7 @@ src/
       service.ts         # runDue (automatic) + sendManualReminder (admin)
   infrastructure/
     db/
-      schema.ts          # + reminder_preferences, task_assignees columns
+      schema.ts          # + reminder_preferences, task_assignees.last_reminded_at
     slack/
       dm.ts              # chat.postMessage DM wrapper + Block Kit builders
   adapters/
