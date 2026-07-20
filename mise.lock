@@ -366,7 +366,7 @@ url_api = "https://api.github.com/repos/suzuki-shunsuke/ghalint/releases/assets/
 url = "https://github.com/suzuki-shunsuke/ghalint/releases/download/v1.5.6/multiple.intoto.jsonl"
 
 [[tools.oxfmt]]
-version = "0.57.0"
+version = "0.58.0"
 backend = "npm:oxfmt"
 
 [[tools.oxlint]]
